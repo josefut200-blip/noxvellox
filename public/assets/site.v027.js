@@ -248,8 +248,8 @@
   const storageRead=(key,fallback)=>{try{const value=JSON.parse(localStorage.getItem(key)||'null');return Array.isArray(value)?value:fallback}catch{return fallback}};
   const storageWrite=(key,value)=>{try{localStorage.setItem(key,JSON.stringify(value))}catch{}};
   const historyKey='noxvellox-watch-history',listKey='noxvellox-my-list',autoplayKey='noxvellox-continuous-playback';
-  const normalizeInternalHref=raw=>{try{const target=new URL(raw,location.origin);return target.origin===location.origin?`${target.pathname}${target.search}`:''}catch{return ''}};
-  const readHistory=()=>storageRead(historyKey,[]);
+  const normalizeInternalHref=raw=>{try{const target=new URL(raw,location.origin);if(target.origin!==location.origin)return '';target.searchParams.delete('verify');return `${target.pathname}${target.search}`}catch{return ''}};
+  const readHistory=()=>{const seen=new Set();return storageRead(historyKey,[]).map(item=>({...item,href:normalizeInternalHref(item.href)})).filter(item=>{if(!item.href||seen.has(item.href))return false;seen.add(item.href);return true})};
   const readList=()=>storageRead(listKey,[]);
   const videoMeta=card=>{const href=normalizeInternalHref(card.getAttribute('href')||'');const title=(card.querySelector('h3')?.textContent||'').trim();return href&&title?{href,title,updatedAt:Date.now()}:null};
   const rememberVideo=meta=>{if(!meta)return;const next=[meta,...readHistory().filter(item=>item.href!==meta.href)].slice(0,20);storageWrite(historyKey,next)};
