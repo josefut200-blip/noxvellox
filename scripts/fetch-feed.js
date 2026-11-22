@@ -86,6 +86,28 @@ function valueFrom(object, keys) {
   return '';
 }
 
+function posterFrom(item) {
+  const direct = valueFrom(item, [
+    'poster_url', 'posterUrl', 'poster', 'thumbnail', 'thumbnail_url',
+    'thumbnailUrl', 'thumb', 'image', 'image_url', 'imageUrl',
+    'preview', 'preview_url', 'previewUrl'
+  ]);
+  if (direct) return direct;
+
+  const nestedCandidates = [
+    item?.media?.thumbnail,
+    item?.media?.thumbnail_url,
+    item?.media?.poster,
+    item?.media?.poster_url,
+    item?.images?.poster,
+    item?.images?.thumbnail,
+    item?.images?.default,
+    item?.assets?.poster,
+    item?.assets?.thumbnail
+  ];
+  return nestedCandidates.find(value => String(value || '').trim()) || '';
+}
+
 function field(block, tag) {
   const match = String(block).match(new RegExp(`<${tag}(?:\\s[^>]*)?>([\\s\\S]*?)<\\/${tag}>`, 'i'));
   return match ? decodeXml(match[1].trim()) : '';
@@ -113,7 +135,7 @@ function normalizeEntry(item) {
   const source = text(valueFrom(item, ['source_url', 'sourceUrl', 'source', 'url', 'link']), 1500);
   const id = text(valueFrom(item, ['id', 'video_id', 'videoId', 'viewkey']) || idFromUrl(source), 80);
   const title = text(valueFrom(item, ['title', 'name']), 180);
-  const poster = text(valueFrom(item, ['poster_url', 'posterUrl', 'thumbnail', 'thumbnail_url', 'thumb']), 1500);
+  const poster = text(posterFrom(item), 1500);
   let embed = text(valueFrom(item, ['embed_url', 'embedUrl', 'iframe_url', 'iframeUrl']), 1500);
 
   if (!embed && embedTemplate && id) {
@@ -201,7 +223,7 @@ async function requestFeed() {
   const entries = parsed.map(normalizeEntry).filter(Boolean);
 
   const unique = [...new Map(entries.map(entry => [entry.id, entry])).values()];
-  if (!unique.length) throw new Error('feed contained zero valid authorized entries');
+  if (!unique.length) throw new Error(`feed contained zero valid authorized entries (received ${parsed.length} records)`);
   return unique;
 }
 
@@ -228,3 +250,4 @@ try {
 } catch (error) {
   failSafely(error.message || error);
 }
+
