@@ -1,0 +1,14 @@
+{
+  "name": "Noxvellox",
+  "short_name": "Noxvellox",
+  "description": "Catálogo adulto 18+ organizado por categorias e canais.",
+  "start_url": "/?source=installed-app",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#09090d",
+  "theme_color": "#f24a67",
+  "lang": "pt-BR",
+  "icons": [
+    {"src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable"}
+  ]
+}
