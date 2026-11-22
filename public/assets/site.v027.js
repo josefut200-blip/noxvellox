@@ -96,6 +96,7 @@
       const player=frame.closest('[data-player]');
       if(player?.querySelector('[data-pre-roll]')&&consent()==='granted'){startPreRoll(player);return;}
       if(!frame.src)frame.src=frame.dataset.embedUrl;
+      if(player?.querySelector('[data-pre-roll]')){player.dataset.prerollFinished='yes';player.dataset.prerollState='consent-not-granted';}
       startMidRoll(player);
     });
   }
