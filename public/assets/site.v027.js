@@ -64,7 +64,7 @@
     if(!player||player.dataset.prerollStarted==='yes')return;
     const frame=player.querySelector('[data-embed-url]'),overlay=player.querySelector('[data-pre-roll]');
     if(!frame||!overlay)return;
-    if(consent()!=='granted'){if(!frame.src)frame.src=frame.dataset.embedUrl;return;}
+    if(consent()!=='granted'){if(!frame.src)frame.src=frame.dataset.embedUrl;player.dataset.prerollFinished='yes';player.dataset.prerollState='consent-not-granted';return;}
     const endpoint=overlay.dataset.vastEndpoint||'';
     const container=overlay.querySelector('[data-preroll-container]');
     const status=overlay.querySelector('[data-pre-roll-status]');
