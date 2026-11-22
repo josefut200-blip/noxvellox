@@ -26,6 +26,8 @@
  $('video-form')?.addEventListener('submit',async e=>{
    e.preventDefault();const form=new FormData(e.currentTarget);
    const uid=String(form.get('stream_uid')||'').trim(),embed=String(form.get('embed_url')||'').trim();
+    const duration=Number(form.get('duration_seconds')||0);
+    if(!Number.isInteger(duration)||duration<900){message('Only videos with at least 15:00 can be sent for review.',true);return;}
    if(uid&&!/^[a-f0-9]{32}$/i.test(uid)){message('Enter a real Cloudflare Stream UID (32 hexadecimal characters).',true);return;}
    if(Boolean(uid)===Boolean(embed)){message('Provide EITHER an authorized embed URL OR a Cloudflare Stream UID.',true);return;}
    try{await request('/api/admin/videos',{method:'POST',body:form});message('Saved privately for review. No video uploaded or published.');location.reload()}
@@ -33,8 +35,8 @@
  });
  $('hide-broken')?.addEventListener('click',async e=>{
    if(!confirm('HIDE ALL currently published AdultEmbed videos? This is reversible and does not delete records.'))return;
-   const b=e.currentTarget;b.disabled=true;message('Hiding reported broken AdultEmbed player listings…');
-   try{const data=await request('/api/admin/hide-broken',{method:'POST'});message((data.hidden||0)+' AdultEmbed listings hidden. Reloading…');setTimeout(()=>location.reload(),900)}
+   const b=e.currentTarget;b.disabled=true;message('Hiding reported broken AdultEmbed player listings.');
+   try{const data=await request('/api/admin/hide-broken',{method:'POST'});message((data.hidden||0)+' AdultEmbed listings hidden. Reloading.');setTimeout(()=>location.reload(),900)}
    catch(error){b.disabled=false;message(error.message,true);msg?.scrollIntoView?.({block:'center'})}
  });
  $('hide-official-form')?.addEventListener('submit',async e=>{
@@ -45,16 +47,16 @@
    catch(err){message(err.message,true)}
  });
   $('sync-official')?.addEventListener('click',async e=>{
-   const b=e.currentTarget;b.disabled=true;message('Syncing official webmaster embeds (RSS + three search pages)…');
+   const b=e.currentTarget;b.disabled=true;message('Syncing official webmaster embeds (RSS + three search pages).');
    try{const data=await request('/api/admin/sync-official',{method:'POST'});message(`${data.synced||0} official embed metadata records synchronized. No video files downloaded. View /official-videos.`);}
    catch(error){message(error.message,true)}finally{b.disabled=false}
  });
  $('import-pepper')?.addEventListener('click',async e=>{
    if(!confirm('Copy ALL public XXX Little Pepper titles, descriptions, and source references into the PRIVATE Noxvellox review queue? No videos, ads, passwords or playback rights will be transferred. Nothing will be published.'))return;
-   const b=e.currentTarget;b.disabled=true;message('Importing Little Pepper public catalog as PRIVATE metadata…');
+   const b=e.currentTarget;b.disabled=true;message('Importing Little Pepper public catalog as PRIVATE metadata.');
    try{
     const data=await request('/api/admin/import-pepper',{method:'POST'});
-    message(`${data.received} source titles checked, ${data.added} new PRIVATE candidates, ${data.rejected} rejected; ${data.withoutReliablePlayer} lacked reliable player links. Zero publications. Reloading…`);
+    message(`${data.received} source titles checked, ${data.added} new PRIVATE candidates, ${data.rejected} rejected; ${data.withoutReliablePlayer} lacked reliable player links. Zero publications. Reloading.`);
     setTimeout(()=>location.reload(),1500);
    }catch(error){b.disabled=false;message(error.message,true);msg?.scrollIntoView?.({block:'center'})}
  });
@@ -68,14 +70,14 @@
    const row=b.closest('[data-video-row]');const id=Number(b.dataset.id);
    const input=row?.querySelector('[data-pepper-url]');const embedUrl=(input?.value||'').trim();
    if(!embedUrl.startsWith('https://')){feedback(row,'Enter an HTTPS official provider embed or Pornhub watch link.',true);return;}
-   b.disabled=true;feedback(row,'Checking and saving the official embed for private review…');
+   b.disabled=true;feedback(row,'Checking and saving the official embed for private review.');
    try{const data=await request('/api/admin/set-pepper-embed',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({id,embedUrl})});
-     feedback(row,'Player reference updated. Documentary rights and adult-consent reviews remain required. Reloading…');setTimeout(()=>location.reload(),1200);
+     feedback(row,'Player reference updated. Documentary rights and adult-consent reviews remain required. Reloading.');setTimeout(()=>location.reload(),1200);
    }catch(error){b.disabled=false;feedback(row,error.message,true)}
  }));
  $('import-now')?.addEventListener('click',async e=>{
-   const b=e.currentTarget;b.disabled=true;message('Checking configured feed…');
-   try{const data=await request('/api/admin/import',{method:'POST'});message(`Import checked: ${data.received||0} received, ${data.added||0} queued for review, ${data.rejected||0} rejected. No content published automatically. Reloading…`);setTimeout(()=>location.reload(),1500)}
+   const b=e.currentTarget;b.disabled=true;message('Checking configured feed.');
+   try{const data=await request('/api/admin/import',{method:'POST'});message(`Import checked: ${data.received||0} received, ${data.added||0} queued for review, ${data.rejected||0} rejected. No content published automatically. Reloading.`);setTimeout(()=>location.reload(),1500)}
    catch(error){b.disabled=false;message(error.message,true);msg?.scrollIntoView?.({block:'center'})}
  });
  const checks={
@@ -91,7 +93,7 @@
      labels:[
        'I have verified commercial embedding/distribution rights for this specific video.',
        'I have verified age and consent documentation for every participant.',
-       'I personally tested the original player and confirmed the actual video plays (not “Video unavailable”).'
+       'I personally tested the original player and confirmed the actual video plays (not "Video unavailable").'
      ],cta:'Confirm and publish'
    },
    hidden:{title:'This video will be hidden from the public catalog; it will not be deleted.',labels:[],cta:'Hide video'},
@@ -108,7 +110,7 @@
    const row=button.closest('[data-video-row]');
    const id=Number(button.dataset.id);
    const old=button.textContent;
-   button.disabled=true;button.textContent='Checking…';
+   button.disabled=true;button.textContent='Checking.';
    feedback(row,'Checking the provider page for known errors. This does not play the video.');
    try{
      const data=await request('/api/admin/check-player',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({id})});
@@ -157,14 +159,14 @@
      inputs.find(input=>!input.checked)?.focus?.();return;
    }
    if(!Number.isSafeInteger(id)||id<=0){feedback(row,'Video ID is invalid. Reload the panel.',true);return;}
-   const originalText=button.textContent;button.disabled=true;button.textContent=type==='published'?'Publishing…':'Saving…';
-   feedback(row,'Processing your request…');
+   const originalText=button.textContent;button.disabled=true;button.textContent=type==='published'?'Publishing.':'Saving.';
+   feedback(row,'Processing your request.');
    try{
      const url=type==='review'?'/api/admin/verify':'/api/admin/status';
      const payload=type==='review'?{id,rightsConfirmed:true,adultsVerified:true}:{id,status:type,playbackConfirmed:type==='published'&&inputs.length===3&&inputs.every(input=>input.checked)};
      const data=await request(url,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)});
      if(!data.ok)throw new Error('Server did not confirm the update.');
-     feedback(row,type==='review'?'Review saved. Next you can click Publish. Reloading…':type==='published'?'Publication confirmed by the server. Reloading…':'Status updated successfully. Reloading…');
+     feedback(row,type==='review'?'Review saved. Next you can click Publish. Reloading.':type==='published'?'Publication confirmed by the server. Reloading.':'Status updated successfully. Reloading.');
      location.hash='video-row-'+id;
      setTimeout(()=>location.reload(),1200);
    }catch(error){button.disabled=false;button.textContent=originalText;feedback(row,error.message,true)}
@@ -174,3 +176,4 @@
    catch(error){message(error.message,true)}
  });
 })();
+
