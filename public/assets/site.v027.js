@@ -39,6 +39,8 @@
     if(parsed.mediaUrl)return parsed;
     return resolveVast(parsed.wrapper,depth+1);
   }
+  const showOverlay=overlay=>{if(!overlay)return;showOverlay(overlay);overlay.style.display='grid';};
+  const hideOverlay=overlay=>{if(!overlay)return;hideOverlay(overlay);overlay.style.display='none';};
   function startMidRoll(player){
     if(!player||player.dataset.midrollScheduled==='yes'||consent()!=='granted')return;
     const frame=player.querySelector('[data-embed-url]');
@@ -48,17 +50,17 @@
       if(player.dataset.midrollShown==='yes')return;
       player.dataset.midrollShown='yes';
       const overlay=document.createElement('div');
-      overlay.className='mid-roll-overlay';overlay.hidden=false;overlay.setAttribute('role','dialog');overlay.setAttribute('aria-label','Sponsored advertisement');
+      overlay.className='mid-roll-overlay';showOverlay(overlay);overlay.setAttribute('role','dialog');overlay.setAttribute('aria-label','Sponsored advertisement');
       overlay.style.cssText='position:absolute;inset:0;z-index:7;display:grid;place-items:center;background:#08070df2;padding:20px';
       overlay.innerHTML='<div class="mid-roll-card" style="width:min(430px,100%);padding:24px;border:1px solid #76505d;border-radius:16px;background:#19151e;text-align:center;box-shadow:0 20px 80px #000b"><div class="ad-label" style="color:#ff9caf;font-size:10px;letter-spacing:.15em;text-transform:uppercase;font-weight:900">Advertisement · Sponsored break</div><div data-mid-roll-container style="min-height:90px;margin:16px 0;border:1px dashed #5b4550;border-radius:10px;display:grid;place-items:center;color:#8d7f89;font-size:10px">Sponsored placement</div><p style="color:#c8bdc6;font-size:12px">Sponsored placement after 15 seconds in the player.</p><button class="button ghost" type="button" data-mid-roll-close>Continue to video</button></div>';
       player.append(overlay);
       const container=overlay.querySelector('[data-mid-roll-container]');
       if(container&&!container.dataset.loaded){container.dataset.loaded='yes';const script=document.createElement('script');script.async=true;script.dataset.cfasync='false';script.src=APPROVED_AD_SRC;container.before(script);}
-      overlay.querySelector('[data-mid-roll-close]')?.addEventListener('click',()=>{overlay.hidden=true;player.dataset.midrollClosed='yes'},{once:true});
-      window.setTimeout(()=>{if(overlay.isConnected&&overlay.hidden===false&&container?.childElementCount===0){overlay.hidden=true;player.dataset.midrollState='no-fill'}},8000);
+      overlay.querySelector('[data-mid-roll-close]')?.addEventListener('click',()=>{hideOverlay(overlay);player.dataset.midrollClosed='yes'},{once:true});
+      window.setTimeout(()=>{if(overlay.isConnected&&overlay.hidden===false&&container?.childElementCount===0){hideOverlay(overlay);player.dataset.midrollState='no-fill'}},8000);
       // Always release the sponsored break after 15 seconds. Ad networks may
       // inject an iframe or other child nodes without providing a close event.
-      window.setTimeout(()=>{if(overlay.isConnected&&overlay.hidden===false){overlay.hidden=true;player.dataset.midrollState='released'}},15000);
+      window.setTimeout(()=>{if(overlay.isConnected&&overlay.hidden===false){hideOverlay(overlay);player.dataset.midrollState='released'}},15000);
     };
     const arm=()=>{if(player.dataset.midrollTimer==='yes')return;player.dataset.midrollTimer='yes';window.setTimeout(show,15000)};
     if(frame.src)arm();else frame.addEventListener('load',arm,{once:true});
@@ -71,14 +73,14 @@
     const endpoint=overlay.dataset.vastEndpoint||'';
     const container=overlay.querySelector('[data-preroll-container]');
     const status=overlay.querySelector('[data-pre-roll-status]');
-    const finish=()=>{if(player.dataset.prerollFinished==='yes')return;player.dataset.prerollFinished='yes';if(!frame.src)frame.src=frame.dataset.embedUrl;overlay.hidden=true;player.dataset.prerollState='finished';startMidRoll(player)};
+    const finish=()=>{if(player.dataset.prerollFinished==='yes')return;player.dataset.prerollFinished='yes';if(!frame.src)frame.src=frame.dataset.embedUrl;hideOverlay(overlay);player.dataset.prerollState='finished';startMidRoll(player)};
     if(!endpoint){
       // No authorized VAST tag is configured. Use the approved native placement
       // as a clearly labeled 15-second sponsored break instead of pretending it
       // is a video advertisement.
       player.dataset.prerollStarted='yes';
       player.dataset.prerollState='native-break';
-      overlay.hidden=false;
+      showOverlay(overlay);
       const source=container?.dataset.scriptSrc||'';
       if(container&&source===APPROVED_AD_SRC&&!container.dataset.loaded){
         container.dataset.loaded='yes';
@@ -91,13 +93,13 @@
       let remaining=Math.max(5,Number(overlay.dataset.preRollSeconds)||15);
       const counter=overlay.querySelector('[data-pre-roll-countdown]');
       if(counter)counter.textContent=String(remaining);
-      const finishNative=()=>{if(player.dataset.prerollFinished==='yes')return;player.dataset.prerollFinished='yes';if(!frame.src)frame.src=frame.dataset.embedUrl;overlay.hidden=true;player.dataset.prerollState='finished';clearInterval(timer);startMidRoll(player)};
+      const finishNative=()=>{if(player.dataset.prerollFinished==='yes')return;player.dataset.prerollFinished='yes';if(!frame.src)frame.src=frame.dataset.embedUrl;hideOverlay(overlay);player.dataset.prerollState='finished';clearInterval(timer);startMidRoll(player)};
       const timer=setInterval(()=>{remaining-=1;if(counter)counter.textContent=String(Math.max(remaining,0));if(remaining<=0)finishNative()},1000);
       button?.addEventListener('click',finishNative,{once:true});
       return;
     }
     player.dataset.prerollStarted='yes';
-    overlay.hidden=false;
+    showOverlay(overlay);
     const media=overlay.querySelector('[data-pre-roll-media]');
     const copy=overlay.querySelector('[data-pre-roll-copy]');
     resolveVast(endpoint).then(ad=>{
