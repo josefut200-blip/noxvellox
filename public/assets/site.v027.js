@@ -39,8 +39,8 @@
     if(parsed.mediaUrl)return parsed;
     return resolveVast(parsed.wrapper,depth+1);
   }
-  const showOverlay=overlay=>{if(!overlay)return;showOverlay(overlay);overlay.style.display='grid';};
-  const hideOverlay=overlay=>{if(!overlay)return;hideOverlay(overlay);overlay.style.display='none';};
+  const showOverlay=overlay=>{if(!overlay)return;overlay.hidden=false;overlay.style.display='grid';};
+  const hideOverlay=overlay=>{if(!overlay)return;overlay.hidden=true;overlay.style.display='none';};
   function startMidRoll(player){
     if(player?.dataset.midrollEnabled!=='yes')return;
     if(!player||player.dataset.midrollScheduled==='yes'||consent()!=='granted')return;
@@ -203,13 +203,16 @@
     if(!ageAccepted())return;
     slots.forEach(slot=>{
       const message=slot.querySelector('[data-ad-message]');
-      if(c==='denied'){setAdState(slot,'disabled');if(message)message.textContent='Optional ads are disabled. You can change this in Ad preferences.';return;}
+      const enable=slot.querySelector('[data-enable-ads]');
+      if(c==='denied'){setAdState(slot,'disabled');if(message)message.textContent='Optional ads are disabled. You can enable them below or in Ad preferences.';if(enable)enable.hidden=false;return;}
+      if(enable)enable.hidden=true;
       if(c!=='granted'||slot.dataset.loaded==='yes')return;
       const scriptUrl=slot.dataset.scriptSrc;
       if(scriptUrl!==APPROVED_AD_SRC){setAdState(slot,'blocked-url');return;}
       slot.dataset.loaded='yes';
       setAdState(slot,'loading');
       if(message)message.textContent='';
+      if(container)container.id='container-'+APPROVED_AD_SRC.split('/').pop();
       const s=document.createElement('script');
       s.async=true;
       s.setAttribute('data-cfasync','false');
@@ -225,6 +228,11 @@
     releaseEmbeds();
   };
   document.addEventListener('click',(event)=>{
+    if(event.target.closest('[data-enable-ads]')){
+      setConsent('granted');
+      renderAd();
+      return;
+    }
     if(event.target.closest('[data-ad-preferences]')){
       const ok=window.confirm('Allow optional Adsterra advertising to load on Noxvellox? Select Cancel to keep ads disabled.');
       setConsent(ok?'granted':'denied');
@@ -254,6 +262,6 @@
   const setupWatchHistory=()=>{if(/^\/(?:watch|official-watch)\//.test(location.pathname)){const title=(document.querySelector('.watch-head h1,h1')?.textContent||'').trim();const href=normalizeInternalHref(location.pathname+location.search);if(title&&href)rememberVideo({href,title,updatedAt:Date.now()})}};
   const setupContinuousPlayback=()=>{const player=document.querySelector('[data-player]');if(!player)return;const related=[...document.querySelectorAll('aside a.video-card')].map(link=>normalizeInternalHref(link.getAttribute('href')||'')).filter(Boolean);if(!related.length)return;const wrap=document.createElement('label');wrap.className='continuous-toggle';const checkbox=document.createElement('input');checkbox.type='checkbox';checkbox.checked=localStorage.getItem(autoplayKey)==='yes';const text=document.createElement('span');text.textContent='Reprodução contínua opcional';wrap.append(checkbox,text);player.parentElement?.insertBefore(wrap,player.nextSibling);checkbox.addEventListener('change',()=>{try{localStorage.setItem(autoplayKey,checkbox.checked?'yes':'no')}catch{}});let nextIndex=0;const goNext=()=>{if(checkbox.checked&&related[nextIndex])location.href=related[nextIndex]};player.querySelectorAll('video').forEach(video=>video.addEventListener('ended',goNext));window.addEventListener('message',event=>{if(!checkbox.checked||event.source!==player.querySelector('iframe')||!event.data)return;const data=typeof event.data==='string'?event.data:event.data.event||event.data.type;if(String(data).toLowerCase().includes('ended'))goNext()})};
   const setupPwa=()=>{const manifest=document.createElement('link');manifest.rel='manifest';manifest.href='/manifest.webmanifest';document.head.append(manifest);if('serviceWorker' in navigator)navigator.serviceWorker.register('/sw.js',{scope:'/'}).catch(()=>{});const head=document.querySelector('.head-inner');if(!head)return;const button=document.createElement('button');button.type='button';button.className='install-app';button.hidden=true;button.textContent='Instalar app';button.setAttribute('aria-label','Instalar Noxvellox como aplicativo');const age=head.querySelector('.age-pill');head.insertBefore(button,age||null);let deferred=null;window.addEventListener('beforeinstallprompt',event=>{event.preventDefault();deferred=event;button.hidden=false});button.addEventListener('click',async()=>{if(!deferred)return;deferred.prompt();await deferred.userChoice;deferred=null;button.hidden=true});window.addEventListener('appinstalled',()=>{button.hidden=true})};
-  const refreshStyle=()=>{const link=document.querySelector('link[href*="style.v027.css"]');if(link)link.href='/assets/style.v027.css?ver=0.4.5'};
+  const refreshStyle=()=>{const link=document.querySelector('link[href*="style.v027.css"]');if(link)link.href='/assets/style.v027.css?ver=0.4.6'};
   refreshStyle();setupPwa();setupVideoCards();setupWatchHistory();setupContinuousPlayback();renderPersonalRails();
 })();
