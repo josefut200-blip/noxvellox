@@ -204,6 +204,7 @@
     slots.forEach(slot=>{
       const message=slot.querySelector('[data-ad-message]');
       const enable=slot.querySelector('[data-enable-ads]');
+      const container=slot.querySelector('[data-ad-container]');
       if(c==='denied'){setAdState(slot,'disabled');if(message)message.textContent='Optional ads are disabled. You can enable them below or in Ad preferences.';if(enable)enable.hidden=false;return;}
       if(enable)enable.hidden=true;
       if(c!=='granted'||slot.dataset.loaded==='yes')return;
