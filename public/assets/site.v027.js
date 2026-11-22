@@ -42,6 +42,7 @@
   const showOverlay=overlay=>{if(!overlay)return;showOverlay(overlay);overlay.style.display='grid';};
   const hideOverlay=overlay=>{if(!overlay)return;hideOverlay(overlay);overlay.style.display='none';};
   function startMidRoll(player){
+    if(player?.dataset.midrollEnabled!=='yes')return;
     if(!player||player.dataset.midrollScheduled==='yes'||consent()!=='granted')return;
     const frame=player.querySelector('[data-embed-url]');
     if(!frame)return;
