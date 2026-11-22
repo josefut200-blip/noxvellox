@@ -145,3 +145,24 @@
 .video-art .cover-art-safe{position:absolute;inset:0;z-index:0;height:100%;width:100%;object-fit:cover}.video-art>[data-cover-image]{position:relative;z-index:1}.video-art .play{z-index:2}
 .video-art .embed-cover-preview{position:relative;z-index:1;width:100%;height:100%;display:block;border:0;background:#0d0b10;pointer-events:none}.player>.embed-cover-preview{display:none}
 .install-app{border:1px solid #f24a67;background:#f24a67;color:#fff;border-radius:8px;padding:8px 11px;font-size:11px;font-weight:850;white-space:nowrap}.install-app:hover{background:#ff5975}.video-save{position:absolute;z-index:4;top:9px;right:9px;width:34px;height:34px;border:1px solid #ffffff66;border-radius:50%;background:#100d16d9;color:#fff;font-size:21px;line-height:1;display:grid;place-items:center}.video-save:hover,.video-save[aria-pressed=true]{background:#f24a67;border-color:#ff9caf}.personal-rail{margin-top:28px;margin-bottom:10px;padding:22px;border:1px solid #44313c;border-radius:17px;background:linear-gradient(120deg,#25131e,#14121a 62%,#281522)}.personal-rail-head{display:flex;align-items:end;justify-content:space-between;margin-bottom:15px}.personal-rail h2{font-size:24px;letter-spacing:-.04em;margin:7px 0 0}.personal-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.personal-card{min-height:110px;display:flex;flex-direction:column;justify-content:space-between;padding:15px;border:1px solid #ffffff18;border-radius:12px;background:#17131c;transition:transform .18s ease,border-color .18s ease}.personal-card:hover{transform:translateY(-2px);border-color:#f24a67}.personal-card-kicker{color:#ff9caf;font-size:9px;font-weight:900;letter-spacing:.12em;text-transform:uppercase}.personal-card strong{font-size:13px;line-height:1.35}.personal-card-action{color:#aaa4ae;font-size:10px}.continuous-toggle{display:inline-flex;align-items:center;gap:8px;margin:12px 0;color:#cfc6cd;font-size:12px}.continuous-toggle input{accent-color:#f24a67}@media(max-width:900px){.personal-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.install-app{padding:7px 8px;font-size:10px}}@media(max-width:560px){.personal-rail{padding:16px}.personal-grid{grid-template-columns:1fr}.personal-card{min-height:92px}.install-app{display:none}}
+
+
+/* v0.4.6: reliable responsive ad slots and non-empty cover fallback */
+.native-ad-slot{width:100%;min-height:118px;margin:24px 0;padding:16px 18px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;text-align:center}
+.native-ad-slot .ad-label{margin:0}
+.native-ad-slot .native-banner-container{width:100%;min-height:48px;display:grid;place-items:center}
+.native-ad-slot .ad-message{min-height:16px}
+.native-ad-slot .ad-enable{min-height:34px;padding:0 14px;font-size:11px}
+.native-ad-slot[data-ad-state=disabled] .ad-message{color:#cbb6c2}
+.native-ad-slot[data-ad-state=loading] .ad-message{color:#ffafbd}
+.native-ad-slot[data-ad-state=loaded-no-render] .ad-message,.native-ad-slot[data-ad-state=error] .ad-message{color:#ffb3bf}
+.video-art .cover-art-safe{display:block;position:absolute;inset:0;z-index:0;width:100%;height:100%;object-fit:cover}
+.video-art [data-cover-image]{position:relative;z-index:1}
+@media(max-width:800px){
+  .native-ad-slot{min-height:96px;margin:18px 0;padding:13px 10px}
+  .native-ad-slot .native-banner-container{min-height:40px;overflow:auto}
+  .native-ad-slot .ad-label{font-size:9px}
+}
+@media(max-width:490px){
+  .native-ad-slot{min-height:88px;border-radius:12px}
+}
