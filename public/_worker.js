@@ -312,6 +312,7 @@ async function officialById(db,id,localEntries=null){
  if(Array.isArray(localEntries)){
      return localEntries.find(item=>item.id===id)||null;
  }
+ return (await officialFeed()).find(v=>v.id===id)||null;
 }
 // One-click official webmaster import for administrators. Unlike the
 // separately imported Little Pepper/Brazzers metadata, official embeds in the
