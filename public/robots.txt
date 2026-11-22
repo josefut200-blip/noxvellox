@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /api/
+Disallow: /search
+Disallow: /*?*page=
+Disallow: /*?*sort=
+Disallow: /*?*q=
+Sitemap: https://noxvellox.pages.dev/sitemap.xml

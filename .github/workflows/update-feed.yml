@@ -1,0 +1,49 @@
+name: Update authorized video feed
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-authorized-feed
+  cancel-in-progress: true
+
+jobs:
+  update-feed:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Fetch authorized feed and preserve the last good snapshot
+        run: node scripts/fetch-feed.js
+        env:
+          OFFICIAL_FEED_URL: ${{ secrets.OFFICIAL_FEED_URL }}
+          OFFICIAL_FEED_TOKEN: ${{ secrets.OFFICIAL_FEED_TOKEN }}
+          OFFICIAL_FEED_ALLOWED_HOSTS: ${{ secrets.OFFICIAL_FEED_ALLOWED_HOSTS }}
+          OFFICIAL_EMBED_TEMPLATE: ${{ secrets.OFFICIAL_EMBED_TEMPLATE }}
+
+      - name: Commit changed snapshot
+        run: |
+          git config user.name "noxvellox-feed-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          if git diff --quiet -- data/videos.json public/data/videos.json; then
+            echo "No new authorized entries. Previous snapshot remains active."
+            exit 0
+          fi
+
+          git add data/videos.json public/data/videos.json
+          git commit -m "chore: update authorized video feed"
+          git push

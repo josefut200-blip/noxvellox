@@ -1,0 +1,19 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "noxvellox",
+  "compatibility_date": "2026-11-20",
+  "pages_build_output_dir": "./public",
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "noxvellox-db",
+      "database_id": "d02dd003-9ab0-4cca-9623-1bcc4d940376"
+    }
+  ],
+  "vars": {
+    "ALLOWED_EMBED_HOSTS": "adultembed.com,iframe.videodelivery.net,www.pornhub.com",
+    "ALLOWED_FEED_HOSTS": "adultembed.com",
+    "VIDEO_FEED_URL": "https://adultembed.com/api/v1/search?studios=brazzers&per_page=20&sort=newest&format=json",
+    "AUTO_PUBLISH_BRAZZERS": "verified-only"
+  }
+}
