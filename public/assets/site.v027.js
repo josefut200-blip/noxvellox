@@ -56,6 +56,9 @@
       if(container&&!container.dataset.loaded){container.dataset.loaded='yes';const script=document.createElement('script');script.async=true;script.dataset.cfasync='false';script.src=APPROVED_AD_SRC;container.before(script);}
       overlay.querySelector('[data-mid-roll-close]')?.addEventListener('click',()=>{overlay.hidden=true;player.dataset.midrollClosed='yes'},{once:true});
       window.setTimeout(()=>{if(overlay.isConnected&&overlay.hidden===false&&container?.childElementCount===0){overlay.hidden=true;player.dataset.midrollState='no-fill'}},8000);
+      // Always release the sponsored break after 15 seconds. Ad networks may
+      // inject an iframe or other child nodes without providing a close event.
+      window.setTimeout(()=>{if(overlay.isConnected&&overlay.hidden===false){overlay.hidden=true;player.dataset.midrollState='released'}},15000);
     };
     const arm=()=>{if(player.dataset.midrollTimer==='yes')return;player.dataset.midrollTimer='yes';window.setTimeout(show,15000)};
     if(frame.src)arm();else frame.addEventListener('load',arm,{once:true});
