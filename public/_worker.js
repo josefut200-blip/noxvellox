@@ -279,12 +279,6 @@ const OFFICIAL_PAGE_SIZE=24;
 function officialPageNumber(value){const n=Number(value);return Number.isInteger(n)&&n>=1?Math.min(n,1000):1}
 async function officialCatalog(db,{page=1,limit=OFFICIAL_PAGE_SIZE,q='',localEntries=null}={}){
  const offset=(page-1)*limit;
- if(Array.isArray(localEntries)){
-  const query=String(q||'').trim().toLowerCase();
-  const eligible=localEntries.filter(item=>Number(item.duration_seconds)>=MIN_VIDEO_DURATION_SECONDS);
-  const filtered=query?eligible.filter(item=>String(item.title||'').toLowerCase().includes(query)):eligible;
-  return {entries:filtered.slice(offset,offset+limit),total:filtered.length,persisted:false,local:true};
- }
  if(db){try{
   const query=String(q||'').trim();
   const match=query?`%${query.replace(/[\\%_]/g,'\\$&')}%`:'';
@@ -296,6 +290,12 @@ async function officialCatalog(db,{page=1,limit=OFFICIAL_PAGE_SIZE,q='',localEnt
    const entries=await hydrateOfficialPosters((rows.results||[]).map(v=>({...v,source_url:OFFICIAL_ORIGIN+'/view_video.php?viewkey='+v.id,embed_url:OFFICIAL_ORIGIN+'/embed/'+v.id})));
   if(count?.total>0)return {entries,total:count.total,persisted:true};
  }catch{/* table not initialized yet; use only the live RSS */}}
+ if(Array.isArray(localEntries)){
+  const query=String(q||'').trim().toLowerCase();
+  const eligible=localEntries.filter(item=>Number(item.duration_seconds)>=MIN_VIDEO_DURATION_SECONDS);
+  const filtered=query?eligible.filter(item=>String(item.title||'').toLowerCase().includes(query)):eligible;
+  return {entries:filtered.slice(offset,offset+limit),total:filtered.length,persisted:false,local:true};
+ }
  const live=await officialFeed();
  const query=String(q||'').trim().toLowerCase();
  const filtered=query?live.filter(item=>String(item.title||'').toLowerCase().includes(query)):live;
@@ -305,12 +305,13 @@ function officialCategory(id){let hash=0;for(const ch of String(id||''))hash=((h
 async function officialForCategory(db,category,localEntries=null){if(category!=='Official embeds')return [];return (await officialCatalog(db,{page:1,limit:500,localEntries})).entries}
 async function officialById(db,id,localEntries=null){
  if(!/^[a-z0-9]{8,24}$/i.test(String(id)))return null;
- if(Array.isArray(localEntries))return localEntries.find(item=>item.id===id)||null;
  if(db){try{
    const row=await db.prepare(`SELECT id,title,poster_url,duration_seconds FROM official_embeds WHERE id=? AND visibility='active' AND duration_seconds >= ${MIN_VIDEO_DURATION_SECONDS}`).bind(id).first();
    if(row){const hydrated=(await hydrateOfficialPosters([row]))[0];return {...hydrated,source_url:OFFICIAL_ORIGIN+'/view_video.php?viewkey='+row.id,embed_url:OFFICIAL_ORIGIN+'/embed/'+row.id};}
  }catch{/* fallback to RSS */}}
- return (await officialFeed()).find(v=>v.id===id)||null;
+ if(Array.isArray(localEntries)){
+     return localEntries.find(item=>item.id===id)||null;
+ }
 }
 // One-click official webmaster import for administrators. Unlike the
 // separately imported Little Pepper/Brazzers metadata, official embeds in the
