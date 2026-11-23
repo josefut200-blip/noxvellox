@@ -1,6 +1,9 @@
 name: Generate and publish English SEO video batch
 
 on:
+  push:
+    paths:
+      - 'data/video-batch-request.txt'
   workflow_dispatch:
     inputs:
       items:
