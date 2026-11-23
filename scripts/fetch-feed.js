@@ -90,13 +90,31 @@ function valueFrom(object, keys) {
   return '';
 }
 
+function urlValue(value) {
+  if (value && typeof value === 'object') {
+    return valueFrom(value, ['url', 'src', 'href', 'embed_url', 'iframe_url']) || '';
+  }
+  const raw = String(value || '').trim();
+  const iframeSource = raw.match(/<iframe\\b[^>]*\\bsrc=["']([^"']+)["']/i)?.[1];
+  return iframeSource || raw;
+}
+
+function firstMirror(value) {
+  const candidates = Array.isArray(value) ? value : value ? [value] : [];
+  for (const candidate of candidates) {
+    const url = urlValue(candidate);
+    if (url) return url;
+  }
+  return '';
+}
+
 function posterFrom(item) {
   const direct = valueFrom(item, [
     'poster_url', 'posterUrl', 'poster', 'thumbnail', 'thumbnail_url',
     'thumbnailUrl', 'thumb', 'image', 'image_url', 'imageUrl',
     'preview', 'preview_url', 'previewUrl'
   ]);
-  if (direct) return direct;
+  if (direct) return urlValue(direct);
 
   const nestedCandidates = [
     item?.media?.thumbnail,
@@ -109,7 +127,8 @@ function posterFrom(item) {
     item?.assets?.poster,
     item?.assets?.thumbnail
   ];
-  return nestedCandidates.find(value => String(value || '').trim()) || '';
+  const candidate = nestedCandidates.find(value => String(value || '').trim());
+  return urlValue(candidate);
 }
 
 function field(block, tag) {
@@ -148,11 +167,17 @@ function canonicalPornhubEmbed(source, id) {
 }
 
 function normalizeEntry(item) {
-  const source = text(valueFrom(item, ['source_url', 'sourceUrl', 'source', 'url', 'link']), 1500);
-  const id = text(valueFrom(item, ['id', 'video_id', 'videoId', 'viewkey']) || idFromUrl(source), 80);
+  const embedObject = item?.embed;
+  let source = text(valueFrom(item, ['source_url', 'sourceUrl', 'source', 'url', 'link', 'video_url', 'videoUrl']), 1500);
+  let embed = text(urlValue(valueFrom(item, ['embed_url', 'embedUrl', 'iframe_url', 'iframeUrl']) ||
+    valueFrom(embedObject, ['url', 'iframe', 'responsive_iframe', 'embed_url', 'src'])), 1500);
+  if (!source) {
+    source = text(firstMirror(item?.mirrors) || valueFrom(item?.source, ['url', 'href', 'link']), 1500);
+  }
+
+  const id = text(valueFrom(item, ['id', 'video_id', 'videoId', 'viewkey']) || idFromUrl(source || embed), 80);
   const title = text(valueFrom(item, ['title', 'name']), 180);
   const poster = text(posterFrom(item), 1500);
-  let embed = text(valueFrom(item, ['embed_url', 'embedUrl', 'iframe_url', 'iframeUrl']), 1500);
 
   if (!embed && embedTemplate && id) {
     embed = embedTemplate.replaceAll('{id}', encodeURIComponent(id));
@@ -160,6 +185,9 @@ function normalizeEntry(item) {
   if (!embed && id && source) {
     embed = canonicalPornhubEmbed(source, id);
   }
+  // Some provider feeds expose only the authorized player URL. Keep it as the
+  // source URL too; both values are still checked against HTTPS and the allowlist.
+  if (!source && embed) source = embed;
 
   if (!id || !title || !source || !embed) return null;
 
@@ -246,15 +274,19 @@ async function requestFeed() {
   const eligible = unique.filter(entry => entry.duration_seconds >= MIN_DURATION_SECONDS);
   if (!eligible.length) {
     const fieldNames = new Set();
-    for (const item of parsed.slice(0, 3)) {
-      if (!item || typeof item !== 'object' || Array.isArray(item)) continue;
-      for (const [key, value] of Object.entries(item)) {
-        fieldNames.add(key);
-        if (value && typeof value === 'object' && !Array.isArray(value)) {
-          for (const childKey of Object.keys(value)) fieldNames.add(`${key}.${childKey}`);
-        }
+    const addShape = (value, prefix = '', depth = 0) => {
+      if (!value || typeof value !== 'object' || depth > 2) return;
+      if (Array.isArray(value)) {
+        if (value[0] && typeof value[0] === 'object') addShape(value[0], `${prefix}[0]`, depth + 1);
+        return;
       }
-    }
+      for (const [key, child] of Object.entries(value)) {
+        const name = prefix ? `${prefix}.${key}` : key;
+        fieldNames.add(name);
+        if (child && typeof child === 'object') addShape(child, name, depth + 1);
+      }
+    };
+    for (const item of parsed.slice(0, 3)) addShape(item);
     log(`Feed record field names: ${[...fieldNames].sort().join(', ') || '(none)'}`);
     throw new Error(`feed contained no entries at least ${MIN_DURATION_SECONDS} seconds long (received ${parsed.length} records, ${unique.length} valid, ${durationKnown} with known duration; previous snapshot preserved)`);
   }
