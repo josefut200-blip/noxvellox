@@ -229,7 +229,8 @@ def read_official_rss(existing_ids, remaining):
         video_url = item.findtext("link") or ""
         duration = parse_duration(item.findtext("duration"))
         poster = item.findtext("thumb_large") or item.findtext("thumb") or ""
-        embed = item.findtext("embed") or ""
+        embed_node = item.find("embed")
+        embed = (embed_node.text or embed_node.tail or "") if embed_node is not None else ""
         video_id = extract_id(embed, video_url)
         tags = " ".join((tag.text or "") for tag in item.findall("tag"))
         if not video_id or not title or duration < MIN_DURATION or AGE_AMBIGUOUS.search(title + " " + tags):
