@@ -53,7 +53,7 @@
   const APPROVED_BANNER_300_SRC='https://biomanos.org/22/503779984753b653167ed59860f05642';
   const APPROVED_SOCIAL_BAR_SRC='https://biomanos.org/14/505d9a85cd6b957598b0e25ba1854db8';
   const APPROVED_POPUNDER_SRC='https://benchform.org/1/02c67b439b4bd019691a72b99d34c0ca';
-  const loadConsentUnit=(id,src)=>{if(document.getElementById(id))return;const script=document.createElement('script');script.id=id;script.async=true;script.setAttribute('data-cfasync','false');script.src=src;document.head.append(script)};
+  const loadConsentUnit=(id,src,target=document.head)=>{if(document.getElementById(id))return;const script=document.createElement('script');script.id=id;script.async=true;script.setAttribute('data-cfasync','false');script.src=src;(target||document.body||document.head).append(script)};
   const createInlineBannerSlot=size=>{
     const dimensions=size==='160'?{width:160,height:300}:size==='320'?{width:320,height:50}:size==='300'?{width:300,height:250}:null;
     if(!dimensions)return null;
@@ -271,7 +271,7 @@
     const c=consent();
     if(!ageAccepted())return;
     if(c==='granted'){
-      loadConsentUnit('noxvellox-social-bar',APPROVED_SOCIAL_BAR_SRC);
+      loadConsentUnit('noxvellox-social-bar',APPROVED_SOCIAL_BAR_SRC,document.body);
       let popunderLoaded=false;try{popunderLoaded=sessionStorage.getItem('noxvellox-popunder-loaded')==='yes'}catch{}
       if(!popunderLoaded){loadConsentUnit('noxvellox-popunder',APPROVED_POPUNDER_SRC);try{sessionStorage.setItem('noxvellox-popunder-loaded','yes')}catch{}}
     }
