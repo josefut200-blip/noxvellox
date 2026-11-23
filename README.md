@@ -14,3 +14,8 @@
 O workflow não baixa, hospeda, copia ou reencoda vídeos. Ele aceita apenas metadados e incorporações de fontes oficiais autorizadas. A disponibilidade do provedor pode mudar; um erro 403/429 mantém o último catálogo conhecido. Não compartilhe tokens em arquivos públicos ou mensagens.
 
 Consulte `FEED-AUTOMATION-SETUP.md` para configurar os secrets do provedor autorizado.
+
+
+## Automações
+
+Consulte [AUTOMATIONS.md](AUTOMATIONS.md) para ver o que cada workflow faz e abrir sua página no GitHub Actions.
