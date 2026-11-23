@@ -177,8 +177,9 @@ def read_official_zip(zip_path, existing_ids, remaining):
             raise RuntimeError("Official ZIP contains no CSV file.")
         with archive.open(csv_names[0]) as raw:
             text = io.TextIOWrapper(raw, encoding="utf-8-sig", errors="replace", newline="")
-            reader = csv.reader(text)
-            headers = next(reader, [])
+            reader = csv.reader(text, delimiter="|")
+            first_row = next(reader, [])
+            headers = first_row
             embed_col = find_column(headers, ["embed", "embedcode", "embedhtml", "iframe", "embedurl"])
             title_col = find_column(headers, ["title", "videotitle", "name"])
             duration_col = find_column(headers, ["duration", "length", "seconds"])
@@ -186,8 +187,18 @@ def read_official_zip(zip_path, existing_ids, remaining):
             tags_col = find_column(headers, ["tags", "tag"])
             video_col = find_column(headers, ["videourl", "url", "videolink", "link"])
             if embed_col is None or title_col is None:
-                raise RuntimeError("Official CSV columns do not include a recognizable embed code and title.")
-            for row in reader:
+                # The official webmaster ZIP uses a pipe-delimited, headerless
+                # layout: embed|thumb|thumbs|title|tags|categories|pornstars|duration|...
+                rows = iter([first_row])
+                first_data = next(rows, [])
+                embed_col, poster_col, title_col, tags_col, duration_col, video_col = 0, 11, 3, 4, 7, None
+                def all_rows():
+                    yield first_data
+                    yield from reader
+                source_rows = all_rows()
+            else:
+                source_rows = reader
+            for row in source_rows:
                 scanned += 1
                 get = lambda index: row[index] if index is not None and index < len(row) else ""
                 title = html.unescape(get(title_col))
@@ -198,7 +209,7 @@ def read_official_zip(zip_path, existing_ids, remaining):
                 duration = parse_duration(get(duration_col))
                 if not video_id or not title or duration < MIN_DURATION or AGE_AMBIGUOUS.search(title + " " + tags):
                     continue
-                poster = get(poster_col)
+                poster = get(poster_col) or get(1)
                 if video_id in existing_ids:
                     found_existing.add(video_id)
                     continue
