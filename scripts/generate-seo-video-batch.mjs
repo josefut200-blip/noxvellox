@@ -8,8 +8,8 @@ const rawInput = String(process.env.VIDEO_BATCH_INPUT || await fs.readFile(path.
 const autoFillMatch = rawInput.trim().match(/^AUTO_FILL(?::|=)(\d+)$/i);
 if (autoFillMatch) {
   const target = Number(autoFillMatch[1]);
-  if (!Number.isInteger(target) || target < 1 || target > 2200) {
-    throw new Error('AUTO_FILL target must be a whole number from 1 to 2200.');
+  if (!Number.isInteger(target) || target < 1 || target > 3200) {
+    throw new Error('AUTO_FILL target must be a whole number from 1 to 3200.');
   }
   const { spawnSync } = await import('node:child_process');
   const result = spawnSync('python3', [path.join(process.cwd(), 'scripts', 'import-official-pornhub-embeds.py')], { stdio: 'inherit', env: { ...process.env, VIDEO_BATCH_TARGET: String(target) } });
