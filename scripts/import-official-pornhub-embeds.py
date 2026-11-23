@@ -227,6 +227,10 @@ def read_official_rss(existing_ids, remaining):
         if title.startswith("<![CDATA[") and title.endswith("]]>"):
             title = title[9:-3]
         video_url = item.findtext("link") or ""
+        if not video_url:
+            raw_item = "".join(item.itertext())
+            url_match = re.search(r"https://www\.pornhub\.com/view_video\.php\?[^\s]+", raw_item)
+            video_url = url_match.group(0).rstrip(";") if url_match else ""
         duration = parse_duration(item.findtext("duration"))
         poster = item.findtext("thumb_large") or item.findtext("thumb") or ""
         embed_node = item.find("embed")
