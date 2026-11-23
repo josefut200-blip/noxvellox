@@ -20,6 +20,8 @@ const requirements = [
   [frontend.includes("document.querySelectorAll('[data-category-image]')"), 'Frontend needs to monitor banner image load failures.'],
   [frontend.includes("const BANNER_IMAGE_FALLBACK='/assets/banner-fallback.svg'"), 'Frontend needs the local branded fallback path.'],
   [frontend.includes("wrap?.querySelector('.cover-art-safe')?.remove()"), 'Frontend must remove the thumbnail fallback immediately after a successful image or video load.'],
+  [frontend.includes("media.closest('.video-art,.home-video-art,.player')"), 'Frontend must monitor thumbnail media inside homepage video cards.'],
+  [styles.includes('.home-video-art.cover-loaded .cover-art-safe{display:none!important}'), 'Homepage loaded video thumbnails must hide fallback artwork.'],
   [fallback.includes('<svg') && fallback.includes('NOXVELLOX'), 'The branded banner fallback SVG is missing or invalid.'],
   [styles.includes('.video-art.cover-loaded .cover-art-safe{display:none!important}'), 'Loaded video thumbnails must hide the fallback artwork.'],
 ];
