@@ -343,7 +343,16 @@ async function officialCatalog(db,{page=1,limit=OFFICIAL_PAGE_SIZE,q='',localEnt
    db.prepare(`SELECT count(*) AS total FROM official_embeds WHERE visibility='active' AND id NOT IN ('696c7c920140e','6937cf5fea785')${where} AND duration_seconds >= ${MIN_OFFICIAL_DURATION_SECONDS}`).bind(...(query?[match]:[])).first()
   ]);
    const entries=await hydrateOfficialPosters((rows.results||[]).map(v=>({...v,source_url:OFFICIAL_ORIGIN+'/view_video.php?viewkey='+v.id,embed_url:OFFICIAL_ORIGIN+'/embed/'+v.id})),db);
-  if(count?.total>0)return {entries,total:count.total,persisted:true};
+  if(count?.total>0){
+   const known=new Set(entries.map(item=>String(item.id)));
+   const queryText=String(q||'').trim().toLowerCase();
+   const manual=Array.isArray(localEntries)?localEntries.filter(item=>!known.has(String(item.id))&&(!queryText||String(item.title||'').toLowerCase().includes(queryText))):[];
+   const databaseTotal=Number(count.total);
+   const manualOffset=Math.max(0,offset-databaseTotal);
+   const manualLimit=offset>=databaseTotal?limit:Math.max(0,limit-entries.length);
+   const manualPage=manual.slice(manualOffset,manualOffset+manualLimit);
+   return {entries:[...entries,...manualPage],total:databaseTotal+manual.length,persisted:true};
+  }
  }catch{/* table not initialized yet; use only the live RSS */}}
  if(Array.isArray(localEntries)){
   const query=String(q||'').trim().toLowerCase();
