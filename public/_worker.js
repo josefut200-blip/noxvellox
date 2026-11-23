@@ -965,6 +965,36 @@ async function api(req,env,url,db){
  if(path==='/api/admin/import'&&req.method==='POST'){try{return json(await runImport(env,db))}catch(e){return json({error:String(e.message||e)},422)}}
  return json({error:'Not found'},404);
 }
+async function readPartnerDirectory(env, req) {
+  const response = await env.ASSETS.fetch(new URL('/data/partners.json', req.url));
+  if (!response.ok) throw new Error('Partner directory unavailable');
+  return response.json();
+}
+
+const partnerPath = partner => '/channels/partners/' + partner.id;
+
+function partnerDirectoryMarkup(partners) {
+  const sorted = [...partners].sort((a, b) => a.name.localeCompare(b.name, 'en'));
+  const links = sorted.map(partner =>
+    '<a class="chip" href="' + partnerPath(partner) + '">' + esc(partner.name) + '</a>'
+  ).join('');
+  return '<section class="section" id="partners"><h2>Content partners</h2><div class="chip-row">' + links + '</div></section>';
+}
+
+function partnerProfilePage({partner, localFeed, base, url}) {
+  const description = 'Explore ' + partner.name + ' on Noxvellox. This directory entry links to the publisher’s official Pornhub profile.';
+  const videos = (localFeed || []).filter(video =>
+    video.partner_profile_url === partner.url && !REMOVED_OFFICIAL_IDS.has(video.id)
+  );
+  const listings = videos.length
+    ? '<div class="video-grid">' + videos.map(officialCard).join('') + '</div>'
+    : '<p>No attributed videos in the current catalog.</p>';
+  const body = '<section class="wrap page-head"><a href="/channels#partners">Content partners</a><h1>' +
+    esc(partner.name) + '</h1><p>' + esc(description) + '</p><a class="button ghost" href="' +
+    esc(partner.url) + '">Official profile on Pornhub</a></section><section class="section wrap"><h2>Videos</h2>' + listings + '</section>';
+  return shell({base, url, title:partner.name + ' | Content partners | Noxvellox', description, body});
+}
+
 async function route(req,env){
  const url=new URL(req.url),base=url.origin,path=decodeURIComponent(url.pathname).replace(/\/$/,'')||'/',db=asD1(env.DB);
  if(path.startsWith('/assets/')||path==='/favicon.svg'||path==='/data/videos.json')return env.ASSETS.fetch(req);
@@ -989,10 +1019,19 @@ async function route(req,env){
        const localFeed=await loadLocalOfficialFeed(env,req);
        if(Array.isArray(localFeed))entries.push(...localFeed.map(row=>({pathname:`/official-watch/${encodeURIComponent(row.id)}`,lastmod:dateOnly(row.updated_at||row.published_at)})));
      }catch(e){console.warn('Sitemap video expansion unavailable',String(e.message||e).slice(0,120))}
+     const partners = await readPartnerDirectory(env, req);
+     entries.push(...partners.map(partner => ({pathname:partnerPath(partner),lastmod:''})));
      const uniqueEntries=[...new Map(entries.map(entry=>[entry.pathname,entry])).values()];
     return xml(`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${uniqueEntries.map(entry=>`<url><loc>${esc(base+entry.pathname)}</loc>${entry.lastmod?`<lastmod>${entry.lastmod}</lastmod>`:''}</url>`).join('\n')}\n</urlset>`)
  }
  if(req.method!=='GET'&&req.method!=='HEAD')return new Response('Method not allowed',{status:405});
+ if (path.startsWith('/channels/partners/')) {
+   const partners = await readPartnerDirectory(env, req);
+   const partner = partners.find(entry => partnerPath(entry) === path);
+   if (!partner) return html(notFound({base,url:url.href}),404);
+   const localFeed = await loadLocalOfficialFeed(env, req);
+   return html(partnerProfilePage({partner,localFeed,base,url:url.href}));
+ }
  let markup;
  const localFeed=await loadLocalOfficialFeed(env,req);
 if(path==='/'){const videos=await listVideos(db,{limit:8});const official=(await officialCatalog(db,{limit:12,localEntries:localFeed})).entries;markup=homePageV3({base,url:url.href,videos,official});}
@@ -1011,7 +1050,7 @@ if(path==='/'){const videos=await listVideos(db,{limit:8});const official=(await
  else if(path.startsWith('/official-watch/')){const id=path.slice('/official-watch/'.length);const video=await officialById(db,id,localFeed);const related=video?rotateRelated((await officialCatalog(db,{page:1,limit:40,localEntries:localFeed})).entries,id,30):[];markup=video?officialWatch({base,url:url.href,video,related,env}):notFound({base,url:url.href});}
  else if(path==='/search'){const q=safeText(url.searchParams.get('q')||'',80);const videos=q?await listVideos(db,{q,limit:40}):[];const official=q?(await officialCatalog(db,{page:1,limit:40,q,localEntries:localFeed})).entries:[];const taxonomy=searchTaxonomy(q);markup=searchPage({base,url:url.href,q,videos,official,channels:taxonomy.channels,matchedCategories:taxonomy.categories})}
   else if(path==='/categories')markup=shell({base,url:url.href,title:'Explore Categories | Noxvellox',description:'Browse Noxvellox video categories by theme, style and niche.',body:`<section class="wrap page-head"><div class="section-kicker">Discover by interest</div><h1>Categories</h1><p>Browse by theme, style or niche. Categories help visitors find similar content regardless of publisher.</p></section><div class="wrap">${discoveryModelV2()}${categoryChips()}${categoryCardsV2()}${adSlot()}${banner}</div>`});
-  else if(path==='/channels')markup=shell({base,url:url.href,title:'Channels | Noxvellox',description:'Browse separated Noxvellox studio, publisher and creator channels.',body:`<section class="wrap page-head"><div class="section-kicker">Discover by source</div><h1>Channels</h1><p>Browse by studio, publisher or creator. Each channel has its own identity, catalog and publication rules.</p></section><div class="wrap">${discoveryModelV2()}${channelCardsV2()}${adSlot()}${banner}</div>`});
+  else if(path==='/channels')markup=shell({base,url:url.href,title:'Channels | Noxvellox',description:'Browse separated Noxvellox studio, publisher and creator channels.',body:`<section class="wrap page-head"><div class="section-kicker">Discover by source</div><h1>Channels</h1><p>Browse by studio, publisher or creator. Each channel has its own identity, catalog and publication rules.</p></section><div class="wrap">${discoveryModelV2()}${channelCardsV2()}${partnerDirectoryMarkup(await readPartnerDirectory(env,req))}${adSlot()}${banner}</div>`});
 else if(path.startsWith('/channels/')||path.startsWith('/channel/')){const prefix=path.startsWith('/channels/')?'/channels/':'/channel/';const slug=path.slice(prefix.length).split('/')[0];const channel=channelsV2.find(c=>c.slug===slug);if(channel){const requestedPage=Math.max(1,Math.min(1000,Number(url.searchParams.get('page')||1)));const requestedQuery=safeText(url.searchParams.get('q')||'',80);const requestedSort=['recent','popular','rating'].includes(url.searchParams.get('sort')||'recent')?(url.searchParams.get('sort')||'recent'):'recent';const limit=20;const canonicalUrl=`${base}/channels/${encodeURIComponent(channel.slug)}`;if(channel.category==='Official embeds'){const result=await officialCatalog(db,{page:requestedPage,limit,q:requestedQuery,localEntries:localFeed});markup=channelPageV4({base,url:url.href,canonicalUrl,channel,videos:[],official:result.entries,total:Number(result.total||0),page:requestedPage,limit,q:requestedQuery,sort:requestedSort})}else{const offset=(requestedPage-1)*limit;const videos=await listVideos(db,{category:channel.category,q:requestedQuery,offset,limit,sort:requestedSort});const total=await countChannelVideosV4(db,channel,requestedQuery);markup=channelPageV4({base,url:url.href,canonicalUrl,channel,videos,official:[],total,page:requestedPage,limit,q:requestedQuery,sort:requestedSort})}}else markup=notFound({base,url:url.href})}
   else if(path.startsWith('/category/')){const c=categories.find(c=>slugify(c)===path.split('/')[2]);if(c){const videos=await listVideos(db,{category:c,limit:40});const official=videos.length?[]:await officialForCategory(db,c,localFeed);markup=listPage({base,url:url.href,videos,official,title:c,subtitle:`Explore ${c.toLowerCase()} from authorized sources.`,category:c})}else markup=notFound({base,url:url.href})}
   else if(path.startsWith('/watch/')){const slug=path.slice(7);const v=await getVideo(db,slug);if(!v){const official=await officialById(db,slug,localFeed);if(official)return Response.redirect(`${base}/official-watch/${encodeURIComponent(slug)}`,301)}const related=v?rotateRelated(await listVideos(db,{category:v.category,limit:30,sort:'popular'}),slug,30):[];markup=v?watchPage({url:url.href,base,v,related,env}):notFound({base,url:url.href})}

@@ -168,6 +168,19 @@ function canonicalPornhubEmbed(source, id) {
   }
 }
 
+function partnerProfile(item) {
+  const raw = item.partner_profile_url || item.publisher_profile_url || item.publisher?.profile_url;
+  if (typeof raw !== 'string') return {};
+  try {
+    const url = new URL(raw);
+    if (url.protocol !== 'https:' || !['pt.pornhub.com','www.pornhub.com','pornhub.com'].includes(url.hostname) ||
+        !/^\/users\/[\w.-]+\/?$/i.test(url.pathname)) return {};
+    return {partner_profile_url:'https://www.pornhub.com' + url.pathname.replace(/\/$/, '').toLowerCase()};
+  } catch {
+    return {};
+  }
+}
+
 function normalizeEntry(item) {
   const embedObject = item?.embed;
   let source = text(valueFrom(item, ['source_url', 'sourceUrl', 'source', 'url', 'link', 'video_url', 'videoUrl']), 1500);
@@ -217,6 +230,7 @@ function normalizeEntry(item) {
     id,
     title,
     poster_url: posterUrl,
+    ...partnerProfile(item),
     embed_url: embedUrl.href,
     source_url: sourceUrl.href,
     duration_seconds: Number.isInteger(seconds) && seconds > 0 && seconds < 60000 ? seconds : 0
@@ -230,6 +244,7 @@ function parseRss(xml) {
     entries.push(normalizeEntry({
       id: idFromUrl(field(block, 'link')),
       title: field(block, 'title'),
+      partner_profile_url: field(block, 'partner_profile_url') || field(block, 'publisher_profile_url'),
       source_url: field(block, 'link'),
       poster_url: field(block, 'thumb') || block.match(/<(?:media:)?thumbnail\b[^>]*\burl=["']([^"']+)["']/i)?.[1] || '',
       duration_seconds: field(block, 'duration'),
