@@ -181,8 +181,18 @@
     if(isVideo){media.muted=true;media.play().catch(()=>{});if(media.readyState>=2)loaded()}
     else if(media.complete){if(media.naturalWidth>0)loaded();else media.remove()}
   });
+  const BANNER_IMAGE_FALLBACK='/assets/banner-fallback.svg';
   document.querySelectorAll('[data-category-image]').forEach(img=>{
-    const fail=()=>img.dataset.imageError='yes';
+    const fail=()=>{
+      if(img.dataset.bannerFallback==='yes'){img.dataset.imageError='yes';return}
+      img.dataset.bannerFallback='yes';
+      img.removeAttribute('data-image-error');
+      img.removeAttribute('srcset');
+      const originalAlt=img.alt||'Noxvellox collection';
+      img.alt=originalAlt+' (branded fallback)';
+      img.src=BANNER_IMAGE_FALLBACK;
+      img.addEventListener('error',()=>{img.dataset.imageError='yes'},{once:true});
+    };
     img.addEventListener('error',fail,{once:true});
     if(img.complete&&img.naturalWidth===0)fail();
   });
