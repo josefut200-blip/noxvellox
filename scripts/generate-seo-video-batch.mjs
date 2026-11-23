@@ -135,7 +135,9 @@ for (const [index, line] of lines.entries()) {
     await verifyExternalPlayback(input.id);
     metadata = await providerRecord(input.id);
   } catch (error) {
-    results.push({ id: input.id, result: 'skipped', reason: String(error?.message || error) });
+    const reason = String(error?.message || error);
+    console.log(`[embed-audit] ${input.id}: skipped — ${reason}`);
+    results.push({ id: input.id, result: 'skipped', reason });
     continue;
   }
   const title = englishTitle(input.suppliedTitle || metadata.title);
@@ -155,10 +157,12 @@ for (const [index, line] of lines.entries()) {
   results.push({ id: input.id, result: 'ready-to-publish', title, category });
   usableCount++;
 }
-if (usableCount < 5) throw new Error(`Only ${usableCount} videos passed validation. At least five are required to publish this batch.`);
+const canPublish = usableCount >= 5;
 const next = { version: 1, updatedAt: new Date().toISOString(), entries: [...byId.values()] };
-await fs.mkdir(path.dirname(feedPath), { recursive: true });
-await fs.writeFile(feedPath, `${JSON.stringify(next, null, 2)}\n`);
+if (canPublish && results.some(item => item.result === 'ready-to-publish')) {
+  await fs.mkdir(path.dirname(feedPath), { recursive: true });
+  await fs.writeFile(feedPath, `${JSON.stringify(next, null, 2)}\n`);
+}
 await fs.mkdir(outputDir, { recursive: true });
-await fs.writeFile(path.join(outputDir, 'seo-video-batch.json'), `${JSON.stringify({ generatedAt: next.updatedAt, language: 'en', published: results }, null, 2)}\n`);
-console.log(JSON.stringify({ processed: lines.length, additions: results.filter(item => item.result === 'ready-to-publish').length, skippedDuplicates: results.filter(item => item.result === 'already-listed').length }, null, 2));
+await fs.writeFile(path.join(outputDir, 'seo-video-batch.json'), `${JSON.stringify({ generatedAt: next.updatedAt, language: 'en', status: canPublish ? 'ready-to-publish' : 'not-published', published: results }, null, 2)}\n`);
+console.log(JSON.stringify({ processed: lines.length, status: canPublish ? 'ready-to-publish' : 'not-published', validated: usableCount, additions: results.filter(item => item.result === 'ready-to-publish').length, skipped: results.filter(item => item.result === 'skipped').length, skippedDuplicates: results.filter(item => item.result === 'already-listed').length }, null, 2));
