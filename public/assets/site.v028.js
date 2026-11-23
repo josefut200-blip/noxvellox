@@ -28,22 +28,18 @@
     script.dataset.googleAnalytics='true';
     document.head.appendChild(script);
   };
-  let analyticsBanner=null;
-  const removeAnalyticsBanner=()=>{analyticsBanner?.remove();analyticsBanner=null};
-  const setAnalyticsChoice=allow=>{
-    setAnalyticsConsent(allow?'granted':'denied');
-    removeAnalyticsBanner();
-    if(allow)loadAnalytics();else location.reload();
+  let cookieBanner=null;
+  const removeCookieBanner=()=>{cookieBanner?.remove();cookieBanner=null};
+  const saveCookieChoices=(allowAds,allowAnalytics)=>{
+    const hadAds=consent()==='granted',hadAnalytics=analyticsConsent()==='granted';
+    setConsent(allowAds?'granted':'denied');
+    setAnalyticsConsent(allowAnalytics?'granted':'denied');
+    removeCookieBanner();
+    if(ageAccepted())renderAd();
+    if(allowAnalytics)loadAnalytics();
+    if((hadAds&&!allowAds)||(hadAnalytics&&!allowAnalytics))location.reload();
   };
-  const ageChoices=document.querySelector('.age-ad-option');
-  if(ageChoices&&!ageChoices.querySelector('[data-age-analytics-opt-in]')){
-    const label=document.createElement('label');
-    label.className='age-ad-choice';
-    label.style.marginTop='12px';
-    label.innerHTML='<input type="checkbox" data-age-analytics-opt-in><span><strong>Allow Google Analytics measurement</strong><small>Helps us understand site visits. Google Analytics loads only if you opt in.</small></span>';
-    ageChoices.insertBefore(label,ageChoices.querySelector('a'));
-    label.querySelector('input').checked=analyticsConsent()==='granted';
-  }
+  const setAnalyticsChoice=allow=>saveCookieChoices(consent()==='granted',allow);
   const APPROVED_AD_SRC='https://biomanos.org/21/74f36fcf7e2078b6bab492177d48da06';
   const APPROVED_BANNER_320_KEY='6dd3e1d884350123ac32714fb6432fef';
   const APPROVED_BANNER_320_SRC='https://biomanos.org/22/6dd3e1d884350123ac32714fb6432fef';
@@ -228,16 +224,11 @@
   });
   // One entry screen, two independent choices. Optional advertising is off by default.
   const confirmAge=()=>{
-    const optedIn=document.querySelector('[data-age-ads-opt-in]')?.checked===true;
-    const analyticsOptedIn=document.querySelector('[data-age-analytics-opt-in]')?.checked===true;
-    setConsent(optedIn?'granted':'denied');
-    setAnalyticsConsent(analyticsOptedIn?'granted':'denied');
     try{sessionStorage.setItem('noxvellox-age-confirmed','yes')}catch{}
     modal?.remove();
     releaseEmbeds();
     renderAd();
-    loadAnalytics();
-    removeAnalyticsBanner();
+    showCookieBanner();
   };
   document.querySelector('[data-age-confirm]')?.addEventListener('click',confirmAge);
   // Keep external playback disabled until age acknowledgement; search metadata remains server-rendered.
@@ -266,7 +257,6 @@
     observer.observe(container,{childList:true,subtree:true});
     slot.dataset.adObserver='active';
   });
-  if(ageAccepted()&&consent()==='unset')setConsent('denied');
   const renderAd=()=>{
     const c=consent();
     if(!ageAccepted())return;
@@ -353,47 +343,41 @@
       renderAd();
       return;
     }
-    if(event.target.closest('[data-ad-preferences]')){
-      const ok=window.confirm('Allow optional Adsterra advertising to load on Noxvellox? Select Cancel to keep ads disabled.');
-      setConsent(ok?'granted':'denied');
-      if(ok){renderAd()}else{location.reload()}
-    }
-    if(event.target.closest('[data-analytics-preferences]')){
-      const ok=window.confirm('Allow Google Analytics measurement on Noxvellox? Select Cancel to keep analytics disabled.');
-      setAnalyticsChoice(ok);
-    }
+    if(event.target.closest('[data-ad-preferences],[data-cookie-preferences],[data-analytics-preferences]'))showCookieBanner(true);
   });
-  const footerLinks=document.querySelector('.footer-links');
-  if(footerLinks&&!footerLinks.querySelector('[data-analytics-preferences]')){
-    const link=document.createElement('a');
-    link.href='#analytics-preferences';
-    link.dataset.analyticsPreferences='true';
-    link.textContent='Analytics preferences';
-    footerLinks.appendChild(link);
-  }
-  const showAnalyticsBanner=()=>{
-    if(!ageAccepted()||analyticsConsent()!=='unset'||document.querySelector('[data-analytics-consent-banner]'))return;
-    analyticsBanner=document.createElement('section');
-    analyticsBanner.dataset.analyticsConsentBanner='true';
-    analyticsBanner.setAttribute('role','region');
-    analyticsBanner.setAttribute('aria-label','Cookie and analytics preferences');
-    analyticsBanner.style.cssText='position:fixed;z-index:10000;left:16px;right:16px;bottom:16px;max-width:760px;margin:0 auto;padding:16px;background:#17171f;color:#fff;border:1px solid #454552;border-radius:12px;box-shadow:0 8px 32px #0009;font:14px/1.5 Arial,sans-serif;display:flex;flex-wrap:wrap;align-items:center;gap:12px';
-    const copy=document.createElement('span');
-    copy.style.flex='1 1 330px';
-    copy.textContent='Optional Google Analytics helps measure site visits. It stays off unless you allow it. Read the privacy policy for details.';
-    const accept=document.createElement('button');
-    accept.type='button';accept.textContent='Allow analytics';
-    accept.style.cssText='padding:10px 14px;border:0;border-radius:8px;background:#e82f72;color:#fff;font-weight:700;cursor:pointer';
-    accept.addEventListener('click',()=>setAnalyticsChoice(true));
-    const reject=document.createElement('button');
-    reject.type='button';reject.textContent='Reject';
-    reject.style.cssText='padding:10px 14px;border:1px solid #777;border-radius:8px;background:transparent;color:#fff;cursor:pointer';
-    reject.addEventListener('click',()=>setAnalyticsChoice(false));
-    analyticsBanner.append(copy,accept,reject);
-    document.body.appendChild(analyticsBanner);
+  const showCookieBanner=(customize=false)=>{
+    if(!ageAccepted())return;
+    if(consent()!=='unset'&&analyticsConsent()!=='unset'&&!customize)return;
+    if(cookieBanner?.isConnected){if(customize)cookieBanner.querySelector('[data-cookie-customize]')?.removeAttribute('hidden');return}
+    cookieBanner=document.createElement('div');
+    cookieBanner.dataset.cookieConsentBanner='true';
+    cookieBanner.setAttribute('role','dialog');
+    cookieBanner.setAttribute('aria-modal','true');
+    cookieBanner.setAttribute('aria-labelledby','cookie-heading');
+    cookieBanner.style.cssText='position:fixed;inset:0;z-index:12000;display:grid;align-items:end;justify-items:center;padding:12px;background:#0008;font:14px/1.5 Arial,sans-serif;color:#fff';
+    cookieBanner.innerHTML='<section style="width:min(760px,100%);padding:20px 22px;background:#414141;border:1px solid #666;border-radius:10px;box-shadow:0 8px 32px #000a"><h2 id="cookie-heading" style="margin:0 0 8px;font-size:16px">Cookie preferences</h2><p style="margin:0 0 14px;color:#f1f1f1">We use essential storage to operate this site. With your permission, optional Adsterra ads and Google Analytics may use cookies or similar technologies. You can change your choices later in Cookie preferences. <a href="/privacy" style="color:#9ccfff">Privacy policy</a></p><div data-cookie-actions style="display:flex;justify-content:center;flex-wrap:wrap;gap:10px"><button type="button" data-cookie-accept-all style="padding:12px 18px;border:0;border-radius:5px;background:#249bd8;color:#fff;font-weight:800;cursor:pointer">Accept All Cookies</button><button type="button" data-cookie-essential style="padding:12px 18px;border:1px solid #249bd8;border-radius:5px;background:transparent;color:#fff;font-weight:800;cursor:pointer">Accept Only Essential Cookies</button><button type="button" data-cookie-customize-open style="padding:12px 18px;border:1px solid #777;border-radius:5px;background:transparent;color:#fff;font-weight:800;cursor:pointer">Customize Cookies</button></div><div data-cookie-customize hidden style="margin-top:16px;padding-top:14px;border-top:1px solid #666"><label style="display:flex;gap:10px;align-items:flex-start;margin:10px 0"><input type="checkbox" checked disabled><span><strong>Essential storage</strong><br><small>Required for age confirmation, security and saving your preferences.</small></span></label><label style="display:flex;gap:10px;align-items:flex-start;margin:10px 0"><input type="checkbox" data-cookie-ads><span><strong>Advertising</strong><br><small>Loads Adsterra formats, including banners, Social Bar and Popunder.</small></span></label><label style="display:flex;gap:10px;align-items:flex-start;margin:10px 0"><input type="checkbox" data-cookie-analytics><span><strong>Analytics</strong><br><small>Loads Google Analytics to measure site visits.</small></span></label><div style="display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin-top:14px"><button type="button" data-cookie-save style="padding:11px 18px;border:0;border-radius:5px;background:#249bd8;color:#fff;font-weight:800;cursor:pointer">Save my choices</button><button type="button" data-cookie-back style="padding:11px 18px;border:1px solid #777;border-radius:5px;background:transparent;color:#fff;font-weight:800;cursor:pointer">Back</button></div></div></section>';
+    const adsBox=cookieBanner.querySelector('[data-cookie-ads]');
+    const analyticsBox=cookieBanner.querySelector('[data-cookie-analytics]');
+    if(adsBox)adsBox.checked=consent()==='granted';
+    if(analyticsBox)analyticsBox.checked=analyticsConsent()==='granted';
+    cookieBanner.querySelector('[data-cookie-accept-all]')?.addEventListener('click',()=>saveCookieChoices(true,true));
+    cookieBanner.querySelector('[data-cookie-essential]')?.addEventListener('click',()=>saveCookieChoices(false,false));
+    cookieBanner.querySelector('[data-cookie-customize-open]')?.addEventListener('click',()=>{
+      cookieBanner.querySelector('[data-cookie-customize]')?.removeAttribute('hidden');
+      cookieBanner.querySelector('[data-cookie-customize-open]')?.setAttribute('hidden','hidden');
+    });
+    cookieBanner.querySelector('[data-cookie-save]')?.addEventListener('click',()=>saveCookieChoices(adsBox?.checked===true,analyticsBox?.checked===true));
+    cookieBanner.querySelector('[data-cookie-back]')?.addEventListener('click',()=>{
+      cookieBanner.querySelector('[data-cookie-customize]')?.setAttribute('hidden','hidden');
+      cookieBanner.querySelector('[data-cookie-customize-open]')?.removeAttribute('hidden');
+    });
+    document.body.appendChild(cookieBanner);
+    if(customize)cookieBanner.querySelector('[data-cookie-customize-open]')?.click();
+    cookieBanner.querySelector('[data-cookie-accept-all]')?.focus();
   };
   renderAd();
-  if(analyticsConsent()==='granted')loadAnalytics();else showAnalyticsBanner();
+  if(analyticsConsent()==='granted')loadAnalytics();
+  showCookieBanner();
   document.querySelectorAll('[data-filter]').forEach(button=>button.addEventListener('click',()=>{const active=document.querySelector('[data-filter].active');active?.classList.remove('active');button.classList.add('active')}));
 
   // Installable app shell and lightweight on-device engagement features.
