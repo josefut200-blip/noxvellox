@@ -981,17 +981,69 @@ function partnerDirectoryMarkup(partners) {
   return '<section class="section" id="partners"><h2>Content partners</h2><div class="chip-row">' + links + '</div></section>';
 }
 
-function partnerProfilePage({partner, localFeed, base, url}) {
+async function partnerVideos(env, req, partner, db) {
+  const asset = await env.ASSETS.fetch(new URL('/data/partner-videos.json', req.url));
+  if (!asset.ok) throw new Error('Partner video list unavailable');
+  const snapshot = await asset.json();
+  const rows = (snapshot[partner.id] || []).filter(video => !REMOVED_OFFICIAL_IDS.has(video.id));
+  if (!db || !rows.length) return rows;
+  const params = rows.map(() => '?').join(',');
+  const result = await db.prepare('SELECT id,visibility FROM official_embeds WHERE id IN (' + params + ')')
+    .bind(...rows.map(video => video.id)).all();
+  const states = new Map(result.results.map(row => [row.id,row.visibility]));
+  return rows.filter(video => !states.has(video.id) || states.get(video.id) === 'active')
+    .map(video => ({...video, catalog:states.get(video.id) === 'active'}));
+}
+
+async function partnerWatch({video, partner, url, base, env}) {
+  if (video.catalog) return Response.redirect(base + '/official-watch/' + video.id, 302);
+  const source = OFFICIAL_ORIGIN + '/view_video.php?viewkey=' + video.id;
+  const embed = OFFICIAL_ORIGIN + '/embed/' + video.id;
+  if (!EMBED_BLOCKED_OFFICIAL_IDS.has(video.id)) {
+    try {
+      const api = OFFICIAL_ORIGIN + '/webmasters/video_embed_code?id=' + video.id;
+      const response = await fetch(api, {redirect:'error', signal:AbortSignal.timeout(5000),
+        headers:{accept:'application/json'}, cf:{cacheTtl:600,cacheEverything:true}});
+      const payload = response.ok ? await response.text() : '';
+      let code = '';
+      if (payload.length < 16384) {
+        try {
+          code = JSON.parse(payload).embed?.code;
+        } catch {
+          // Some webmaster responses leave HTML attribute quotes unescaped inside the JSON string.
+          const legacy = payload.trim().match(/^\{\s*"embed"\s*:\s*\{\s*"code"\s*:\s*"(<iframe\b[\s\S]*?)"\s*\}\s*\}$/i);
+          code = legacy?.[1].replaceAll('\\/', '/') || '';
+        }
+      }
+      const src = typeof code === 'string' && code.match(/<iframe\b[^>]*?\ssrc=["']([^"']+)["']/i)?.[1];
+      if (src === embed) {
+        return html(officialWatch({base,url,env,video:{...video,embed_url:embed,source_url:source}}));
+      }
+    } catch { /* The original viewing page stays available when the embed API is offline. */ }
+  }
+  const body = '<section class="wrap page-head"><a href="' + partnerPath(partner) + '">' + esc(partner.name) +
+    '</a><h1>' + esc(video.title) + '</h1><a class="button" href="' + esc(source) + '">Watch on Pornhub</a></section>';
+  return html(shell({base,url,title:video.title + ' | Noxvellox',description:'View this listing from ' + partner.name,body}));
+}
+
+function partnerProfilePage({partner, localFeed, references, base, url}) {
   const description = 'Explore ' + partner.name + ' on Noxvellox. This directory entry links to the publisher’s official Pornhub profile.';
   const videos = (localFeed || []).filter(video =>
     video.partner_profile_url === partner.url && !REMOVED_OFFICIAL_IDS.has(video.id)
   );
+  const seen = new Set(videos.map(video => video.id));
+  const more = references.filter(video => !seen.has(video.id));
+  const sourceLinks = more.map(video =>
+    '<a class="video-card" style="display:flex;align-items:center;padding:1rem;gap:.75rem" href="' +
+    partnerPath(partner) + '/video/' + video.id + '"><span aria-hidden="true" style="color:#ff578c">▶</span>' +
+    '<span>' + esc(video.title) + '</span></a>'
+  ).join('');
   const listings = videos.length
     ? '<div class="video-grid">' + videos.map(officialCard).join('') + '</div>'
-    : '<p>No attributed videos in the current catalog.</p>';
+    : '';
   const body = '<section class="wrap page-head"><a href="/channels#partners">Content partners</a><h1>' +
     esc(partner.name) + '</h1><p>' + esc(description) + '</p><a class="button ghost" href="' +
-    esc(partner.url) + '">Official profile on Pornhub</a></section><section class="section wrap"><h2>Videos</h2>' + listings + '</section>';
+    esc(partner.url) + '">Official profile on Pornhub</a></section><section class="section wrap"><h2>Videos</h2>' + listings + (more.length ? '<div class="video-grid">' + sourceLinks + '</div>' : '') + '<a class="section-link" href="' + esc(partner.url + '/videos/public') + '">All videos on Pornhub</a></section>';
   return shell({base, url, title:partner.name + ' | Content partners | Noxvellox', description, body});
 }
 
@@ -1026,11 +1078,18 @@ async function route(req,env){
  }
  if(req.method!=='GET'&&req.method!=='HEAD')return new Response('Method not allowed',{status:405});
  if (path.startsWith('/channels/partners/')) {
+   const match = path.match(/^\/channels\/partners\/(\d+)(?:\/video\/([a-z0-9]{8,24}))?$/);
    const partners = await readPartnerDirectory(env, req);
-   const partner = partners.find(entry => partnerPath(entry) === path);
+   const partner = match && partners.find(entry => entry.id === match[1]);
    if (!partner) return html(notFound({base,url:url.href}),404);
+   const references = await partnerVideos(env,req,partner,db);
+   if (match[2]) {
+     const video = references.find(entry => entry.id === match[2]);
+     if (!video) return html(notFound({base,url:url.href}),404);
+     return partnerWatch({video,partner,base,url:url.href,env});
+   }
    const localFeed = await loadLocalOfficialFeed(env, req);
-   return html(partnerProfilePage({partner,localFeed,base,url:url.href}));
+   return html(partnerProfilePage({partner,localFeed,references,base,url:url.href}));
  }
  let markup;
  const localFeed=await loadLocalOfficialFeed(env,req);

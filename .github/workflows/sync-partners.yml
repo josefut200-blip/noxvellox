@@ -12,14 +12,16 @@ jobs:
   sync:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 12
     steps:
       - uses: actions/checkout@v7
       - name: Import public partner profiles
         run: python3 scripts/sync-partners.py
+      - name: Refresh publisher video links
+        run: python3 scripts/sync-partner-videos.py
       - name: Publish changed directory
         run: |
-          git add public/data/partners.json
+          git add public/data/partners.json public/data/partner-videos.json
           if git diff --cached --quiet; then exit 0; fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
