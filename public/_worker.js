@@ -11,6 +11,7 @@ const ADSTERRA_SOCIAL_BAR_SRC='https://biomanos.org/14/505d9a85cd6b957598b0e25ba
 const ADSTERRA_POPUNDER_SRC='https://benchform.org/1/02c67b439b4bd019691a72b99d34c0ca';
 const VERSION='0.2.7';
 const MIN_VIDEO_DURATION_SECONDS=15*60;
+const MIN_OFFICIAL_DURATION_SECONDS=60;
 const prerollVastUrl=env=>{
   for(const key of ['PRE_ROLL_VAST_URL','ADSTERRA_VAST_URL','VAST_URL']){
     const raw=String(env?.[key]||'').trim();
@@ -186,7 +187,7 @@ function officialSnapshot(){
  const age=Date.now()-Date.parse(OFFICIAL_SNAPSHOT_OBSERVED);
  // Fail closed after 7 days: this snapshot cannot become an indefinite fake live catalog.
  if(!Number.isFinite(age)||age<0||age>7*24*60*60*1000)return [];
- return OFFICIAL_SNAPSHOT.filter(v=>Number(v.duration_seconds)>=MIN_VIDEO_DURATION_SECONDS).map(v=>({...v,poster_url:'',source_url:OFFICIAL_ORIGIN+'/view_video.php?viewkey='+v.id,embed_url:OFFICIAL_ORIGIN+'/embed/'+v.id,from_snapshot:true}));
+ return OFFICIAL_SNAPSHOT.filter(v=>Number(v.duration_seconds)>=MIN_OFFICIAL_DURATION_SECONDS).map(v=>({...v,poster_url:'',source_url:OFFICIAL_ORIGIN+'/view_video.php?viewkey='+v.id,embed_url:OFFICIAL_ORIGIN+'/embed/'+v.id,from_snapshot:true}));
 }
 
 function rssField(item,tag){
@@ -210,7 +211,7 @@ function parseOfficialRSS(xmlText){
   const poster=rssField(entry,'thumb')||entry.match(/<(?:media:)?thumbnail\b[^>]*\burl=["']([^"']+)["']/i)?.[1]||'';
   const validPoster=officialPoster(poster);
   const rawDuration=Number(rssField(entry,'duration'));
-  if(!Number.isInteger(rawDuration)||rawDuration<MIN_VIDEO_DURATION_SECONDS||rawDuration>=60000)continue;
+  if(!Number.isInteger(rawDuration)||rawDuration<MIN_OFFICIAL_DURATION_SECONDS||rawDuration>=60000)continue;
   out.push({id,title,poster_url:validPoster,source_url:OFFICIAL_ORIGIN+'/view_video.php?viewkey='+id,embed_url:OFFICIAL_ORIGIN+'/embed/'+id,duration_seconds:rawDuration});
  }
  return out;
@@ -262,7 +263,7 @@ async function loadLocalOfficialFeed(env,req){
   const payload=await response.json();
   const entries=Array.isArray(payload)?payload:(Array.isArray(payload?.entries)?payload.entries:[]);
   const normalized=entries.filter(item=>item&&/^[a-z0-9]{8,24}$/i.test(String(item.id||''))&&String(item.title||'').trim()&&isHttpsUrl(item.source_url)&&isHttpsUrl(item.embed_url)).map(item=>({...item,source_url:String(item.source_url),embed_url:String(item.embed_url),poster_url:isHttpsUrl(item.poster_url)?String(item.poster_url):(isPreviewEmbedUrl(item.embed_url)?String(item.embed_url):'')}));
-  const eligible=normalized.filter(item=>Number.isInteger(Number(item.duration_seconds))&&Number(item.duration_seconds)>=MIN_VIDEO_DURATION_SECONDS);
+  const eligible=normalized.filter(item=>Number.isInteger(Number(item.duration_seconds))&&Number(item.duration_seconds)>=MIN_OFFICIAL_DURATION_SECONDS);
   return await hydrateOfficialPosters(eligible);
  }catch{return null}
 }
@@ -287,15 +288,15 @@ async function officialCatalog(db,{page=1,limit=OFFICIAL_PAGE_SIZE,q='',localEnt
   const match=query?`%${query.replace(/[\\%_]/g,'\\$&')}%`:'';
   const where=query?" AND title LIKE ? ESCAPE '\\'":'';
   const [rows,count]=await Promise.all([
-    db.prepare(`SELECT id,title,poster_url,duration_seconds FROM official_embeds WHERE visibility='active'${where} AND duration_seconds >= ${MIN_VIDEO_DURATION_SECONDS} ORDER BY CASE WHEN poster_url<>'' THEN 0 ELSE 1 END,first_seen_at DESC,id DESC LIMIT ? OFFSET ?`).bind(...(query?[match,limit,offset]:[limit,offset])).all(),
-   db.prepare(`SELECT count(*) AS total FROM official_embeds WHERE visibility='active'${where} AND duration_seconds >= ${MIN_VIDEO_DURATION_SECONDS}`).bind(...(query?[match]:[])).first()
+    db.prepare(`SELECT id,title,poster_url,duration_seconds FROM official_embeds WHERE visibility='active'${where} AND duration_seconds >= ${MIN_OFFICIAL_DURATION_SECONDS} ORDER BY CASE WHEN poster_url<>'' THEN 0 ELSE 1 END,first_seen_at DESC,id DESC LIMIT ? OFFSET ?`).bind(...(query?[match,limit,offset]:[limit,offset])).all(),
+   db.prepare(`SELECT count(*) AS total FROM official_embeds WHERE visibility='active'${where} AND duration_seconds >= ${MIN_OFFICIAL_DURATION_SECONDS}`).bind(...(query?[match]:[])).first()
   ]);
    const entries=await hydrateOfficialPosters((rows.results||[]).map(v=>({...v,source_url:OFFICIAL_ORIGIN+'/view_video.php?viewkey='+v.id,embed_url:OFFICIAL_ORIGIN+'/embed/'+v.id})));
   if(count?.total>0)return {entries,total:count.total,persisted:true};
  }catch{/* table not initialized yet; use only the live RSS */}}
  if(Array.isArray(localEntries)){
   const query=String(q||'').trim().toLowerCase();
-  const eligible=localEntries.filter(item=>Number(item.duration_seconds)>=MIN_VIDEO_DURATION_SECONDS);
+  const eligible=localEntries.filter(item=>Number(item.duration_seconds)>=MIN_OFFICIAL_DURATION_SECONDS);
   const filtered=query?eligible.filter(item=>String(item.title||'').toLowerCase().includes(query)):eligible;
   return {entries:filtered.slice(offset,offset+limit),total:filtered.length,persisted:false,local:true};
  }
@@ -309,7 +310,7 @@ async function officialForCategory(db,category,localEntries=null){if(category!==
 async function officialById(db,id,localEntries=null){
  if(!/^[a-z0-9]{8,24}$/i.test(String(id)))return null;
  if(db){try{
-   const row=await db.prepare(`SELECT id,title,poster_url,duration_seconds FROM official_embeds WHERE id=? AND visibility='active' AND duration_seconds >= ${MIN_VIDEO_DURATION_SECONDS}`).bind(id).first();
+   const row=await db.prepare(`SELECT id,title,poster_url,duration_seconds FROM official_embeds WHERE id=? AND visibility='active' AND duration_seconds >= ${MIN_OFFICIAL_DURATION_SECONDS}`).bind(id).first();
    if(row){const hydrated=(await hydrateOfficialPosters([row]))[0];return {...hydrated,source_url:OFFICIAL_ORIGIN+'/view_video.php?viewkey='+row.id,embed_url:OFFICIAL_ORIGIN+'/embed/'+row.id};}
  }catch{/* fallback to RSS */}}
  if(Array.isArray(localEntries)){
@@ -340,7 +341,7 @@ async function syncOfficialOnDemand(db){
     const dur=String(row.duration||'');let seconds=Number(dur);
     if(/^\d+:\d\d(?::\d\d)?$/.test(dur))seconds=dur.split(':').map(Number).reduce((n,v)=>n*60+v,0);
     const poster=officialPoster(row.poster_url||row.default_thumb||row.thumb||row.thumbnail||row.image||'');
-     if(!Number.isInteger(seconds)||seconds<MIN_VIDEO_DURATION_SECONDS||seconds>=60000)continue;
+     if(!Number.isInteger(seconds)||seconds<MIN_OFFICIAL_DURATION_SECONDS||seconds>=60000)continue;
      records.set(id,{id,title,poster_url:poster,duration_seconds:seconds});
    }
   }catch(e){console.warn('Webmaster search temporarily unavailable',page,String(e.message||e).slice(0,90));break}
