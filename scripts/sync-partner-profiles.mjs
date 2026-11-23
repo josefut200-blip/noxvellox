@@ -61,3 +61,17 @@ for (const partner of partners) {
   }
 }
 console.log('Updated '+updated+' of '+partners.length+' profile layouts');
+
+const channelArt = {};
+for (const {id} of partners) {
+  if (!/^\d+$/.test(id)) continue;
+  try {
+    const {cover,avatar} = JSON.parse(await readFile(destination+'/'+id+'.json','utf8'));
+    channelArt[id] = {cover,avatar};
+  } catch (error) {
+    if (error.code !== 'ENOENT') throw error;
+  }
+}
+if (!Object.keys(channelArt).length) throw new Error('No channel profiles available');
+await writeFile(root+'/channel-art.json.tmp',JSON.stringify(channelArt,null,2)+'\n');
+await rename(root+'/channel-art.json.tmp',root+'/channel-art.json');

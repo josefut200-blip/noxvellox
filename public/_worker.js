@@ -450,15 +450,15 @@ function homePage({base,url,videos,official=[]}){
 }
 const homeCardV3=(v,isOfficial=false)=>{const slug=encodeURIComponent(v.slug||v.id||'');const href=isOfficial||v.official?`/official-watch/${slug}`:`/watch/${slug}`;return `<a class="home-video-card" href="${href}"><div class="home-video-art">${coverMarkup(v.poster_url,v.title,'Video preview',v.embed_url)}<span class="home-quality">HD</span>${v.duration_seconds?`<span class="duration">${duration(v.duration_seconds)}</span>`:''}</div><div class="home-video-meta"><h3>${esc(v.title)}</h3><div class="home-video-source">${esc(isOfficial?'Official embed':(v.category||'Noxvellox collection'))}</div></div></a>`};
 const homeChannelCardV3=ch=>`<a class="home-channel-card" href="/channels/${encodeURIComponent(ch.slug)}"><div class="home-channel-avatar">${esc(ch.name.slice(0,1))}</div><div class="home-channel-copy"><strong>${esc(ch.name)}</strong><span>${esc(ch.eyebrow)}</span><small>${ch.category==='Brazzers'?'Verified listings only':'Curated channel'}</small></div><span class="home-channel-arrow" aria-hidden="true">></span></a>`;
-function homePageV3({base,url,videos,official=[]}){
+function homePageV3({base,url,videos,official=[],partners}){
  const recent=[...videos.map(v=>({...v,__official:false})),...official.map(v=>({...v,__official:true}))].slice(0,8);
- const heroCover=categoryMetaV2.Featured.cover;
+
  const visibleCategories=categories.slice(0,7);
  const categoryTiles=visibleCategories.map(c=>{const meta=categoryMetaV2[c]||{};return `<a class="home-category-card" href="${categoryHrefV2(c)}"><div class="home-category-art"><img src="${esc(meta.cover||'')}" loading="lazy" decoding="async" data-category-image alt="${esc(c)} category cover"><div class="home-category-shade"></div><span class="home-category-icon" aria-hidden="true">${c==='Brazzers'?'✓':c==='Wellness'?'♡':'✦'}</span></div><div class="home-category-copy"><strong>${esc(c)}</strong><br><small>${esc(meta.eyebrow||'Curated collection')}</small></div></a>`}).join('');
- const channelTiles=channelsV2.map(homeChannelCardV3).join('');
+ const channelTiles=partners.slice(0,6).map(partnerTile).join('');
  const recentMarkup=recent.length?recent.map(v=>homeCardV3(v,v.__official===true)).join(''):`<div class="empty"><strong>No recent public videos yet</strong><p>Approved listings will appear here automatically.</p></div>`;
  const sidebar=`<aside class="home-sidebar"><div class="home-sidebar-brand"><span class="home-sidebar-mark">N</span><strong>NOXVELLOX</strong></div><nav aria-label="Quick navigation"><a class="active" href="/"><span></span>Home</a><a href="/videos"><span aria-hidden="true">▶</span>Videos</a><a href="/categories"><span aria-hidden="true">▦</span>Categories</a><a href="/channels"><span aria-hidden="true">♙</span>Channels</a><a href="/channels"><span aria-hidden="true">♡</span>Following</a></nav><div class="home-sidebar-rule"></div><div class="home-sidebar-label">Explore</div><nav aria-label="Explore navigation"><a href="/category/trending"><span aria-hidden="true">↗</span>Trending</a><a href="/category/new-releases"><span aria-hidden="true">✦</span>New releases</a><a href="/videos"><span aria-hidden="true">◉</span>Most viewed</a><a href="/about"><span aria-hidden="true">✉</span>Support</a></nav></aside>`;
- const body=`<div class="home-dashboard"><div class="home-dashboard-layout">${sidebar}<div class="home-dashboard-main"><section class="home-dashboard-hero"><div class="home-dashboard-hero-copy"><div class="home-dashboard-kicker">NOXVELLOX  ·  18+</div><h1>Explore <em>your way</em></h1><p>Find content by <strong>category</strong> - what you want to watch - or by <strong>channel</strong> - who you want to watch.</p><div class="home-dashboard-actions"><a class="button" href="/categories">▦ &nbsp;Explore categories</a><a class="button ghost" href="/channels">♙ &nbsp;Browse channels</a></div></div><div class="home-dashboard-hero-art"><img src="${esc(heroCover)}" data-category-image alt="Featured Noxvellox collection cover"><div class="home-dashboard-hero-shade"></div></div></section><section class="home-dashboard-columns home-dashboard-columns-single" style="grid-template-columns:minmax(0,1fr)"><div class="home-dashboard-content"><section class="home-dashboard-section"><div class="home-section-heading"><div><span class="home-section-icon" aria-hidden="true">▦</span><div><h2>Categories</h2><p>Browse the site's main topics and collections.</p></div></div><a href="/categories">View all <span>></span></a></div><div class="home-category-grid">${categoryTiles}</div></section><section class="home-dashboard-section"><div class="home-section-heading"><div><span class="home-section-icon pink" aria-hidden="true">♙</span><div><h2>Channels</h2><p>Follow publishers and collections organized by source.</p></div></div><a href="/channels">View all <span>></span></a></div><div class="home-channel-grid">${channelTiles}</div></section><section class="home-dashboard-section"><div class="home-section-heading"><div><span class="home-section-icon" aria-hidden="true">▶</span><div><h2>Recent videos</h2><p>Browse the latest available releases.</p></div></div><a href="/videos">View all <span>></span></a></div><div class="home-video-grid" data-infinite-grid data-infinite-source="/videos">${recentMarkup}${adSlot('feed')}</div></section></div></section></div></div></div>`;
+ const body=`<div class="home-dashboard"><div class="home-dashboard-layout">${sidebar}<div class="home-dashboard-main">${partnerCarousel(partners)}<section class="home-dashboard-columns home-dashboard-columns-single" style="grid-template-columns:minmax(0,1fr)"><div class="home-dashboard-content"><section class="home-dashboard-section"><div class="home-section-heading"><div><span class="home-section-icon" aria-hidden="true">▦</span><div><h2>Categories</h2><p>Browse the site's main topics and collections.</p></div></div><a href="/categories">View all <span>></span></a></div><div class="home-category-grid">${categoryTiles}</div></section><section class="home-dashboard-section"><div class="home-section-heading"><div><span class="home-section-icon pink" aria-hidden="true">♙</span><div><h2>Channels</h2><p>Follow publishers and collections organized by source.</p></div></div><a href="/channels">View all <span>></span></a></div><div class="nv-channel-grid">${channelTiles}</div></section><section class="home-dashboard-section"><div class="home-section-heading"><div><span class="home-section-icon" aria-hidden="true">▶</span><div><h2>Recent videos</h2><p>Browse the latest available releases.</p></div></div><a href="/videos">View all <span>></span></a></div><div class="home-video-grid" data-infinite-grid data-infinite-source="/videos">${recentMarkup}${adSlot('feed')}</div></section></div></section></div></div></div>`;
  const structured={'@context':'https://schema.org','@type':'WebSite',name:SITE,url:base,inLanguage:'en',description:'Noxvellox is an independent adult video catalog organized by categories and channels.'};
  return shell({title:'Noxvellox | Discover Free Adult Video Collections | Explore your way',description:'Explore adult videos by category and channel on Noxvellox.',body,base,url,structured});
 }
@@ -973,12 +973,37 @@ async function readPartnerDirectory(env, req) {
 
 const partnerPath = partner => '/channels/partners/' + partner.id;
 
-function partnerDirectoryMarkup(partners) {
-  const sorted = [...partners].sort((a, b) => a.name.localeCompare(b.name, 'en'));
-  const links = sorted.map(partner =>
-    '<a class="chip" href="' + partnerPath(partner) + '">' + esc(partner.name) + '</a>'
-  ).join('');
-  return '<section class="section" id="partners"><h2>Content partners</h2><div class="chip-row">' + links + '</div></section>';
+async function partnersWithArt(env, req) {
+  const [partners, response] = await Promise.all([
+    readPartnerDirectory(env, req),
+    env.ASSETS.fetch(new URL('/data/channel-art.json', req.url))
+  ]);
+  const art = response.ok ? await response.json().catch(()=>({})) : {};
+  return partners.map(partner => ({...partner,...art[partner.id]}))
+    .sort((a,b)=>a.name.localeCompare(b.name,'en'));
+}
+
+function partnerTile(partner) {
+  const icon = isHttpsUrl(partner.avatar)
+    ? '<img src="'+esc(partner.avatar)+'" loading="lazy" alt="">'
+    : '<b aria-hidden="true">'+esc(partner.name.slice(0,2))+'</b>';
+  return '<a class="nv-channel" href="'+partnerPath(partner)+'">'+icon+
+    '<strong>'+esc(partner.name)+'</strong><span aria-hidden="true">›</span></a>';
+}
+
+function partnerCarousel(partners) {
+  const slides = partners.filter(p=>isHttpsUrl(p.cover)).map(p=>({name:p.name,cover:p.cover,href:partnerPath(p)}));
+  const featured = slides.findIndex(p=>p.name.toLowerCase()==='teamskeet');
+  if(featured>0) slides.unshift(...slides.splice(featured,1));
+  const css='<link rel="stylesheet" href="/assets/channel-directory.css">';
+  if(!slides.length) return css;
+  const first=slides[0];
+  return css+'<section class="nv-carousel" data-channel-carousel aria-label="Featured channels">'+
+    '<a class="nv-slide" href="'+first.href+'"><img src="'+esc(first.cover)+'" alt="" fetchpriority="high">'+
+    '<strong>'+esc(first.name)+'</strong></a><div class="nv-controls" hidden><button type="button" data-prev aria-label="Previous channel">‹</button>'+
+    '<button type="button" data-pause>Pause</button><button type="button" data-next aria-label="Next channel">›</button></div>'+
+    '<script type="application/json">'+JSON.stringify(slides).replace(/</g,'\\u003c')+'</script></section>'+
+    '<script defer src="/assets/channel-carousel.js"></script>';
 }
 
 async function partnerVideos(env, req, partner, db) {
@@ -1126,7 +1151,7 @@ async function route(req,env){
  }
  let markup;
  const localFeed=await loadLocalOfficialFeed(env,req);
-if(path==='/'){const videos=await listVideos(db,{limit:8});const official=(await officialCatalog(db,{limit:12,localEntries:localFeed})).entries;markup=homePageV3({base,url:url.href,videos,official});}
+if(path==='/'){const videos=await listVideos(db,{limit:8});const official=(await officialCatalog(db,{limit:12,localEntries:localFeed})).entries;markup=homePageV3({base,url:url.href,videos,official,partners:await partnersWithArt(env,req)});}
  else if(path==='/videos'){
    const page=officialPageNumber(url.searchParams.get('page')||1),limit=OFFICIAL_PAGE_SIZE;
    const publishedTotal=await countPublishedVideos(db);
@@ -1142,7 +1167,12 @@ if(path==='/'){const videos=await listVideos(db,{limit:8});const official=(await
  else if(path.startsWith('/official-watch/')){const id=path.slice('/official-watch/'.length);const video=await officialById(db,id,localFeed);const related=video?rotateRelated((await officialCatalog(db,{page:1,limit:40,localEntries:localFeed})).entries,id,30):[];markup=video?officialWatch({base,url:url.href,video,related,env}):notFound({base,url:url.href});}
  else if(path==='/search'){const q=safeText(url.searchParams.get('q')||'',80);const videos=q?await listVideos(db,{q,limit:40}):[];const official=q?(await officialCatalog(db,{page:1,limit:40,q,localEntries:localFeed})).entries:[];const taxonomy=searchTaxonomy(q);markup=searchPage({base,url:url.href,q,videos,official,channels:taxonomy.channels,matchedCategories:taxonomy.categories})}
   else if(path==='/categories')markup=shell({base,url:url.href,title:'Explore Categories | Noxvellox',description:'Browse Noxvellox video categories by theme, style and niche.',body:`<section class="wrap page-head"><div class="section-kicker">Discover by interest</div><h1>Categories</h1><p>Browse by theme, style or niche. Categories help visitors find similar content regardless of publisher.</p></section><div class="wrap">${discoveryModelV2()}${categoryChips()}${categoryCardsV2()}${adSlot()}${banner}</div>`});
-  else if(path==='/channels')markup=shell({base,url:url.href,title:'Channels | Noxvellox',description:'Browse separated Noxvellox studio, publisher and creator channels.',body:`<section class="wrap page-head"><div class="section-kicker">Discover by source</div><h1>Channels</h1><p>Browse by studio, publisher or creator. Each channel has its own identity, catalog and publication rules.</p></section><div class="wrap">${discoveryModelV2()}${channelCardsV2()}${partnerDirectoryMarkup(await readPartnerDirectory(env,req))}${adSlot()}${banner}</div>`});
+  else if(path==='/channels'){
+    const partners = await partnersWithArt(env,req);
+    markup=shell({base,url:url.href,title:'Channels | Noxvellox',description:'Browse publisher channels and their videos on Noxvellox.',
+      body:'<div class="wrap nv-directory" id="partners"><h1>Channels</h1>'+partnerCarousel(partners)+
+        '<div class="nv-channel-grid">'+partners.map(partnerTile).join('')+'</div>'+adSlot()+'</div>'});
+  }
 else if(path.startsWith('/channels/')||path.startsWith('/channel/')){const prefix=path.startsWith('/channels/')?'/channels/':'/channel/';const slug=path.slice(prefix.length).split('/')[0];const channel=channelsV2.find(c=>c.slug===slug);if(channel){const requestedPage=Math.max(1,Math.min(1000,Number(url.searchParams.get('page')||1)));const requestedQuery=safeText(url.searchParams.get('q')||'',80);const requestedSort=['recent','popular','rating'].includes(url.searchParams.get('sort')||'recent')?(url.searchParams.get('sort')||'recent'):'recent';const limit=20;const canonicalUrl=`${base}/channels/${encodeURIComponent(channel.slug)}`;if(channel.category==='Official embeds'){const result=await officialCatalog(db,{page:requestedPage,limit,q:requestedQuery,localEntries:localFeed});markup=channelPageV4({base,url:url.href,canonicalUrl,channel,videos:[],official:result.entries,total:Number(result.total||0),page:requestedPage,limit,q:requestedQuery,sort:requestedSort})}else{const offset=(requestedPage-1)*limit;const videos=await listVideos(db,{category:channel.category,q:requestedQuery,offset,limit,sort:requestedSort});const total=await countChannelVideosV4(db,channel,requestedQuery);markup=channelPageV4({base,url:url.href,canonicalUrl,channel,videos,official:[],total,page:requestedPage,limit,q:requestedQuery,sort:requestedSort})}}else markup=notFound({base,url:url.href})}
   else if(path.startsWith('/category/')){const c=categories.find(c=>slugify(c)===path.split('/')[2]);if(c){const videos=await listVideos(db,{category:c,limit:40});const official=videos.length?[]:await officialForCategory(db,c,localFeed);markup=listPage({base,url:url.href,videos,official,title:c,subtitle:`Explore ${c.toLowerCase()} from authorized sources.`,category:c})}else markup=notFound({base,url:url.href})}
   else if(path.startsWith('/watch/')){const slug=path.slice(7);const v=await getVideo(db,slug);if(!v){const official=await officialById(db,slug,localFeed);if(official)return Response.redirect(`${base}/official-watch/${encodeURIComponent(slug)}`,301)}const related=v?rotateRelated(await listVideos(db,{category:v.category,limit:30,sort:'popular'}),slug,30):[];markup=v?watchPage({url:url.href,base,v,related,env}):notFound({base,url:url.href})}

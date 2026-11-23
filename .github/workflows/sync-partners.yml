@@ -23,7 +23,7 @@ jobs:
         run: node scripts/sync-partner-profiles.mjs
       - name: Publish changed directory
         run: |
-          git add public/data/partners.json public/data/partner-videos.json public/data/partner-profiles
+          git add public/data/channel-art.json public/data/partners.json public/data/partner-videos.json public/data/partner-profiles
           if git diff --cached --quiet; then exit 0; fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
