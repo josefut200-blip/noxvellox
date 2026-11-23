@@ -135,6 +135,18 @@ function idFromUrl(value) {
   }
 }
 
+function canonicalPornhubEmbed(source, id) {
+  try {
+    const url = new URL(String(source || ''));
+    const host = url.hostname.toLowerCase();
+    if (!['pornhub.com', 'www.pornhub.com'].includes(host)) return '';
+    if (url.pathname !== '/view_video.php' || url.searchParams.get('viewkey') !== id) return '';
+    return new URL(`/embed/${encodeURIComponent(id)}`, url.origin).href;
+  } catch {
+    return '';
+  }
+}
+
 function normalizeEntry(item) {
   const source = text(valueFrom(item, ['source_url', 'sourceUrl', 'source', 'url', 'link']), 1500);
   const id = text(valueFrom(item, ['id', 'video_id', 'videoId', 'viewkey']) || idFromUrl(source), 80);
@@ -144,6 +156,9 @@ function normalizeEntry(item) {
 
   if (!embed && embedTemplate && id) {
     embed = embedTemplate.replaceAll('{id}', encodeURIComponent(id));
+  }
+  if (!embed && id && source) {
+    embed = canonicalPornhubEmbed(source, id);
   }
 
   if (!id || !title || !source || !embed) return null;
