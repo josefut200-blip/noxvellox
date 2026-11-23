@@ -1002,7 +1002,7 @@ if(path==='/'){const videos=await listVideos(db,{limit:8});const official=(await
      markup=listPage({base,url:url.href,videos,official:[],page,officialPagination:catalogPagination({page,total:publishedTotal,path:'/videos',label:'published videos'})});
    }else{
      const results=await officialCatalog(db,{page,limit,localEntries:localFeed});
-     markup=listPage({base,url:url.href,videos:[],official:results.entries,officialPagination:catalogPagination({page,total:results.total,path:'/videos',label:'official embeds'})});
+     markup=listPage({base,url:url.href,videos:[],official:results.entries,page,officialPagination:catalogPagination({page,total:results.total,path:'/videos',label:'official embeds'})});
    }
  }
  else if(path==='/official-videos'){const page=officialPageNumber(url.searchParams.get('page')||1);const results=await officialCatalog(db,{page,localEntries:localFeed});markup=listPage({base,url:url.href,videos:[],official:results.entries,title:'Free Official Embeds',subtitle:'Automatically updated official embeds, saved over time and shown in pages.',page,officialPagination:officialPagination({page,total:results.total})});}
