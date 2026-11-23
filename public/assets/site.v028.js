@@ -12,7 +12,10 @@
   const CONSENT_KEY='noxvellox-optional-ads';
   const consent=()=>{try{return localStorage.getItem(CONSENT_KEY)||'unset'}catch{return 'unset'}};
   const setConsent=value=>{try{localStorage.setItem(CONSENT_KEY,value)}catch{}};
-  const APPROVED_AD_SRC='https://biomanos.org/21/59eef26524f2edf0d1c3c669286c974c';
+  const APPROVED_AD_SRC='https://biomanos.org/21/74f36fcf7e2078b6bab492177d48da06';
+  const APPROVED_SOCIAL_BAR_SRC='https://biomanos.org/14/505d9a85cd6b957598b0e25ba1854db8';
+  const APPROVED_POPUNDER_SRC='https://benchform.org/1/02c67b439b4bd019691a72b99d34c0ca';
+  const loadConsentUnit=(id,src)=>{if(document.getElementById(id))return;const script=document.createElement('script');script.id=id;script.async=true;script.setAttribute('data-cfasync','false');script.src=src;document.head.append(script)};
   const vastText=async endpoint=>{
     const response=await fetch(endpoint,{credentials:'same-origin',cache:'no-store',headers:{accept:'application/xml,text/xml,*/*'}});
     if(!response.ok)throw new Error(`VAST request failed (${response.status})`);
@@ -207,6 +210,11 @@
       const container=slot.querySelector('[data-ad-container]');
       if(c==='denied'){setAdState(slot,'disabled');if(message)message.textContent='Optional ads are disabled. You can enable them below or in Ad preferences.';if(enable)enable.hidden=false;return;}
       if(enable)enable.hidden=true;
+      if(c==='granted'){
+        loadConsentUnit('noxvellox-social-bar',APPROVED_SOCIAL_BAR_SRC);
+        let popunderLoaded=false;try{popunderLoaded=sessionStorage.getItem('noxvellox-popunder-loaded')==='yes'}catch{}
+        if(!popunderLoaded){loadConsentUnit('noxvellox-popunder',APPROVED_POPUNDER_SRC);try{sessionStorage.setItem('noxvellox-popunder-loaded','yes')}catch{}}
+      }
       if(c!=='granted'||slot.dataset.loaded==='yes')return;
       const scriptUrl=slot.dataset.scriptSrc;
       if(scriptUrl!==APPROVED_AD_SRC){setAdState(slot,'blocked-url');return;}
