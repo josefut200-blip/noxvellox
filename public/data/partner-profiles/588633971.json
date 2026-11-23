@@ -1,4 +1,9 @@
 {
+  "stats": {
+    "subscribers": "4213",
+    "videos": "107",
+    "views": "7510071"
+  },
   "cover": "https://ei.phncdn.com/pics/users/588/633/971/cover1554572667/(m=eRSa4qFxcWaAb)(mh=pdDf4UzLMqK6Dsq1)1323x270.jpg",
   "avatar": "https://ei.phncdn.com/pics/users/588/633/971/avatar1553978012/(m=ewILGCjadOf)(mh=_YLxnoE5kealXCZv)200x200.jpg",
   "location": "sao paulo, Brazil",
@@ -24,7 +29,7 @@
   "playlists": [],
   "previews": {
     "6875633fa6dcb": {
-      "thumbnail": "https://pix-fl.phncdn.com/c6371/videos/202507/14/15804155/original_15804155.mp4/plain/ex:1:no/bg:0:0:0/rs:fit:320:180/vts:1725?hdnea=st=1795468353~exp=1795554753~hdl=-1~hmac=79ed26269bd4a94ee1981c884c88d28f0a0ed03f",
+      "thumbnail": "https://pix-fl.phncdn.com/c6371/videos/202507/14/15804155/original_15804155.mp4/plain/ex:1:no/bg:0:0:0/rs:fit:320:180/vts:1725?hdnea=st=1795470532~exp=1795556932~hdl=-1~hmac=95cb3a72a0da501cd759ec8740e2889f77896b97",
       "duration": "40:08",
       "channel": "TED"
     },
