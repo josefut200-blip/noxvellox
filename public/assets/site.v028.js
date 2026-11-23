@@ -49,11 +49,13 @@
   const APPROVED_BANNER_320_SRC='https://biomanos.org/22/6dd3e1d884350123ac32714fb6432fef';
   const APPROVED_BANNER_160_KEY='b6897723752196577a3b12ae1fa0bb7e';
   const APPROVED_BANNER_160_SRC='https://biomanos.org/22/b6897723752196577a3b12ae1fa0bb7e';
+  const APPROVED_BANNER_300_KEY='503779984753b653167ed59860f05642';
+  const APPROVED_BANNER_300_SRC='https://biomanos.org/22/503779984753b653167ed59860f05642';
   const APPROVED_SOCIAL_BAR_SRC='https://biomanos.org/14/505d9a85cd6b957598b0e25ba1854db8';
   const APPROVED_POPUNDER_SRC='https://benchform.org/1/02c67b439b4bd019691a72b99d34c0ca';
   const loadConsentUnit=(id,src)=>{if(document.getElementById(id))return;const script=document.createElement('script');script.id=id;script.async=true;script.setAttribute('data-cfasync','false');script.src=src;document.head.append(script)};
   const createInlineBannerSlot=size=>{
-    const dimensions=size==='160'?{width:160,height:300}:size==='320'?{width:320,height:50}:null;
+    const dimensions=size==='160'?{width:160,height:300}:size==='320'?{width:320,height:50}:size==='300'?{width:300,height:250}:null;
     if(!dimensions)return null;
     const slot=document.createElement('section');
     slot.className='ad-slot banner-ad-slot';
@@ -304,7 +306,8 @@
     const bannerSlots=[...document.querySelectorAll('[data-banner-ad]')];
     const bannerConfigs={
       '320':{key:APPROVED_BANNER_320_KEY,src:APPROVED_BANNER_320_SRC,width:320,height:50},
-      '160':{key:APPROVED_BANNER_160_KEY,src:APPROVED_BANNER_160_SRC,width:160,height:300}
+      '160':{key:APPROVED_BANNER_160_KEY,src:APPROVED_BANNER_160_SRC,width:160,height:300},
+      '300':{key:APPROVED_BANNER_300_KEY,src:APPROVED_BANNER_300_SRC,width:300,height:250}
     };
     bannerSlots.forEach(slot=>{
       const message=slot.querySelector('[data-banner-message]');
@@ -482,6 +485,7 @@
         let feedCount=grid.querySelectorAll('a.video-card,a.home-video-card').length;
         let banner320Inserted=Boolean(grid.querySelector('[data-banner-ad="320"]'));
         let banner160Inserted=Boolean(grid.querySelector('[data-banner-ad="160"]'));
+        let banner300Inserted=Boolean(grid.querySelector('[data-banner-ad="300"]'));
         for(const card of nextGrid.querySelectorAll('a.video-card')){
           const href=card.getAttribute('href');
           const path=href?new URL(href,location.href).pathname:'';
@@ -508,9 +512,13 @@
             fragment.append(createInlineBannerSlot('160'));
             banner160Inserted=true;
           }
+          if(!banner300Inserted&&feedCount>=72){
+            fragment.append(createInlineBannerSlot('300'));
+            banner300Inserted=true;
+          }
         }
         grid.append(fragment);
-        if(banner320Inserted||banner160Inserted)renderAd();
+        if(banner320Inserted||banner160Inserted||banner300Inserted)renderAd();
         setupCoverImages(grid);setupVideoCards();
         const nextPager=doc.querySelector('nav[aria-label="Catalog pages"]');
         const nextPageLink=nextPager?.querySelector('a[rel="next"]');
