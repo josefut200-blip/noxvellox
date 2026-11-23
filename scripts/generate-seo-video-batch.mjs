@@ -89,13 +89,18 @@ function describe(title, category, id) {
   return `Explore ${title} on Noxvellox. This video listing is organized under ${category} for visitors browsing related releases. The video plays through the original Pornhub embed at https://www.pornhub.com/embed/${id}. Browse more curated videos and publisher channels in the Noxvellox catalog, with pages designed for mobile and desktop viewing.`;
 }
 
-const existing = JSON.parse(await fs.readFile(feedPath, 'utf8').catch(() => '{"version":1,"entries":[]}'));
+const [existing,baseFeed] = await Promise.all([
+  fs.readFile(feedPath, 'utf8').then(JSON.parse).catch(() => ({ version: 1, entries: [] })),
+  fs.readFile(path.join(process.cwd(), 'public', 'data', 'videos.json'), 'utf8').then(JSON.parse).catch(() => ({ entries: [] }))
+]);
 const entries = Array.isArray(existing.entries) ? existing.entries : [];
+const baseEntries = Array.isArray(baseFeed) ? baseFeed : (Array.isArray(baseFeed.entries) ? baseFeed.entries : []);
 const byId = new Map(entries.map(entry => [String(entry.id), entry]));
+const knownIds = new Set([...entries, ...baseEntries].map(entry => String(entry?.id || '')));
 const results = [];
 for (const [index, line] of lines.entries()) {
   const input = parseLine(line, index);
-  if (byId.has(input.id)) {
+  if (knownIds.has(input.id)) {
     results.push({ id: input.id, result: 'already-listed' });
     continue;
   }
@@ -114,6 +119,7 @@ for (const [index, line] of lines.entries()) {
     duration_seconds: metadata.duration
   };
   byId.set(input.id, item);
+  knownIds.add(input.id);
   results.push({ id: input.id, result: 'ready-to-publish', title, category });
 }
 const next = { version: 1, updatedAt: new Date().toISOString(), entries: [...byId.values()] };
