@@ -24,7 +24,7 @@ if (failures.length) {
   console.log('PASS: banner image monitoring and local fallback are present.');
 }
 
-const sources = [...new Set(worker.match(/https:\/\/images\.unsplash\.com\/[^'"\\s]+/g) || [])];
+const sources = [...new Set(worker.match(/https:\/\/images\.unsplash\.com\/[^'"\s]+/g) || [])];
 if (!sources.length) {
   console.log('INFO: no external category banner sources were found.');
   process.exit(0);
