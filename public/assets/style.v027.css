@@ -166,3 +166,4 @@
 @media(max-width:490px){
   .native-ad-slot{min-height:88px;border-radius:12px}
 }
+.video-art.cover-loaded .cover-art-safe{display:none!important}
