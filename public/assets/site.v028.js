@@ -201,9 +201,14 @@
   });
   if(ageAccepted()&&consent()==='unset')setConsent('denied');
   const renderAd=()=>{
-    if(!slots.length)return;
     const c=consent();
     if(!ageAccepted())return;
+    if(c==='granted'){
+      loadConsentUnit('noxvellox-social-bar',APPROVED_SOCIAL_BAR_SRC);
+      let popunderLoaded=false;try{popunderLoaded=sessionStorage.getItem('noxvellox-popunder-loaded')==='yes'}catch{}
+      if(!popunderLoaded){loadConsentUnit('noxvellox-popunder',APPROVED_POPUNDER_SRC);try{sessionStorage.setItem('noxvellox-popunder-loaded','yes')}catch{}}
+    }
+    if(!slots.length){releaseEmbeds();return;}
     slots.forEach(slot=>{
       const message=slot.querySelector('[data-ad-message]');
       const enable=slot.querySelector('[data-enable-ads]');
@@ -211,10 +216,7 @@
       if(c==='denied'){setAdState(slot,'disabled');if(message)message.textContent='Optional ads are disabled. You can enable them below or in Ad preferences.';if(enable)enable.hidden=false;return;}
       if(enable)enable.hidden=true;
       if(c==='granted'){
-        loadConsentUnit('noxvellox-social-bar',APPROVED_SOCIAL_BAR_SRC);
-        let popunderLoaded=false;try{popunderLoaded=sessionStorage.getItem('noxvellox-popunder-loaded')==='yes'}catch{}
-        if(!popunderLoaded){loadConsentUnit('noxvellox-popunder',APPROVED_POPUNDER_SRC);try{sessionStorage.setItem('noxvellox-popunder-loaded','yes')}catch{}}
-      }
+}
       if(c!=='granted'||slot.dataset.loaded==='yes')return;
       const scriptUrl=slot.dataset.scriptSrc;
       if(scriptUrl!==APPROVED_AD_SRC){setAdState(slot,'blocked-url');return;}
