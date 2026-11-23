@@ -20,8 +20,10 @@ const publicFile = path.join(root, 'public', 'data', 'videos.json');
 const feedUrl = String(process.env.OFFICIAL_FEED_URL || '').trim();
 const feedToken = String(process.env.OFFICIAL_FEED_TOKEN || '').trim();
 const allowedHosts = new Set(
-  String(process.env.OFFICIAL_FEED_ALLOWED_HOSTS || '')
-    .split(',')
+  [
+    ...String(process.env.OFFICIAL_FEED_ALLOWED_HOSTS || '').split(','),
+    ...String(process.env.OFFICIAL_FEED_EXTRA_ALLOWED_HOSTS || '').split(',')
+  ]
     .map(value => value.trim().toLowerCase())
     .filter(Boolean)
 );
