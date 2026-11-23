@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 600" role="img" aria-labelledby="title desc">
+<title id="title">Noxvellox branded banner fallback</title>
+<desc id="desc">A dark magenta Noxvellox banner used when a source image cannot load.</desc>
+<defs>
+  <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stop-color="#321629"/>
+    <stop offset=".52" stop-color="#772344"/>
+    <stop offset="1" stop-color="#100e16"/>
+  </linearGradient>
+  <radialGradient id="glow" cx=".78" cy=".17" r=".8">
+    <stop offset="0" stop-color="#f24a67" stop-opacity=".55"/>
+    <stop offset="1" stop-color="#f24a67" stop-opacity="0"/>
+  </radialGradient>
+  <linearGradient id="line" x1="0" y1="0" x2="1" y2="1">
+    <stop stop-color="#ff9caf" stop-opacity=".28"/>
+    <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+  </linearGradient>
+</defs>
+<rect width="1200" height="600" fill="url(#bg)"/>
+<rect width="1200" height="600" fill="url(#glow)"/>
+<path d="M-140 600 410-30h100L-40 600zm565 0L975-30h100L525 600zm565 0L1465-30h100L1090 600z" fill="url(#line)"/>
+<circle cx="600" cy="264" r="100" fill="#100e16" fill-opacity=".58" stroke="#ff9caf" stroke-opacity=".65" stroke-width="2"/>
+<path d="M543 322V205l57-34 57 34v117h-38v-96l-19-11-19 11v96z" fill="#fff"/>
+<text x="600" y="438" text-anchor="middle" fill="#fff" font-family="Arial,Helvetica,sans-serif" font-size="44" font-weight="900" letter-spacing="8">NOXVELLOX</text>
+<text x="600" y="480" text-anchor="middle" fill="#ffbdca" font-family="Arial,Helvetica,sans-serif" font-size="16" font-weight="700" letter-spacing="5">CURATED COLLECTION</text>
+</svg>
