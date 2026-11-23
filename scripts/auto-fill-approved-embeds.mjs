@@ -185,7 +185,7 @@ if (removedIds.size) {
   await fs.writeFile(partnerVideosPath, JSON.stringify(partnerVideos, null, 2) + '\n');
 }
 
-const publishedEntries = [...byId.values()].slice(0, target);
+const publishedEntries = [...byId.values()];
 const targetReached = publishedEntries.length >= target;
 if (publishedEntries.length !== entries.length || removedIds.size) {
   await fs.mkdir(path.dirname(feedPath), { recursive: true });
