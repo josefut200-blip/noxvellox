@@ -78,7 +78,7 @@ function hostAllowed(url, label) {
     throw new Error('OFFICIAL_FEED_ALLOWED_HOSTS secret is required');
   }
   if (!allowedHosts.has(url.hostname.toLowerCase())) {
-    throw new Error(`${label} host is not in OFFICIAL_FEED_ALLOWED_HOSTS`);
+    throw new Error(`${label} host "${url.hostname}" is not in OFFICIAL_FEED_ALLOWED_HOSTS`);
   }
 }
 
