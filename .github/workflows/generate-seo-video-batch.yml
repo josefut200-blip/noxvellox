@@ -1,0 +1,39 @@
+name: Generate English SEO video batch
+
+on:
+  workflow_dispatch:
+    inputs:
+      items:
+        description: "Enter 5–10 entries separated by new lines or ;;. Each can be a raw title, official Pornhub video/embed URL, or title | URL."
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          package-manager-cache: false
+
+      - name: Generate titles, descriptions and category suggestions
+        run: node scripts/generate-seo-video-batch.mjs
+        env:
+          VIDEO_BATCH_INPUT: ${{ inputs.items }}
+
+      - name: Upload formatted batch
+        uses: actions/upload-artifact@v4
+        with:
+          name: english-seo-video-batch
+          path: artifacts/seo-video-batch.json
+          if-no-files-found: error
+          retention-days: 7
