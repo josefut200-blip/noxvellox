@@ -191,9 +191,17 @@ function normalizeEntry(item) {
 
   if (!id || !title || !source || !embed) return null;
 
-  const sourceUrl = getUrl(source, 'source_url');
+  let sourceUrl = getUrl(source, 'source_url');
   const embedUrl = getUrl(embed, 'embed_url');
-  hostAllowed(sourceUrl, 'source_url');
+  try {
+    hostAllowed(sourceUrl, 'source_url');
+  } catch (error) {
+    // Feeds can include mirror links outside the approved provider list. Use
+    // the same approved player URL as the source in that case; never admit an
+    // unapproved host or weaken the HTTPS checks.
+    if (!String(error.message).includes('host is not in OFFICIAL_FEED_ALLOWED_HOSTS')) throw error;
+    sourceUrl = embedUrl;
+  }
   hostAllowed(embedUrl, 'embed_url');
 
   let posterUrl = '';
