@@ -1,20 +1,24 @@
-name: Generate English SEO video batch
+name: Generate and publish English SEO video batch
 
 on:
   workflow_dispatch:
     inputs:
       items:
-        description: "Enter 5–10 entries separated by new lines or ;;. Each can be a raw title, official Pornhub video/embed URL, or title | URL."
+        description: "Enter 5–10 entries separated by new lines or ;;. Each must include an official Pornhub video/embed URL. Use title | URL for a custom title."
         required: true
         type: string
 
 permissions:
-  contents: read
+  contents: write
+
+concurrency:
+  group: publish-seo-video-batch
+  cancel-in-progress: false
 
 jobs:
-  generate:
+  generate-and-publish:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
       - name: Check out repository
         uses: actions/checkout@v7
@@ -25,10 +29,22 @@ jobs:
           node-version: 24
           package-manager-cache: false
 
-      - name: Generate titles, descriptions and category suggestions
+      - name: Validate videos and publish feed entries
         run: node scripts/generate-seo-video-batch.mjs
         env:
           VIDEO_BATCH_INPUT: ${{ inputs.items }}
+
+      - name: Commit new official embeds
+        run: |
+          if git diff --quiet -- public/data/manual-official-videos.json; then
+            echo "No new video entries to publish."
+          else
+            git config user.name "noxvellox-feed-bot"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add public/data/manual-official-videos.json
+            git commit -m "chore: publish approved official video batch"
+            git push
+          fi
 
       - name: Upload formatted batch
         uses: actions/upload-artifact@v4

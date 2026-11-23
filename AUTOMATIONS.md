@@ -4,7 +4,7 @@ Abra a aba [GitHub Actions](https://github.com/josefut200-blip/noxvellox/actions
 
 | Automação | O que faz | Quando roda | Abrir |
 | --- | --- | --- | --- |
-| Gerador de lote SEO em inglês | Recebe de 5 a 10 títulos, links ou iframes oficiais do Pornhub e cria um arquivo JSON com título, descrição e categoria sugerida para revisão. | Manualmente | [Generate English SEO video batch](https://github.com/josefut200-blip/noxvellox/actions/workflows/generate-seo-video-batch.yml) |
+| Gerador e publicador de lote SEO | Recebe de 5 a 10 links/iframes oficiais do Pornhub e publica os embeds válidos no feed do site. Produz também JSON com título, descrição e categoria sugerida. | Manualmente | [Generate English SEO video batch](https://github.com/josefut200-blip/noxvellox/actions/workflows/generate-seo-video-batch.yml) |
 | Auditor de embeds oficiais | Confere os embeds da lista de canais parceiros. Remove somente vídeo com bloqueio externo explícito ou resposta 404/410. Casos inconclusivos ficam no relatório da execução. | Semanalmente e manualmente | [Audit official video embeds](https://github.com/josefut200-blip/noxvellox/actions/workflows/audit-official-embeds.yml) |
 | Verificador de imagens dos banners | Confere se os banners têm imagens válidas e se o fallback visual está presente. | Diariamente, em mudanças relacionadas e manualmente | [Banner image guardian](https://github.com/josefut200-blip/noxvellox/actions/workflows/banner-image-guardian.yml) |
 | Sincronizador de canais parceiros | Atualiza a lista de parceiros, os vídeos vinculados e os dados visuais dos perfis. | Diariamente e manualmente | [Sync partner directory](https://github.com/josefut200-blip/noxvellox/actions/workflows/sync-partners.yml) |
@@ -12,10 +12,10 @@ Abra a aba [GitHub Actions](https://github.com/josefut200-blip/noxvellox/actions
 
 ## Onde fica o código
 
-- Gerador de lote SEO — `scripts/generate-seo-video-batch.mjs`
+- Gerador e publicador SEO — `scripts/generate-seo-video-batch.mjs`
 - Auditor de embeds — `scripts/audit-official-embeds.mjs`
 - Verificador de banners — `scripts/check-banner-images.mjs`
 - Sincronização de parceiros — `scripts/sync-partners.py`, `scripts/sync-partner-videos.py` e `scripts/sync-partner-profiles.mjs`
 - Atualização do feed — `scripts/fetch-feed.js`
 
-Os horários do GitHub Actions são configurados em UTC. Uma execução manual é iniciada dentro do workflow correspondente, na aba Actions.
+Uma execução manual é iniciada no workflow correspondente, pela aba Actions. Os horários agendados são configurados em UTC.
