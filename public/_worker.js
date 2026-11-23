@@ -1021,30 +1021,61 @@ async function partnerWatch({video, partner, url, base, env}) {
       }
     } catch { /* The original viewing page stays available when the embed API is offline. */ }
   }
-  const body = '<section class="wrap page-head"><a href="' + partnerPath(partner) + '">' + esc(partner.name) +
-    '</a><h1>' + esc(video.title) + '</h1><a class="button" href="' + esc(source) + '">Watch on Pornhub</a></section>';
+  const thumb = isHttpsUrl(video.poster_url) && new URL(video.poster_url).hostname.endsWith('.phncdn.com')
+    ? '<img src="'+esc(video.poster_url)+'" alt="">' : '';
+  const body = '<link rel="stylesheet" href="/assets/partner-profile.css"><article class="partner-profile">'+
+    '<nav class="partner-nav"><a href="'+partnerPath(partner)+'">← '+esc(partner.name)+'</a></nav>'+
+    '<a class="partner-original" href="'+esc(source)+'">'+thumb+'<strong>Watch on Pornhub ↗</strong></a>'+
+    '<h1>'+esc(video.title)+'</h1><a href="'+partnerPath(partner)+'#partner-videos">More videos from '+esc(partner.name)+'</a></article>';
   return html(shell({base,url,title:video.title + ' | Noxvellox',description:'View this listing from ' + partner.name,body}));
 }
 
-function partnerProfilePage({partner, localFeed, references, base, url}) {
-  const description = 'Explore ' + partner.name + ' on Noxvellox. This directory entry links to the publisher’s official Pornhub profile.';
-  const videos = (localFeed || []).filter(video =>
-    video.partner_profile_url === partner.url && !REMOVED_OFFICIAL_IDS.has(video.id)
-  );
-  const seen = new Set(videos.map(video => video.id));
-  const more = references.filter(video => !seen.has(video.id));
-  const sourceLinks = more.map(video =>
-    '<a class="video-card" style="display:flex;align-items:center;padding:1rem;gap:.75rem" href="' +
-    partnerPath(partner) + '/video/' + video.id + '"><span aria-hidden="true" style="color:#ff578c">▶</span>' +
-    '<span>' + esc(video.title) + '</span></a>'
-  ).join('');
-  const listings = videos.length
-    ? '<div class="video-grid">' + videos.map(officialCard).join('') + '</div>'
-    : '';
-  const body = '<section class="wrap page-head"><a href="/channels#partners">Content partners</a><h1>' +
-    esc(partner.name) + '</h1><p>' + esc(description) + '</p><a class="button ghost" href="' +
-    esc(partner.url) + '">Official profile on Pornhub</a></section><section class="section wrap"><h2>Videos</h2>' + listings + (more.length ? '<div class="video-grid">' + sourceLinks + '</div>' : '') + '<a class="section-link" href="' + esc(partner.url + '/videos/public') + '">All videos on Pornhub</a></section>';
-  return shell({base, url, title:partner.name + ' | Content partners | Noxvellox', description, body});
+function partnerProfilePage({partner, localFeed, references, profile, base, url}) {
+  const name = esc(partner.name);
+  const description = 'Browse videos and publisher information for ' + partner.name + ' on Noxvellox.';
+  const safeImage = src => isHttpsUrl(src) && new URL(src).hostname.endsWith('.phncdn.com');
+  const image = (src, lazy = true) => safeImage(src) ? '<img src="' + esc(src) + '" alt="" ' +
+    (lazy ? 'loading="lazy"' : 'fetchpriority="high"') + ' decoding="async">' : '';
+  const videos = new Map();
+  for (const v of references) videos.set(v.id,{...v,href:partnerPath(partner) + '/video/' + v.id});
+  for (const v of localFeed || []) {
+    if (v.partner_profile_url === partner.url && !REMOVED_OFFICIAL_IDS.has(v.id))
+      videos.set(v.id,{...v,href:'/official-watch/' + encodeURIComponent(v.id)});
+  }
+  const clip = v => {
+    const preview = profile.previews?.[v.id] || {};
+    const durationLabel = preview.duration || (v.duration_seconds ? duration(v.duration_seconds) : '');
+    return '<a class="partner-clip" href="'+esc(v.href)+'"><span class="partner-thumb"><span aria-hidden="true">▶</span>'+
+      image(preview.thumbnail || v.poster_url)+(durationLabel ? '<small>'+esc(durationLabel)+'</small>' : '')+
+      '</span><strong>'+esc(v.title)+'</strong><small>'+esc(preview.channel || partner.name)+'</small></a>';
+  };
+  const stats = Object.entries(profile.stats || {}).filter(([k,v]) => ['subscribers','videos','views'].includes(k) && /^\d{1,16}$/.test(v))
+    .map(([label,value]) => Number(value).toLocaleString('en-US')+' '+label).join(' · ');
+  const items = [...videos.values()];
+  const grid = list => '<div class="partner-clips">'+list.map(clip).join('')+'</div>';
+  const strip = (label, link) => '<header class="partner-strip"><h2>'+label+'</h2><a href="'+esc(link)+'">View all ↗</a></header>';
+  const tiles = (label, key, path) => {
+    const cards = (profile[key] || []).filter(x=>isHttpsUrl(x.url) && new URL(x.url).hostname === 'www.pornhub.com');
+    if (!cards.length) return '';
+    return '<section class="partner-block" id="partner-'+key+'">'+strip(label,partner.url+path)+
+      '<div class="partner-tiles">'+cards.map(x=>'<a class="partner-tile" href="'+esc(x.url)+'">'+image(x.image)+
+        '<span>'+esc(x.name)+'</span></a>').join('')+'</div></section>';
+  };
+  const nav = [['Videos','videos'],['Channels','channels'],['Photos','photos'],['Playlists','playlists']]
+    .filter(([,key])=>key==='videos' || profile[key]?.length)
+    .map(([label,key])=>'<a href="#partner-'+key+'">'+label+'</a>').join('');
+  const body = '<link rel="stylesheet" href="/assets/partner-profile.css"><article class="partner-profile">'+
+    '<header class="partner-cover" id="partner-featured">'+image(profile.cover,false)+'<div class="partner-badge">'+
+    (image(profile.avatar,false) || esc(partner.name.slice(0,2)))+'</div><div><h1>'+name+'</h1>'+
+    (profile.location ? '<p>'+esc(profile.location)+'</p>' : '')+'<p>'+(stats ? esc(stats)+' on Pornhub' : items.length+' videos on Noxvellox')+'</p></div></header>'+
+    '<nav class="partner-nav" aria-label="Partner profile"><a href="#partner-featured">Featured</a>'+nav+
+    '<button class="partner-follow" type="button" data-follow-channel="partner-'+esc(partner.id)+'" aria-pressed="false">Follow channel</button></nav><div class="partner-columns"><div>'+
+    tiles('Channels','channels','/channels')+'<section class="partner-block" id="partner-videos">'+strip('Videos',partner.url+'/videos/public')+
+    grid(items.slice(0,6))+(items.length>6 ? '<details class="partner-more"><summary>Load more videos</summary>'+grid(items.slice(6))+'</details>' : '')+
+    '</section></div><aside class="partner-side"><section class="partner-block"><h2>About '+name+'</h2><p>'+esc(description)+'</p>'+
+    '<a href="'+esc(partner.url)+'">Publisher profile on Pornhub ↗</a></section>'+tiles('Photos','photos','/photos')+
+    tiles('Playlists','playlists','/playlists')+'</aside></div>'+adSlot('partner-footer')+'</article>';
+  return shell({base,url,title:partner.name+' | Content partners | Noxvellox',description,body});
 }
 
 async function route(req,env){
@@ -1083,13 +1114,15 @@ async function route(req,env){
    const partner = match && partners.find(entry => entry.id === match[1]);
    if (!partner) return html(notFound({base,url:url.href}),404);
    const references = await partnerVideos(env,req,partner,db);
+   const visualAsset = await env.ASSETS.fetch(new URL('/data/partner-profiles/'+partner.id+'.json',req.url));
+   const profile = visualAsset.ok ? await visualAsset.json().catch(()=>({})) : {};
    if (match[2]) {
      const video = references.find(entry => entry.id === match[2]);
      if (!video) return html(notFound({base,url:url.href}),404);
-     return partnerWatch({video,partner,base,url:url.href,env});
+     return partnerWatch({video:{...video,poster_url:profile.previews?.[video.id]?.thumbnail || ''},partner,base,url:url.href,env});
    }
    const localFeed = await loadLocalOfficialFeed(env, req);
-   return html(partnerProfilePage({partner,localFeed,references,base,url:url.href}));
+   return html(partnerProfilePage({partner,localFeed,references,profile,base,url:url.href}));
  }
  let markup;
  const localFeed=await loadLocalOfficialFeed(env,req);
