@@ -7,7 +7,7 @@ No repositório, abra **Settings → Secrets and variables → Actions → New r
 - `OFFICIAL_FEED_URL`: URL RSS/API oficial autorizada pelo provedor.
 - `OFFICIAL_FEED_TOKEN`: token oficial, se o provedor exigir. Pode ficar vazio apenas se o endpoint for público.
 - `OFFICIAL_FEED_ALLOWED_HOSTS`: hosts autorizados separados por vírgula, por exemplo `www.pornhub.com,pornhub.com`.
-- `OFFICIAL_EMBED_TEMPLATE`: use somente se o feed não enviar o embed, por exemplo `https://www.pornhub.com/embed/{id}`.
+- `OFFICIAL_EMBED_TEMPLATE`: para provedores diferentes do Pornhub, use quando o feed não enviar o embed. Para URLs oficiais `pornhub.com/view_video.php?viewkey=...`, o importador constrói o embed canônico no mesmo host, ainda sujeito à lista permitida.
 - `OFFICIAL_FEED_MIN_DURATION_SECONDS`: opcional; padrão de 60 segundos. O workflow permite configurar 60, 300 ou 900 segundos na execução manual.
 
 O workflow não usa cookies roubados, não imita navegador e não segue redirecionamentos para hosts desconhecidos. Se a fonte continuar respondendo `403`, o snapshot anterior permanece intacto.
