@@ -39,6 +39,7 @@ jobs:
           OFFICIAL_FEED_URL: ${{ secrets.OFFICIAL_FEED_URL }}
           OFFICIAL_FEED_TOKEN: ${{ secrets.OFFICIAL_FEED_TOKEN }}
           OFFICIAL_FEED_ALLOWED_HOSTS: ${{ secrets.OFFICIAL_FEED_ALLOWED_HOSTS }}
+          OFFICIAL_FEED_EXTRA_ALLOWED_HOSTS: ${{ secrets.OFFICIAL_FEED_EXTRA_ALLOWED_HOSTS }}
           OFFICIAL_EMBED_TEMPLATE: ${{ secrets.OFFICIAL_EMBED_TEMPLATE }}
           OFFICIAL_FEED_MIN_DURATION_SECONDS: ${{ inputs.minimum_duration_seconds || '60' }}
 
