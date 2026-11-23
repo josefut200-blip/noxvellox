@@ -5,9 +5,14 @@ import path from 'node:path';
 const outputDir = path.join(process.cwd(), 'artifacts');
 const feedPath = path.join(process.cwd(), 'public', 'data', 'manual-official-videos.json');
 const rawInput = String(process.env.VIDEO_BATCH_INPUT || await fs.readFile(path.join(process.cwd(), 'data', 'video-batch-request.txt'), 'utf8').catch(() => ''));
-if (/^AUTO_FILL(?::|=)100$/i.test(rawInput.trim())) {
+const autoFillMatch = rawInput.trim().match(/^AUTO_FILL(?::|=)(\\d+)$/i);
+if (autoFillMatch) {
+  const target = Number(autoFillMatch[1]);
+  if (!Number.isInteger(target) || target < 1 || target > 200) {
+    throw new Error('AUTO_FILL target must be a whole number from 1 to 200.');
+  }
   const { spawnSync } = await import('node:child_process');
-  const result = spawnSync('python3', [path.join(process.cwd(), 'scripts', 'import-official-pornhub-embeds.py')], { stdio: 'inherit', env: process.env });
+  const result = spawnSync('python3', [path.join(process.cwd(), 'scripts', 'import-official-pornhub-embeds.py')], { stdio: 'inherit', env: { ...process.env, VIDEO_BATCH_TARGET: String(target) } });
   if (result.error) throw result.error;
   process.exit(result.status ?? 1);
 }
