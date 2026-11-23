@@ -9,7 +9,7 @@ const ADSTERra_NATIVE_ID='74f36fcf7e2078b6bab492177d48da06';
 const ADSTERRA_NATIVE_SRC='https://biomanos.org/21/74f36fcf7e2078b6bab492177d48da06';
 const ADSTERRA_SOCIAL_BAR_SRC='https://biomanos.org/14/505d9a85cd6b957598b0e25ba1854db8';
 const ADSTERRA_POPUNDER_SRC='https://benchform.org/1/02c67b439b4bd019691a72b99d34c0ca';
-const VERSION='0.3.0';
+const VERSION='0.3.1';
 const MIN_VIDEO_DURATION_SECONDS=15*60;
 const MIN_OFFICIAL_DURATION_SECONDS=60;
 const prerollVastUrl=env=>{
@@ -268,14 +268,36 @@ async function loadLocalOfficialFeed(env,req){
   return await hydrateOfficialPosters(eligible);
  }catch{return null}
 }
-async function hydrateOfficialPosters(entries){
+const posterExpiresSoon=value=>{
+ if(!String(value||'').trim())return true;
+ try{
+  const url=new URL(String(value));
+  const direct=Number(url.searchParams.get('exp')||url.searchParams.get('validto')||0);
+  const edge=url.searchParams.get('hdnea')||'';
+  const signed=edge.match(/(?:^|~)exp=(\d+)(?:~|$)/);
+  const expiry=direct||Number(signed?.[1]||0);
+  return expiry>0&&expiry<=Math.floor(Date.now()/1000)+300;
+ }catch{return true}
+};
+async function hydrateOfficialPosters(entries,db=null){
  const list=Array.isArray(entries)?entries:[];
- if(!list.some(item=>!String(item?.poster_url||'').trim()))return list;
+ if(!list.some(item=>posterExpiresSoon(item?.poster_url)))return list;
  try{
   const live=await retrieveOfficialFeed();
-  const posters=new Map(live.entries.map(item=>[item.id,item.poster_url||'']));
-  return list.map(item=>({...item,poster_url:item.poster_url||posters.get(item.id)||''}));
- }catch{return list}
+  const posters=new Map(live.entries.map(item=>[String(item.id),item.poster_url||'']));
+  const refreshed=list.map(item=>{
+   if(!posterExpiresSoon(item?.poster_url))return item;
+   const candidate=posters.get(String(item.id))||'';
+   return {...item,poster_url:isHttpsUrl(candidate)&&!posterExpiresSoon(candidate)?candidate:''};
+  });
+  if(db){
+   const updates=refreshed.filter((item,index)=>item.poster_url!==list[index]?.poster_url&&item.poster_url);
+   if(updates.length)try{await db.batch(updates.map(item=>db.prepare('UPDATE official_embeds SET poster_url=? WHERE id=?').bind(item.poster_url,item.id)))}catch{/* Keep serving refreshed links for this request even if persistence fails */}
+  }
+  return refreshed;
+ }catch{
+  return list.map(item=>posterExpiresSoon(item?.poster_url)?{...item,poster_url:''}:item);
+ }
 }
 // D1 retains public metadata from the provider's webmaster embed feed between
 // scheduled syncs. The official feed remains the fallback if D1 is unavailable.
@@ -292,7 +314,7 @@ async function officialCatalog(db,{page=1,limit=OFFICIAL_PAGE_SIZE,q='',localEnt
     db.prepare(`SELECT id,title,poster_url,duration_seconds FROM official_embeds WHERE visibility='active'${where} AND duration_seconds >= ${MIN_OFFICIAL_DURATION_SECONDS} ORDER BY CASE WHEN poster_url<>'' THEN 0 ELSE 1 END,first_seen_at DESC,id DESC LIMIT ? OFFSET ?`).bind(...(query?[match,limit,offset]:[limit,offset])).all(),
    db.prepare(`SELECT count(*) AS total FROM official_embeds WHERE visibility='active'${where} AND duration_seconds >= ${MIN_OFFICIAL_DURATION_SECONDS}`).bind(...(query?[match]:[])).first()
   ]);
-   const entries=await hydrateOfficialPosters((rows.results||[]).map(v=>({...v,source_url:OFFICIAL_ORIGIN+'/view_video.php?viewkey='+v.id,embed_url:OFFICIAL_ORIGIN+'/embed/'+v.id})));
+   const entries=await hydrateOfficialPosters((rows.results||[]).map(v=>({...v,source_url:OFFICIAL_ORIGIN+'/view_video.php?viewkey='+v.id,embed_url:OFFICIAL_ORIGIN+'/embed/'+v.id})),db);
   if(count?.total>0)return {entries,total:count.total,persisted:true};
  }catch{/* table not initialized yet; use only the live RSS */}}
  if(Array.isArray(localEntries)){
@@ -312,7 +334,7 @@ async function officialById(db,id,localEntries=null){
  if(!/^[a-z0-9]{8,24}$/i.test(String(id)))return null;
  if(db){try{
    const row=await db.prepare(`SELECT id,title,poster_url,duration_seconds FROM official_embeds WHERE id=? AND visibility='active' AND duration_seconds >= ${MIN_OFFICIAL_DURATION_SECONDS}`).bind(id).first();
-   if(row){const hydrated=(await hydrateOfficialPosters([row]))[0];return {...hydrated,source_url:OFFICIAL_ORIGIN+'/view_video.php?viewkey='+row.id,embed_url:OFFICIAL_ORIGIN+'/embed/'+row.id};}
+   if(row){const hydrated=(await hydrateOfficialPosters([row],db))[0];return {...hydrated,source_url:OFFICIAL_ORIGIN+'/view_video.php?viewkey='+row.id,embed_url:OFFICIAL_ORIGIN+'/embed/'+row.id};}
  }catch{/* fallback to RSS */}}
  if(Array.isArray(localEntries)){
      return localEntries.find(item=>item.id===id)||null;
