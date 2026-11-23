@@ -8,6 +8,7 @@ on:
     branches: [main]
     paths:
       - 'public/_worker.js'
+      - 'public/assets/style.v027.css'
       - 'public/assets/site.v028.js'
       - 'public/assets/banner-fallback.svg'
       - 'scripts/check-banner-images.mjs'
