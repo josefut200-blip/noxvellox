@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       items:
-        description: "Enter 5–10 entries separated by new lines or ;;. Each must include an official Pornhub video/embed URL. Use title | URL for a custom title."
+        description: "Enter one synced Pornhub publisher profile URL, or 5–10 video links/iframes. Use title | URL for a custom title."
         required: true
         type: string
 

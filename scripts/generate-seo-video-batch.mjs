@@ -5,8 +5,30 @@ import path from 'node:path';
 const outputDir = path.join(process.cwd(), 'artifacts');
 const feedPath = path.join(process.cwd(), 'public', 'data', 'manual-official-videos.json');
 const rawInput = String(process.env.VIDEO_BATCH_INPUT || '');
-const lines = rawInput.split(/\r?\n|;;/).map(line => line.trim()).filter(Boolean);
-if (lines.length < 5 || lines.length > 10) throw new Error(`Enter 5 to 10 entries. Received ${lines.length}.`);
+const inputLines = rawInput.split(/\r?\n|;;/).map(line => line.trim()).filter(Boolean);
+
+async function expandPartnerProfile(lines) {
+  if (lines.length !== 1) return lines;
+  let url;
+  try { url = new URL(lines[0]); } catch { return lines; }
+  if (url.protocol !== 'https:' || !(url.hostname === 'pornhub.com' || url.hostname.endsWith('.pornhub.com')) || !/^\/users\/[\w.-]+\/?$/i.test(url.pathname)) return lines;
+
+  const [partnerData, videoData] = await Promise.all([
+    fs.readFile(path.join(process.cwd(), 'public', 'data', 'partners.json'), 'utf8').then(JSON.parse),
+    fs.readFile(path.join(process.cwd(), 'public', 'data', 'partner-videos.json'), 'utf8').then(JSON.parse)
+  ]);
+  const profilePath = url.pathname.replace(/\/$/, '').toLowerCase();
+  const partner = partnerData.find(item => {
+    try { return new URL(item.url).pathname.replace(/\/$/, '').toLowerCase() === profilePath; } catch { return false; }
+  });
+  if (!partner) throw new Error('This publisher profile is not present in the synced partner directory.');
+  const videos = Array.isArray(videoData[partner.id]) ? videoData[partner.id].slice(0, 10) : [];
+  if (videos.length < 5) throw new Error('The synced partner directory has fewer than five videos for this profile.');
+  return videos.map(video => `${video.title} | https://www.pornhub.com/embed/${video.id}`);
+}
+
+const lines = await expandPartnerProfile(inputLines);
+if (lines.length < 5 || lines.length > 10) throw new Error(`Enter 5 to 10 entries, or provide one synced publisher profile. Received ${lines.length}.`);
 
 function parseLine(line, index) {
   const iframe = line.match(/<iframe\b[^>]*\bsrc=["']([^"']+)["']/i)?.[1];
