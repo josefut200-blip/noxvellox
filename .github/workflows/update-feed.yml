@@ -4,6 +4,13 @@ on:
   schedule:
     - cron: '0 */6 * * *'
   workflow_dispatch:
+    inputs:
+      minimum_duration_seconds:
+        description: Minimum duration for official feed entries
+        required: false
+        type: choice
+        default: "60"
+        options: ["60", "300", "900"]
 
 permissions:
   contents: write
@@ -33,6 +40,7 @@ jobs:
           OFFICIAL_FEED_TOKEN: ${{ secrets.OFFICIAL_FEED_TOKEN }}
           OFFICIAL_FEED_ALLOWED_HOSTS: ${{ secrets.OFFICIAL_FEED_ALLOWED_HOSTS }}
           OFFICIAL_EMBED_TEMPLATE: ${{ secrets.OFFICIAL_EMBED_TEMPLATE }}
+          OFFICIAL_FEED_MIN_DURATION_SECONDS: ${{ inputs.minimum_duration_seconds || '60' }}
 
       - name: Commit changed snapshot
         run: |
