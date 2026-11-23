@@ -9,7 +9,7 @@ const ADSTERra_NATIVE_ID='74f36fcf7e2078b6bab492177d48da06';
 const ADSTERRA_NATIVE_SRC='https://biomanos.org/21/74f36fcf7e2078b6bab492177d48da06';
 const ADSTERRA_SOCIAL_BAR_SRC='https://biomanos.org/14/505d9a85cd6b957598b0e25ba1854db8';
 const ADSTERRA_POPUNDER_SRC='https://benchform.org/1/02c67b439b4bd019691a72b99d34c0ca';
-const VERSION='0.3.2';
+const VERSION='0.3.3';
 const MIN_VIDEO_DURATION_SECONDS=15*60;
 const MIN_OFFICIAL_DURATION_SECONDS=60;
 const prerollVastUrl=env=>{
@@ -288,7 +288,7 @@ async function officialPagePoster(id){
  const key=new Request('https://noxvellox.pages.dev/__internal/official-poster-027/'+encodeURIComponent(id));
  if(cache){try{const cached=await cache.match(key);if(cached){const url=(await cached.text()).trim();if(officialPoster(url)&&!posterExpiresSoon(url))return url}}catch{/* Ignore thumbnail cache misses */}}
  try{
-  const response=await fetch(OFFICIAL_ORIGIN+'/view_video.php?viewkey='+encodeURIComponent(id),{redirect:'follow',headers:{accept:'text/html'},signal:AbortSignal.timeout(8000)});
+  const response=await fetch(OFFICIAL_ORIGIN+'/view_video.php?viewkey='+encodeURIComponent(id),{redirect:'follow',headers:{accept:'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8','accept-language':'en-US,en;q=0.9','user-agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/157.0.0.0 Safari/537.36','referer':OFFICIAL_ORIGIN+'/'},signal:AbortSignal.timeout(8000)});
   if(response.url){const dest=new URL(response.url);if(dest.protocol!=='https:'||!['www.pornhub.com','pornhub.com'].includes(dest.hostname))return ''}
   if(!response.ok)return '';
   const size=Number(response.headers.get('content-length')||0);if(size>3000000)return '';
