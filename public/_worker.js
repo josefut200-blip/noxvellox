@@ -9,7 +9,7 @@ const ADSTERra_NATIVE_ID='74f36fcf7e2078b6bab492177d48da06';
 const ADSTERRA_NATIVE_SRC='https://biomanos.org/21/74f36fcf7e2078b6bab492177d48da06';
 const ADSTERRA_SOCIAL_BAR_SRC='https://biomanos.org/14/505d9a85cd6b957598b0e25ba1854db8';
 const ADSTERRA_POPUNDER_SRC='https://benchform.org/1/02c67b439b4bd019691a72b99d34c0ca';
-const VERSION='0.3.1';
+const VERSION='0.3.2';
 const MIN_VIDEO_DURATION_SECONDS=15*60;
 const MIN_OFFICIAL_DURATION_SECONDS=60;
 const prerollVastUrl=env=>{
@@ -268,36 +268,62 @@ async function loadLocalOfficialFeed(env,req){
   return await hydrateOfficialPosters(eligible);
  }catch{return null}
 }
-const posterExpiresSoon=value=>{
- if(!String(value||'').trim())return true;
+const posterExpiry=value=>{
  try{
-  const url=new URL(String(value));
+  const url=new URL(String(value||''));
   const direct=Number(url.searchParams.get('exp')||url.searchParams.get('validto')||0);
   const edge=url.searchParams.get('hdnea')||'';
   const signed=edge.match(/(?:^|~)exp=(\d+)(?:~|$)/);
-  const expiry=direct||Number(signed?.[1]||0);
-  return expiry>0&&expiry<=Math.floor(Date.now()/1000)+300;
- }catch{return true}
+  return direct||Number(signed?.[1]||0);
+ }catch{return 0}
 };
+const posterExpiresSoon=value=>{
+ if(!String(value||'').trim())return true;
+ const expiry=posterExpiry(value);
+ return expiry>0&&expiry<=Math.floor(Date.now()/1000)+300;
+};
+async function officialPagePoster(id){
+ if(!/^[a-z0-9]{8,24}$/i.test(String(id||'')))return '';
+ const cache=(typeof caches!=='undefined'&&caches.default)?caches.default:null;
+ const key=new Request('https://noxvellox.pages.dev/__internal/official-poster-027/'+encodeURIComponent(id));
+ if(cache){try{const cached=await cache.match(key);if(cached){const url=(await cached.text()).trim();if(officialPoster(url)&&!posterExpiresSoon(url))return url}}catch{/* Ignore thumbnail cache misses */}}
+ try{
+  const response=await fetch(OFFICIAL_ORIGIN+'/view_video.php?viewkey='+encodeURIComponent(id),{redirect:'follow',headers:{accept:'text/html'},signal:AbortSignal.timeout(8000)});
+  if(response.url){const dest=new URL(response.url);if(dest.protocol!=='https:'||!['www.pornhub.com','pornhub.com'].includes(dest.hostname))return ''}
+  if(!response.ok)return '';
+  const size=Number(response.headers.get('content-length')||0);if(size>3000000)return '';
+  const html=await response.text();if(html.length>3000000)return '';
+  const candidates=[];
+  for(const match of html.matchAll(/<meta\b[^>]*>/gi)){
+   const tag=match[0];
+   if(!/\b(?:property|name)=['"](?:og:image|twitter:image)['"]/i.test(tag))continue;
+   const content=tag.match(/\bcontent=['"]([^'"]+)['"]/i)?.[1]?.replace(/&amp;/gi,'&');
+   if(officialPoster(content)&&!candidates.includes(content))candidates.push(content);
+  }
+  candidates.sort((a,b)=>(posterExpiry(b)||Number.MAX_SAFE_INTEGER)-(posterExpiry(a)||Number.MAX_SAFE_INTEGER));
+  const poster=candidates.find(value=>!posterExpiresSoon(value))||'';
+  if(poster&&cache){try{await cache.put(key,new Response(poster,{headers:{'content-type':'text/plain; charset=utf-8','cache-control':'public, max-age=86400'}}))}catch{/* Do not fail on cache errors */}}
+  return poster;
+ }catch{return ''}
+}
 async function hydrateOfficialPosters(entries,db=null){
  const list=Array.isArray(entries)?entries:[];
  if(!list.some(item=>posterExpiresSoon(item?.poster_url)))return list;
- try{
-  const live=await retrieveOfficialFeed();
-  const posters=new Map(live.entries.map(item=>[String(item.id),item.poster_url||'']));
-  const refreshed=list.map(item=>{
-   if(!posterExpiresSoon(item?.poster_url))return item;
-   const candidate=posters.get(String(item.id))||'';
-   return {...item,poster_url:isHttpsUrl(candidate)&&!posterExpiresSoon(candidate)?candidate:''};
-  });
-  if(db){
-   const updates=refreshed.filter((item,index)=>item.poster_url!==list[index]?.poster_url&&item.poster_url);
-   if(updates.length)try{await db.batch(updates.map(item=>db.prepare('UPDATE official_embeds SET poster_url=? WHERE id=?').bind(item.poster_url,item.id)))}catch{/* Keep serving refreshed links for this request even if persistence fails */}
-  }
-  return refreshed;
- }catch{
-  return list.map(item=>posterExpiresSoon(item?.poster_url)?{...item,poster_url:''}:item);
+ const live=await retrieveOfficialFeed();
+ const posters=new Map((live.entries||[]).map(item=>[String(item.id),item.poster_url||'']));
+ const refreshed=list.map(item=>{
+  if(!posterExpiresSoon(item?.poster_url))return item;
+  const candidate=posters.get(String(item.id))||'';
+  return {...item,poster_url:officialPoster(candidate)&&!posterExpiresSoon(candidate)?candidate:''};
+ });
+ const unresolved=refreshed.map((item,index)=>({item,index})).filter(({item})=>!item.poster_url).slice(0,24);
+ const pagePosters=await Promise.all(unresolved.map(({item})=>officialPagePoster(item.id)));
+ for(let i=0;i<unresolved.length;i++)if(pagePosters[i])refreshed[unresolved[i].index]={...refreshed[unresolved[i].index],poster_url:pagePosters[i]};
+ if(db){
+  const updates=refreshed.filter((item,index)=>item.poster_url!==list[index]?.poster_url&&item.poster_url);
+  if(updates.length)try{await db.batch(updates.map(item=>db.prepare('UPDATE official_embeds SET poster_url=? WHERE id=?').bind(item.poster_url,item.id)))}catch{/* Keep serving refreshed links for this request even if persistence fails */}
  }
+ return refreshed;
 }
 // D1 retains public metadata from the provider's webmaster embed feed between
 // scheduled syncs. The official feed remains the fallback if D1 is unavailable.
