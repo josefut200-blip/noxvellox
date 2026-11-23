@@ -9,7 +9,7 @@ const ADSTERra_NATIVE_ID='74f36fcf7e2078b6bab492177d48da06';
 const ADSTERRA_NATIVE_SRC='https://biomanos.org/21/74f36fcf7e2078b6bab492177d48da06';
 const ADSTERRA_SOCIAL_BAR_SRC='https://biomanos.org/14/505d9a85cd6b957598b0e25ba1854db8';
 const ADSTERRA_POPUNDER_SRC='https://benchform.org/1/02c67b439b4bd019691a72b99d34c0ca';
-const VERSION='0.3.7';
+const VERSION='0.3.8';
 const MIN_VIDEO_DURATION_SECONDS=15*60;
 const MIN_OFFICIAL_DURATION_SECONDS=60;
 const EMBED_BLOCKED_OFFICIAL_IDS=new Set(['6937cf5fea785']);
@@ -69,7 +69,7 @@ function shell({body,title,description,base,url,canonical,structured,gate=true,r
   const footer=`<footer class="footer"><div class="wrap"><div class="footer-inner"><a href="/" class="logo">NOX<span>VELLOX</span></a><nav class="footer-links" aria-label="Footer"><a href="/about">About</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/copyright">Copyright &amp; takedown</a><a href="/contact">Contact</a><a href="/admin">Publisher</a><button class="footer-pref" type="button" data-ad-preferences>Ad preferences</button><a href="/history">Watch history</a></nav></div><p class="fineprint">© ${new Date().getUTCFullYear()} Noxvellox. For adults only (18+ or higher local legal age). Independent catalog. Individual media remains the property of its respective rights holders. We accept only authorized sources. Independent providers' official embed feeds are displayed under their published embed permissions; separately imported listings require review. Optional advertising is loaded only after visitor permission.</p></div></footer>`;
   const footerWithBadge=footer;
   const headerWithCta=header.replace('<form class="search-form"','<a href="/videos" style="display:inline-flex;align-items:center;justify-content:center;background:#f24a67;color:#fff;border-radius:8px;padding:9px 13px;font-size:11px;font-weight:900;white-space:nowrap">Explore videos</a><form class="search-form"');
- return `${head({title,description,url,canonical:canonical||url,structured,robots,preview,ogType})}<body>${headerWithCta}<main>${body}</main>${footer}${gate?adultGate():''}<script defer src="/assets/site.v028.js?ver=0.4.15"></script><!-- legacy compatibility asset: /assets/app.v027.js --></body></html>`;
+ return `${head({title,description,url,canonical:canonical||url,structured,robots,preview,ogType})}<body>${headerWithCta}<main>${body}</main>${footer}${gate?adultGate():''}<script defer src="/assets/site.v028.js?ver=0.4.16"></script><!-- legacy compatibility asset: /assets/app.v027.js --></body></html>`;
 }
 const coverTitle=(title,max=66)=>safeText(title,max).replace(/\s+/g,' ').trim();
 const coverSvg=(title,kind='Official embed')=>{
