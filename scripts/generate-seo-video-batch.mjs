@@ -5,6 +5,12 @@ import path from 'node:path';
 const outputDir = path.join(process.cwd(), 'artifacts');
 const feedPath = path.join(process.cwd(), 'public', 'data', 'manual-official-videos.json');
 const rawInput = String(process.env.VIDEO_BATCH_INPUT || await fs.readFile(path.join(process.cwd(), 'data', 'video-batch-request.txt'), 'utf8').catch(() => ''));
+if (/^AUTO_FILL(?::|=)100$/i.test(rawInput.trim())) {
+  const { spawnSync } = await import('node:child_process');
+  const result = spawnSync(process.execPath, [path.join(process.cwd(), 'scripts', 'auto-fill-approved-embeds.mjs')], { stdio: 'inherit', env: process.env });
+  if (result.error) throw result.error;
+  process.exit(result.status ?? 1);
+}
 const inputLines = rawInput.split(/\r?\n|;;/).map(line => line.trim()).filter(line => line && !line.startsWith('#'));
 
 async function expandPartnerProfile(lines) {
