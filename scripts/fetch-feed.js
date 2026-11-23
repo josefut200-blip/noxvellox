@@ -199,7 +199,7 @@ function normalizeEntry(item) {
     // Feeds can include mirror links outside the approved provider list. Use
     // the same approved player URL as the source in that case; never admit an
     // unapproved host or weaken the HTTPS checks.
-    if (!String(error.message).includes('host is not in OFFICIAL_FEED_ALLOWED_HOSTS')) throw error;
+    if (!String(error.message).includes('is not in OFFICIAL_FEED_ALLOWED_HOSTS')) throw error;
     sourceUrl = embedUrl;
   }
   hostAllowed(embedUrl, 'embed_url');
