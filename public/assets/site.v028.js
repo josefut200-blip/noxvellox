@@ -45,9 +45,21 @@
     label.querySelector('input').checked=analyticsConsent()==='granted';
   }
   const APPROVED_AD_SRC='https://biomanos.org/21/74f36fcf7e2078b6bab492177d48da06';
+  const APPROVED_BANNER_320_KEY='6dd3e1d884350123ac32714fb6432fef';
+  const APPROVED_BANNER_320_SRC='https://biomanos.org/22/6dd3e1d884350123ac32714fb6432fef';
   const APPROVED_SOCIAL_BAR_SRC='https://biomanos.org/14/505d9a85cd6b957598b0e25ba1854db8';
   const APPROVED_POPUNDER_SRC='https://benchform.org/1/02c67b439b4bd019691a72b99d34c0ca';
   const loadConsentUnit=(id,src)=>{if(document.getElementById(id))return;const script=document.createElement('script');script.id=id;script.async=true;script.setAttribute('data-cfasync','false');script.src=src;document.head.append(script)};
+  const createInlineBannerSlot=()=>{
+    const slot=document.createElement('section');
+    slot.className='ad-slot banner-ad-slot';
+    slot.setAttribute('aria-label','Sponsored advertisement');
+    slot.dataset.bannerAd='';
+    slot.dataset.adState='idle';
+    slot.style.cssText='grid-column:1/-1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;min-height:84px;padding:12px;margin:8px 0;border:1px solid #49303c;border-radius:12px;background:#121016';
+    slot.innerHTML='<div class="ad-label" style="font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:#ff9caf;font-weight:800">Advertisement</div><div data-banner-container style="width:min(320px,100%);min-height:50px;display:flex;justify-content:center;overflow:hidden"></div><div data-banner-message class="ad-message" aria-live="polite"></div><button class="button ghost ad-enable" type="button" data-enable-ads hidden>Enable optional ads</button>';
+    return slot;
+  };
   const vastText=async endpoint=>{
     const response=await fetch(endpoint,{credentials:'same-origin',cache:'no-store',headers:{accept:'application/xml,text/xml,*/*'}});
     if(!response.ok)throw new Error(`VAST request failed (${response.status})`);
@@ -284,6 +296,40 @@
       s.addEventListener('error',()=>{setAdState(slot,'error');if(message)message.textContent='Advertisement is temporarily unavailable.'});
       slot.querySelector('[data-ad-container]')?.before(s);
     });
+
+    const bannerSlots=[...document.querySelectorAll('[data-banner-ad]')];
+    bannerSlots.forEach(slot=>{
+      const message=slot.querySelector('[data-banner-message]');
+      const enable=slot.querySelector('[data-enable-ads]');
+      if(c==='denied'){
+        slot.dataset.adState='disabled';
+        if(message)message.textContent='Optional ads are disabled. Enable them in Ad preferences if you want to view ads.';
+        if(enable)enable.hidden=false;
+        return;
+      }
+      if(enable)enable.hidden=true;
+      if(c!=='granted'||slot.dataset.loaded==='yes')return;
+      slot.dataset.loaded='yes';
+      slot.dataset.adState='loading';
+      if(message)message.textContent='';
+      window.atOptions={key:APPROVED_BANNER_320_KEY,format:'iframe',height:50,width:320,params:{}};
+      const options=document.createElement('script');
+      options.textContent='window.atOptions='+JSON.stringify({key:'6dd3e1d884350123ac32714fb6432fef',format:'iframe',height:50,width:320,params:{}})+';';
+      const script=document.createElement('script');
+      script.async=false;
+      script.setAttribute('data-cfasync','false');
+      script.src=APPROVED_BANNER_320_SRC;
+      script.addEventListener('load',()=>{
+        slot.dataset.adState='loaded';
+        window.setTimeout(()=>{if(!slot.querySelector('iframe'))slot.dataset.adState='loaded-no-render'},8000);
+      },{once:true});
+      script.addEventListener('error',()=>{
+        slot.dataset.adState='error';
+        if(message)message.textContent='Advertisement is temporarily unavailable.';
+      },{once:true});
+      const container=slot.querySelector('[data-banner-container]')||slot;
+      container.before(options,script);
+    });
     if(c==='granted')fetch('/api/ad-health',{credentials:'same-origin',cache:'no-store'}).then(r=>r.json()).then(data=>{adHealth.server=data;adHealth.lastChecked=new Date().toISOString()}).catch(()=>{adHealth.server={ok:false,note:'Banner health endpoint unavailable'}});
     releaseEmbeds();
   };
@@ -422,6 +468,8 @@
         if(!nextGrid)throw Error('Video list not found');
         const seen=new Set([...grid.querySelectorAll('a.video-card,a.home-video-card')].map(card=>new URL(card.getAttribute('href')||'',location.href).pathname));
         const fragment=document.createDocumentFragment();
+        let feedCount=grid.querySelectorAll('a.video-card,a.home-video-card').length;
+        let bannerInserted=Boolean(grid.querySelector('[data-banner-ad]'));
         for(const card of nextGrid.querySelectorAll('a.video-card')){
           const href=card.getAttribute('href');
           const path=href?new URL(href,location.href).pathname:'';
@@ -439,8 +487,14 @@
             if(source){source.classList.remove('sub');source.classList.add('home-video-source')}
           }
           fragment.append(clone);
+          feedCount++;
+          if(!bannerInserted&&feedCount>=24){
+            fragment.append(createInlineBannerSlot());
+            bannerInserted=true;
+          }
         }
         grid.append(fragment);
+        if(bannerInserted)renderAd();
         setupCoverImages(grid);setupVideoCards();
         const nextPager=doc.querySelector('nav[aria-label="Catalog pages"]');
         const nextPageLink=nextPager?.querySelector('a[rel="next"]');
