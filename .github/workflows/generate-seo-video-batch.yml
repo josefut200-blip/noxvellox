@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       items:
-        description: "Enter AUTO_FILL:4200 to import until the cumulative target reaches 4,200, or 5–10 video links/iframes."
+        description: "Enter AUTO_FILL:10000 to import until the cumulative target reaches 10,000, or 5–10 video links/iframes."
         required: true
         type: string
 
