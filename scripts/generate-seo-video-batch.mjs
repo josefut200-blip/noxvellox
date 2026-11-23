@@ -5,7 +5,7 @@ import path from 'node:path';
 const outputDir = path.join(process.cwd(), 'artifacts');
 const feedPath = path.join(process.cwd(), 'public', 'data', 'manual-official-videos.json');
 const rawInput = String(process.env.VIDEO_BATCH_INPUT || await fs.readFile(path.join(process.cwd(), 'data', 'video-batch-request.txt'), 'utf8').catch(() => ''));
-const inputLines = rawInput.split(/\r?\n|;;/).map(line => line.trim()).filter(Boolean);
+const inputLines = rawInput.split(/\r?\n|;;/).map(line => line.trim()).filter(line => line && !line.startsWith('#'));
 
 async function expandPartnerProfile(lines) {
   if (lines.length !== 1) return lines;
@@ -22,13 +22,14 @@ async function expandPartnerProfile(lines) {
     try { return new URL(item.url).pathname.replace(/\/$/, '').toLowerCase() === profilePath; } catch { return false; }
   });
   if (!partner) throw new Error('This publisher profile is not present in the synced partner directory.');
-  const videos = Array.isArray(videoData[partner.id]) ? videoData[partner.id].slice(0, 10) : [];
+  const videos = Array.isArray(videoData[partner.id]) ? videoData[partner.id].slice(0, 12) : [];
   if (videos.length < 5) throw new Error('The synced partner directory has fewer than five videos for this profile.');
   return videos.map(video => `${video.title} | https://www.pornhub.com/embed/${video.id}`);
 }
 
+const isProfileSource = inputLines.length === 1 && /^https:\/\/(?:[\w-]+\.)*pornhub\.com\/users\//i.test(inputLines[0]);
 const lines = await expandPartnerProfile(inputLines);
-if (lines.length < 5 || lines.length > 10) throw new Error(`Enter 5 to 10 entries, or provide one synced publisher profile. Received ${lines.length}.`);
+if (lines.length < 5 || (lines.length > 10 && !isProfileSource)) throw new Error(`Enter 5 to 10 entries, or provide one synced publisher profile. Received ${lines.length}.`);
 
 function parseLine(line, index) {
   const iframe = line.match(/<iframe\b[^>]*\bsrc=["']([^"']+)["']/i)?.[1];
@@ -120,14 +121,23 @@ const baseEntries = Array.isArray(baseFeed) ? baseFeed : (Array.isArray(baseFeed
 const byId = new Map(entries.map(entry => [String(entry.id), entry]));
 const knownIds = new Set([...entries, ...baseEntries].map(entry => String(entry?.id || '')));
 const results = [];
+let usableCount = 0;
 for (const [index, line] of lines.entries()) {
+  if (usableCount >= 10) break;
   const input = parseLine(line, index);
   if (knownIds.has(input.id)) {
     results.push({ id: input.id, result: 'already-listed' });
+    usableCount++;
     continue;
   }
-  await verifyExternalPlayback(input.id);
-  const metadata = await providerRecord(input.id);
+  let metadata;
+  try {
+    await verifyExternalPlayback(input.id);
+    metadata = await providerRecord(input.id);
+  } catch (error) {
+    results.push({ id: input.id, result: 'skipped', reason: String(error?.message || error) });
+    continue;
+  }
   const title = englishTitle(input.suppliedTitle || metadata.title);
   const category = suggestCategory(title);
   const item = {
@@ -143,7 +153,9 @@ for (const [index, line] of lines.entries()) {
   byId.set(input.id, item);
   knownIds.add(input.id);
   results.push({ id: input.id, result: 'ready-to-publish', title, category });
+  usableCount++;
 }
+if (usableCount < 5) throw new Error(`Only ${usableCount} videos passed validation. At least five are required to publish this batch.`);
 const next = { version: 1, updatedAt: new Date().toISOString(), entries: [...byId.values()] };
 await fs.mkdir(path.dirname(feedPath), { recursive: true });
 await fs.writeFile(feedPath, `${JSON.stringify(next, null, 2)}\n`);
