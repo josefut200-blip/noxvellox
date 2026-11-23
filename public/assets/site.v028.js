@@ -173,7 +173,7 @@
     });
   }
   document.querySelectorAll('[data-cover-image]').forEach(media=>{
-    const wrap=media.closest('.video-art,.player');
+    const wrap=media.closest('.video-art,.home-video-art,.player');
     const isVideo=media.tagName==='VIDEO';
     const loaded=()=>{const ready=isVideo?media.readyState>=2:media.naturalWidth>0;if(ready){wrap?.classList.add('cover-loaded');wrap?.querySelector('.cover-art-safe')?.remove()}};
     media.addEventListener(isVideo?'loadeddata':'load',loaded,{once:true});
