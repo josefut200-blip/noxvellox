@@ -3,10 +3,11 @@ import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const [worker, frontend, fallback] = await Promise.all([
+const [worker, frontend, fallback, styles] = await Promise.all([
   readFile(resolve(root, 'public/_worker.js'), 'utf8'),
   readFile(resolve(root, 'public/assets/site.v028.js'), 'utf8'),
   readFile(resolve(root, 'public/assets/banner-fallback.svg'), 'utf8'),
+  readFile(resolve(root, 'public/assets/style.v027.css'), 'utf8'),
 ]);
 
 const requirements = [
@@ -16,6 +17,7 @@ const requirements = [
   [frontend.includes("document.querySelectorAll('[data-category-image]')"), 'Frontend needs to monitor banner image load failures.'],
   [frontend.includes("const BANNER_IMAGE_FALLBACK='/assets/banner-fallback.svg'"), 'Frontend needs the local branded fallback path.'],
   [fallback.includes('<svg') && fallback.includes('NOXVELLOX'), 'The branded banner fallback SVG is missing or invalid.'],
+  [styles.includes('.video-art.cover-loaded .cover-art-safe{display:none!important}'), 'Loaded video thumbnails must hide the fallback artwork.'],
 ];
 
 const failures = requirements.filter(([ok]) => !ok).map(([, message]) => message);
