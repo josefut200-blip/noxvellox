@@ -13,6 +13,7 @@ const VERSION='0.3.6';
 const MIN_VIDEO_DURATION_SECONDS=15*60;
 const MIN_OFFICIAL_DURATION_SECONDS=60;
 const EMBED_BLOCKED_OFFICIAL_IDS=new Set(['6937cf5fea785']);
+const REMOVED_OFFICIAL_IDS=new Set(['696c7c920140e']);
 const prerollVastUrl=env=>{
   for(const key of ['PRE_ROLL_VAST_URL','ADSTERRA_VAST_URL','VAST_URL']){
     const raw=String(env?.[key]||'').trim();
@@ -338,29 +339,31 @@ async function officialCatalog(db,{page=1,limit=OFFICIAL_PAGE_SIZE,q='',localEnt
   const match=query?`%${query.replace(/[\\%_]/g,'\\$&')}%`:'';
   const where=query?" AND title LIKE ? ESCAPE '\\'":'';
   const [rows,count]=await Promise.all([
-    db.prepare(`SELECT id,title,poster_url,duration_seconds FROM official_embeds WHERE visibility='active'${where} AND duration_seconds >= ${MIN_OFFICIAL_DURATION_SECONDS} ORDER BY CASE WHEN poster_url<>'' THEN 0 ELSE 1 END,first_seen_at DESC,id DESC LIMIT ? OFFSET ?`).bind(...(query?[match,limit,offset]:[limit,offset])).all(),
-   db.prepare(`SELECT count(*) AS total FROM official_embeds WHERE visibility='active'${where} AND duration_seconds >= ${MIN_OFFICIAL_DURATION_SECONDS}`).bind(...(query?[match]:[])).first()
+    db.prepare(`SELECT id,title,poster_url,duration_seconds FROM official_embeds WHERE visibility='active' AND id<>'696c7c920140e'${where} AND duration_seconds >= ${MIN_OFFICIAL_DURATION_SECONDS} ORDER BY CASE WHEN poster_url<>'' THEN 0 ELSE 1 END,first_seen_at DESC,id DESC LIMIT ? OFFSET ?`).bind(...(query?[match,limit,offset]:[limit,offset])).all(),
+   db.prepare(`SELECT count(*) AS total FROM official_embeds WHERE visibility='active' AND id<>'696c7c920140e'${where} AND duration_seconds >= ${MIN_OFFICIAL_DURATION_SECONDS}`).bind(...(query?[match]:[])).first()
   ]);
    const entries=await hydrateOfficialPosters((rows.results||[]).map(v=>({...v,source_url:OFFICIAL_ORIGIN+'/view_video.php?viewkey='+v.id,embed_url:OFFICIAL_ORIGIN+'/embed/'+v.id})),db);
   if(count?.total>0)return {entries,total:count.total,persisted:true};
  }catch{/* table not initialized yet; use only the live RSS */}}
  if(Array.isArray(localEntries)){
   const query=String(q||'').trim().toLowerCase();
-  const eligible=localEntries.filter(item=>Number(item.duration_seconds)>=MIN_OFFICIAL_DURATION_SECONDS);
+  const eligible=localEntries.filter(item=>!REMOVED_OFFICIAL_IDS.has(String(item.id))&&Number(item.duration_seconds)>=MIN_OFFICIAL_DURATION_SECONDS);
   const filtered=query?eligible.filter(item=>String(item.title||'').toLowerCase().includes(query)):eligible;
   return {entries:filtered.slice(offset,offset+limit),total:filtered.length,persisted:false,local:true};
  }
  const live=await officialFeed();
  const query=String(q||'').trim().toLowerCase();
- const filtered=query?live.filter(item=>String(item.title||'').toLowerCase().includes(query)):live;
+ const eligible=live.filter(item=>!REMOVED_OFFICIAL_IDS.has(String(item.id)));
+ const filtered=query?eligible.filter(item=>String(item.title||'').toLowerCase().includes(query)):eligible;
  return {entries:filtered.slice(offset,offset+limit),total:filtered.length,persisted:false};
 }
 function officialCategory(id){let hash=0;for(const ch of String(id||''))hash=((hash*31)+ch.charCodeAt(0))>>>0;return categories[hash%categories.length]}
 async function officialForCategory(db,category,localEntries=null){if(category!=='Official embeds')return [];return (await officialCatalog(db,{page:1,limit:500,localEntries})).entries}
 async function officialById(db,id,localEntries=null){
+ if(REMOVED_OFFICIAL_IDS.has(String(id)))return null;
  if(!/^[a-z0-9]{8,24}$/i.test(String(id)))return null;
  if(db){try{
-   const row=await db.prepare(`SELECT id,title,poster_url,duration_seconds FROM official_embeds WHERE id=? AND visibility='active' AND duration_seconds >= ${MIN_OFFICIAL_DURATION_SECONDS}`).bind(id).first();
+   const row=await db.prepare(`SELECT id,title,poster_url,duration_seconds FROM official_embeds WHERE id=? AND id<>'696c7c920140e' AND visibility='active' AND duration_seconds >= ${MIN_OFFICIAL_DURATION_SECONDS}`).bind(id).first();
    if(row){const hydrated=(await hydrateOfficialPosters([row],db))[0];return {...hydrated,source_url:OFFICIAL_ORIGIN+'/view_video.php?viewkey='+row.id,embed_url:OFFICIAL_ORIGIN+'/embed/'+row.id};}
  }catch{/* fallback to RSS */}}
  if(Array.isArray(localEntries)){
