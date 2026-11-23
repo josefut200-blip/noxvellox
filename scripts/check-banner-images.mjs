@@ -14,6 +14,7 @@ const requirements = [
   [worker.includes('data-category-image'), 'Worker needs to mark banner images for monitoring.'],
   [worker.includes('const isTransformedPreviewImageUrl=') && worker.includes('||isTransformedPreviewImageUrl(s)'), 'Worker must treat the transformed phncdn JPEG XL preview endpoint as an image, not a video.'],
   [worker.includes('const posterExpiresSoon=value=>') && worker.includes('posterExpiresSoon(item?.poster_url)') && worker.includes('UPDATE official_embeds SET poster_url=? WHERE id=?'), 'Worker must refresh expired signed poster URLs and persist refreshed official poster links.'],
+  [worker.includes('async function officialPagePoster(id)') && worker.includes('__internal/official-poster-027/') && worker.includes("property|name)=['\"](?:og:image|twitter:image)"), 'Worker must recover a stable preview from the official page when RSS no longer lists the video.'],
   [(()=>{const path=new URL('https://pix-fl.phncdn.com/c6371/videos/202608/10/58578295/original_58578295.mov/plain/ex:1:no/bg:0:0:0/rs:fit:320:240/vts:1678?hdnea=test').pathname;return path.includes('/original_')&&path.includes('.mov/plain/')&&path.includes('/rs:fit:')&&path.endsWith('/vts:1678')})(), 'The live transformed MOV preview URL shape must be recognized.'],
   [frontend.includes("document.querySelectorAll('[data-category-image]')"), 'Frontend needs to monitor banner image load failures.'],
   [frontend.includes("const BANNER_IMAGE_FALLBACK='/assets/banner-fallback.svg'"), 'Frontend needs the local branded fallback path.'],
