@@ -1,4 +1,4 @@
-const CACHE_NAME = 'noxvellox-shell-v3';
+const CACHE_NAME = 'noxvellox-shell-v4';
 const SHELL = [
   '/',
   '/videos',
@@ -10,7 +10,7 @@ const SHELL = [
   '/assets/style.v027.css?ver=0.4.4',
   '/assets/home-dashboard.v029.css?ver=0.4.1',
   '/assets/channel-page.v031.css?ver=0.4.0',
-  '/assets/site.v028.js?ver=0.4.18'
+  '/assets/site.v028.js?ver=0.4.20'
 ];
 
 self.addEventListener('install', event => {

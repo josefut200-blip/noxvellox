@@ -59,7 +59,7 @@
     slot.dataset.bannerAd=size;
     slot.dataset.adState='idle';
     slot.style.cssText='grid-column:1/-1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;min-height:'+Math.max(84,dimensions.height+34)+'px;padding:12px;margin:8px 0;border:1px solid #49303c;border-radius:12px;background:#121016';
-    slot.innerHTML='<div class="ad-label" style="font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:#ff9caf;font-weight:800">Advertisement</div><div data-banner-container style="width:min('+dimensions.width+'px,100%);min-height:'+dimensions.height+'px;display:flex;justify-content:center;overflow:hidden"></div><div data-banner-message class="ad-message" aria-live="polite"></div><button class="button ghost ad-enable" type="button" data-enable-ads hidden>Enable optional ads</button>';
+    slot.innerHTML='<div class="ad-label" style="font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:#ff9caf;font-weight:800">Advertisement</div><div data-banner-container style="width:min('+dimensions.width+'px,100%);min-height:'+dimensions.height+'px;display:flex;justify-content:center;overflow:hidden"></div><div data-banner-message class="ad-message" aria-live="polite"></div>';
     return slot;
   };
   const vastText=async endpoint=>{
@@ -268,10 +268,9 @@
     if(!slots.length){releaseEmbeds();return;}
     slots.forEach(slot=>{
       const message=slot.querySelector('[data-ad-message]');
-      const enable=slot.querySelector('[data-enable-ads]');
+
       const container=slot.querySelector('[data-ad-container]');
-      if(c==='denied'){setAdState(slot,'disabled');if(message)message.textContent='Optional ads are disabled. You can enable them below or in Ad preferences.';if(enable)enable.hidden=false;return;}
-      if(enable)enable.hidden=true;
+      if(c==='denied'){setAdState(slot,'disabled');if(message)message.textContent='Optional ads are disabled.';return;}
       if(c==='granted'){
 }
       if(c!=='granted'||slot.dataset.loaded==='yes')return;
@@ -301,14 +300,12 @@
     };
     bannerSlots.forEach(slot=>{
       const message=slot.querySelector('[data-banner-message]');
-      const enable=slot.querySelector('[data-enable-ads]');
+
       if(c==='denied'){
         slot.dataset.adState='disabled';
-        if(message)message.textContent='Optional ads are disabled. Enable them in Ad preferences if you want to view ads.';
-        if(enable)enable.hidden=false;
+        if(message)message.textContent='Optional ads are disabled.';
         return;
       }
-      if(enable)enable.hidden=true;
       if(c!=='granted'||slot.dataset.loaded==='yes')return;
       const config=bannerConfigs[slot.dataset.bannerAd];
       if(!config){slot.dataset.adState='blocked-format';return}
@@ -338,11 +335,6 @@
     releaseEmbeds();
   };
   document.addEventListener('click',(event)=>{
-    if(event.target.closest('[data-enable-ads]')){
-      setConsent('granted');
-      renderAd();
-      return;
-    }
     if(event.target.closest('[data-ad-preferences],[data-cookie-preferences],[data-analytics-preferences]'))showCookieBanner(true);
   });
   const showCookieBanner=(customize=false)=>{
