@@ -27,7 +27,10 @@ const allowedHosts = new Set(
 );
 const embedTemplate = String(process.env.OFFICIAL_EMBED_TEMPLATE || '').trim();
 const maxBytes = 2_000_000;
-const MIN_DURATION_SECONDS = 15 * 60;
+const MIN_DURATION_SECONDS = (() => {
+  const configured = Number(process.env.OFFICIAL_FEED_MIN_DURATION_SECONDS || 60);
+  return Number.isInteger(configured) && configured >= 1 && configured <= 60000 ? configured : 60;
+})();
 
 function log(message) {
   console.log(`[feed-sync] ${message}`);
@@ -224,9 +227,10 @@ async function requestFeed() {
   const entries = parsed.map(normalizeEntry).filter(Boolean);
 
   const unique = [...new Map(entries.map(entry => [entry.id, entry])).values()];
+  const durationKnown = unique.filter(entry => entry.duration_seconds > 0).length;
   const eligible = unique.filter(entry => entry.duration_seconds >= MIN_DURATION_SECONDS);
   if (!eligible.length) {
-    throw new Error(`feed contained zero authorized entries at least 15:00 long (received ${parsed.length} records; previous snapshot preserved)`);
+    throw new Error(`feed contained no entries at least ${MIN_DURATION_SECONDS} seconds long (received ${parsed.length} records, ${unique.length} valid, ${durationKnown} with known duration; previous snapshot preserved)`);
   }
   return eligible;
 }
