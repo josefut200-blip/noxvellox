@@ -5,8 +5,10 @@
  * Configure D1 binding DB and secrets before using the admin/import features.
  */
 const SITE='Noxvellox';
-const ADSTERra_NATIVE_ID='59eef26524f2edf0d1c3c669286c974c';
-const ADSTERRA_NATIVE_SRC='https://biomanos.org/21/59eef26524f2edf0d1c3c669286c974c';
+const ADSTERra_NATIVE_ID='74f36fcf7e2078b6bab492177d48da06';
+const ADSTERRA_NATIVE_SRC='https://biomanos.org/21/74f36fcf7e2078b6bab492177d48da06';
+const ADSTERRA_SOCIAL_BAR_SRC='https://biomanos.org/14/505d9a85cd6b957598b0e25ba1854db8';
+const ADSTERRA_POPUNDER_SRC='https://benchform.org/1/02c67b439b4bd019691a72b99d34c0ca';
 const VERSION='0.2.7';
 const MIN_VIDEO_DURATION_SECONDS=15*60;
 const prerollVastUrl=env=>{
