@@ -398,50 +398,70 @@
     const setupContinuousPlayback=()=>{const player=document.querySelector('[data-player]');if(!player)return;const related=[...document.querySelectorAll('aside [data-related-candidate]:not([hidden]) a.video-card')].map(link=>normalizeInternalHref(link.getAttribute('href')||'')).filter(Boolean);if(!related.length)return;const wrap=document.createElement('label');wrap.className='continuous-toggle';const checkbox=document.createElement('input');checkbox.type='checkbox';checkbox.checked=localStorage.getItem(autoplayKey)==='yes';const text=document.createElement('span');text.textContent='Reprodução contínua opcional';wrap.append(checkbox,text);player.parentElement?.insertBefore(wrap,player.nextSibling);checkbox.addEventListener('change',()=>{try{localStorage.setItem(autoplayKey,checkbox.checked?'yes':'no')}catch{}});let nextIndex=0;const goNext=()=>{if(checkbox.checked&&related[nextIndex])location.href=related[nextIndex]};player.querySelectorAll('video').forEach(video=>video.addEventListener('ended',goNext));window.addEventListener('message',event=>{if(!checkbox.checked||event.source!==player.querySelector('iframe')||!event.data)return;const data=typeof event.data==='string'?event.data:event.data.event||event.data.type;if(String(data).toLowerCase().includes('ended'))goNext()})};
   const setupInfiniteVideos=()=>{
     const grid=document.querySelector('[data-infinite-grid]'),pager=document.querySelector('nav[aria-label="Catalog pages"]');
-    if(!grid||!pager||!('IntersectionObserver' in window))return;
-    const getNext=()=>pager.querySelector('a[rel="next"]');
-    if(!getNext())return;
+    const homeSource=grid?.dataset.infiniteSource||'';
+    if(!grid||(!pager&&!homeSource)||!('IntersectionObserver' in window))return;
+    let nextUrl=pager?.querySelector('a[rel="next"]')?.href||homeSource;
+    if(!nextUrl)return;
     const status=document.createElement('p');
     status.className='mini infinite-scroll-status';
     status.setAttribute('role','status');
     status.textContent='More videos will load as you scroll.';
-    pager.after(status);
+    (pager||grid).after(status);
     let loading=false,finished=false;
     const observer=new IntersectionObserver(entries=>{if(entries.some(entry=>entry.isIntersecting))loadNext()},{rootMargin:'700px 0px'});
     observer.observe(status);
     const loadNext=async()=>{
       if(loading||finished)return;
-      const next=getNext();
-      if(!next){finished=true;observer.disconnect();status.remove();return}
+      if(!nextUrl){finished=true;observer.disconnect();status.remove();return}
       loading=true;status.textContent='Loading more videos...';
       try{
-        const response=await fetch(next.href,{credentials:'same-origin',headers:{accept:'text/html'}});
+        const response=await fetch(nextUrl,{credentials:'same-origin',headers:{accept:'text/html'}});
         if(!response.ok)throw Error('Page request failed');
         const doc=new DOMParser().parseFromString(await response.text(),'text/html');
         const nextGrid=doc.querySelector('[data-infinite-grid]');
         if(!nextGrid)throw Error('Video list not found');
-        const seen=new Set([...grid.querySelectorAll('a.video-card')].map(card=>card.getAttribute('href')));
+        const seen=new Set([...grid.querySelectorAll('a.video-card,a.home-video-card')].map(card=>new URL(card.getAttribute('href')||'',location.href).pathname));
         const fragment=document.createDocumentFragment();
         for(const card of nextGrid.querySelectorAll('a.video-card')){
           const href=card.getAttribute('href');
-          if(!href||seen.has(href))continue;
-          seen.add(href);fragment.append(document.importNode(card,true));
+          const path=href?new URL(href,location.href).pathname:'';
+          if(!path||seen.has(path))continue;
+          seen.add(path);
+          const clone=document.importNode(card,true);
+          if(grid.classList.contains('home-video-grid')){
+            clone.className='home-video-card';
+            const art=clone.querySelector('.video-art');
+            if(art){art.classList.remove('video-art');art.classList.add('home-video-art')}
+            clone.querySelector('.play')?.remove();
+            const meta=clone.querySelector('.video-meta');
+            if(meta){meta.classList.remove('video-meta');meta.classList.add('home-video-meta')}
+            const source=clone.querySelector('.sub');
+            if(source){source.classList.remove('sub');source.classList.add('home-video-source')}
+          }
+          fragment.append(clone);
         }
         grid.append(fragment);
         setupCoverImages(grid);setupVideoCards();
         const nextPager=doc.querySelector('nav[aria-label="Catalog pages"]');
         const nextPageLink=nextPager?.querySelector('a[rel="next"]');
-        const currentPageLabel=pager.querySelector('span'),nextPageLabel=nextPager?.querySelector('span');
+        const currentNext=pager?.querySelector('a[rel="next"]');
+        const currentPageLabel=pager?.querySelector('span'),nextPageLabel=nextPager?.querySelector('span');
         if(currentPageLabel&&nextPageLabel)currentPageLabel.textContent=nextPageLabel.textContent;
-        if(nextPageLink)next.href=nextPageLink.href;
+        if(pager){
+          if(nextPageLink&&currentNext)currentNext.href=nextPageLink.href;
+          else{
+            currentNext?.remove();finished=true;observer.disconnect();
+            status.textContent='You have reached the end of the videos.';
+          }
+        }else if(nextPageLink)nextUrl=nextPageLink.href;
         else{
-          next.remove();finished=true;observer.disconnect();
+          nextUrl='';finished=true;observer.disconnect();
           status.textContent='You have reached the end of the videos.';
         }
         if(!finished)status.textContent='Scroll to keep loading videos.';
       }catch{
         finished=true;observer.disconnect();
-        status.textContent='Automatic loading failed. Use the Next page link above.';
+        status.textContent=pager?'Automatic loading failed. Use the Next page link above.':'Automatic loading failed. Use View all to continue.';
       }finally{loading=false}
     };
   };
