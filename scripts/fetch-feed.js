@@ -245,6 +245,17 @@ async function requestFeed() {
   const durationKnown = unique.filter(entry => entry.duration_seconds > 0).length;
   const eligible = unique.filter(entry => entry.duration_seconds >= MIN_DURATION_SECONDS);
   if (!eligible.length) {
+    const fieldNames = new Set();
+    for (const item of parsed.slice(0, 3)) {
+      if (!item || typeof item !== 'object' || Array.isArray(item)) continue;
+      for (const [key, value] of Object.entries(item)) {
+        fieldNames.add(key);
+        if (value && typeof value === 'object' && !Array.isArray(value)) {
+          for (const childKey of Object.keys(value)) fieldNames.add(`${key}.${childKey}`);
+        }
+      }
+    }
+    log(`Feed record field names: ${[...fieldNames].sort().join(', ') || '(none)'}`);
     throw new Error(`feed contained no entries at least ${MIN_DURATION_SECONDS} seconds long (received ${parsed.length} records, ${unique.length} valid, ${durationKnown} with known duration; previous snapshot preserved)`);
   }
   return eligible;
