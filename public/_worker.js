@@ -9,7 +9,7 @@ const ADSTERra_NATIVE_ID='74f36fcf7e2078b6bab492177d48da06';
 const ADSTERRA_NATIVE_SRC='https://biomanos.org/21/74f36fcf7e2078b6bab492177d48da06';
 const ADSTERRA_SOCIAL_BAR_SRC='https://biomanos.org/14/505d9a85cd6b957598b0e25ba1854db8';
 const ADSTERRA_POPUNDER_SRC='https://benchform.org/1/02c67b439b4bd019691a72b99d34c0ca';
-const VERSION='0.3.3';
+const VERSION='0.3.4';
 const MIN_VIDEO_DURATION_SECONDS=15*60;
 const MIN_OFFICIAL_DURATION_SECONDS=60;
 const prerollVastUrl=env=>{
@@ -48,7 +48,7 @@ const html=(s,status=200,extra={})=>new Response(s,{status,headers:{'content-typ
 const xml=s=>new Response(s,{headers:{'content-type':'application/xml; charset=utf-8','cache-control':'public, max-age=900'}});
 const slugify=s=>safeText(s,150).toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,90)||`video-${Date.now()}`;
 const isHttpsUrl=s=>{try{const u=new URL(s);return u.protocol==='https:'&&!u.username&&!u.password;}catch{return false}};
-const isTransformedPreviewImageUrl=s=>{if(!isHttpsUrl(s))return false;try{const u=new URL(s);return /(^|\.)phncdn\.com$/i.test(u.hostname)&&/\/original_[^/]+\.mov\/plain\/.*\/rs:fit:\d+:\d+\/vts:\d+(?:\/|$)/i.test(u.pathname)}catch{return false}};
+const isTransformedPreviewImageUrl=s=>{if(!isHttpsUrl(s))return false;try{const u=new URL(s);return /(^|\.)phncdn\.com$/i.test(u.hostname)&&/\/original_[^/]+\.(?:mov|mp4)\/plain\/.*\/rs:fit:\d+:\d+\/vts:\d+(?:\/|$)/i.test(u.pathname)}catch{return false}};
 const isPreviewVideoUrl=s=>{if(!isHttpsUrl(s)||isTransformedPreviewImageUrl(s))return false;try{return /\.(?:mp4|webm|mov)(?:$|[/?#])/i.test(new URL(s).pathname)}catch{return false}};
 const previewEmbedHosts=new Set(['pornhub.com','www.pornhub.com','adultembed.com','www.adultembed.com','iframe.videodelivery.net']);
 const isPreviewEmbedUrl=s=>{if(!isHttpsUrl(s))return false;try{const u=new URL(s);return previewEmbedHosts.has(u.hostname.toLowerCase())&&!u.username&&!u.password}catch{return false}};
