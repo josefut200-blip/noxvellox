@@ -24,6 +24,7 @@ const prerollVastUrl=env=>{
   return '';
 };
 const categories=['Featured','Trending','New Releases','Originals','Collections','Interviews','Brazilian','Couples','Solo','Amateur','Wellness','Brazzers','Official embeds'];
+const VISIBLE_NAV_CATEGORIES=['Featured','Trending','New Releases','Brazilian','Brazzers','Official embeds'];
 const categoryMeta={
  Featured:{eyebrow:'Editor picks',description:'Hand-picked highlights from verified sources.',cover:'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=1200&q=82'},
  Trending:{eyebrow:'Trending',description:'The collections visitors are exploring most right now.',cover:'https://images.unsplash.com/photo-1529139574466-a303027c1d8b?auto=format&fit=crop&w=1200&q=82'},
@@ -87,7 +88,7 @@ const coverMarkup=(poster,title,kind='Video preview',embed='')=>{const source=is
 const card=(v)=>{const slug=encodeURIComponent(v.slug);const dur=v.duration_seconds?duration(v.duration_seconds):'';const href=v.official?`/official-watch/${slug}`:`/watch/${slug}`;return `<a class="video-card" href="${href}"><div class="video-art">${coverMarkup(v.poster_url,v.title,'Video preview',v.embed_url)}<span class="play" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22"><path d="M8 5v14l11-7z" fill="currentColor"/></svg></span>${dur?`<span class="duration">${dur}</span>`:''}</div><div class="video-meta"><h3>${esc(v.title)}</h3><div class="sub"><strong>${esc(v.category)}</strong>  ·  ${esc(v.provider||'Catalog')}</div></div></a>`;};
 const duration=n=>{let x=Math.max(0,Number(n)||0);return `${Math.floor(x/60)}:${String(x%60).padStart(2,'0')}`};
 const emptyMarkup=`<div class="empty"><div><strong>New collection coming soon</strong><p>We are curating authorized videos. This launch preview does not contain unlicensed or fabricated video listings.</p></div></div>`;
-const categoryChips=(current='')=>`<div class="chip-row"><a class="chip ${!current?'active':''}" href="/videos">All videos</a>${categories.map(c=>`<a class="chip ${current===c?'active':''}" href="/category/${slugify(c)}">${esc(c)}</a>`).join('')}</div>`;
+const categoryChips=(current='')=>`<div class="chip-row"><a class="chip ${!current?'active':''}" href="/videos">All videos</a>${VISIBLE_NAV_CATEGORIES.map(c=>`<a class="chip ${current===c?'active':''}" href="/category/${slugify(c)}">${esc(c)}</a>`).join('')}</div>`;
 const searchTaxonomy=q=>{const term=String(q||'').trim().toLowerCase();if(!term)return {channels:[],categories:[]};const channels=channelsV2.filter(ch=>[ch.name,ch.slug,ch.category,ch.eyebrow,ch.description].some(value=>String(value||'').toLowerCase().includes(term)));const matchedCategories=categories.filter(category=>String(category).toLowerCase().includes(term));return {channels, categories:matchedCategories};};
 const categoryDescriptions={Featured:'Hand-picked catalog highlights.',Trending:'Popular titles being explored now.','New Releases':'Freshly added official metadata.',Originals:'Independent original collections.',Collections:'Curated themes grouped together.',Interviews:'Conversation and behind-the-scenes formats.',Brazilian:'Portuguese-language and Brazil-focused collections.',Couples:'Authorized couple and partner collections.',Solo:'Solo performances from approved sources.',Amateur:'Independent amateur collections with source attribution.',Wellness:'Adult wellness and education-oriented collections.',Brazzers:'Brazzers candidates, shown only after verification.','Official embeds':'Publisher-supplied embeds with source attribution.'};
 const categoryCards=()=>`<div class="category-grid">${categories.map(c=>`<a class="category-card" href="/category/${slugify(c)}"><span class="category-card-kicker">Noxvellox collection</span><h2>${esc(c)}</h2><p>${esc(categoryDescriptions[c]||'Browse this curated collection.')}</p><span class="category-card-link">Browse category </span></a>`).join('')}</div>`;
@@ -118,7 +119,7 @@ const channelsV2=[
 ];
 const categoryDescriptionsV2=Object.fromEntries(categories.map(c=>[c,categoryMetaV2[c]?.description||'Browse this curated collection.']));
 const categoryHrefV2=c=>`/category/${slugify(c)}`;
-const categoryCardsV2=()=>`<div class="category-grid">${categories.map(c=>{const meta=categoryMetaV2[c]||{};return `<a class="category-card" href="${categoryHrefV2(c)}"><div class="category-card-media"><img src="${esc(meta.cover||'')}" loading="lazy" decoding="async" data-category-image alt="${esc(c)} category cover"><div class="category-card-shade"></div><span class="category-card-count">${esc(meta.eyebrow||'Noxvellox collection')}</span></div><div class="category-card-body"><h2>${esc(c)}</h2><p>${esc(categoryDescriptionsV2[c])}</p><span class="category-card-link">Browse collection</span></div></a>`}).join('')}</div>`;
+const categoryCardsV2=()=>`<div class="category-grid">${VISIBLE_NAV_CATEGORIES.map(c=>{const meta=categoryMetaV2[c]||{};return `<a class="category-card" href="${categoryHrefV2(c)}"><div class="category-card-media"><img src="${esc(meta.cover||'')}" loading="lazy" decoding="async" data-category-image alt="${esc(c)} category cover"><div class="category-card-shade"></div><span class="category-card-count">${esc(meta.eyebrow||'Noxvellox collection')}</span></div><div class="category-card-body"><h2>${esc(c)}</h2><p>${esc(categoryDescriptionsV2[c])}</p><span class="category-card-link">Browse collection</span></div></a>`}).join('')}</div>`;
 const discoveryModelV2=()=>`<section class="discovery-model"><div class="discovery-model-copy"><div class="section-kicker">Simple discovery</div><h2>Find by interest or by source</h2><p>Categories answer <strong>what</strong> you want to explore. Channels answer <strong>who</strong> publishes it. The two systems stay separate so browsing remains clear.</p></div><div class="discovery-model-grid"><a href="/categories"><span>WHAT</span><strong>Categories</strong><small>Theme, style or niche</small></a><a href="/channels"><span>WHO</span><strong>Channels</strong><small>Studio, publisher or creator</small></a></div></section>`;
 const channelCardsV2=()=>`<div class="channel-grid">${channelsV2.map(ch=>`<a class="channel-card" href="/channels/${encodeURIComponent(ch.slug)}"><div class="channel-banner"><img src="${esc(ch.cover)}" loading="lazy" decoding="async" data-category-image alt="${esc(ch.name)} channel cover"><div class="channel-banner-shade"></div></div><div class="channel-card-body"><div class="channel-avatar">${esc(ch.name.slice(0,1))}</div><div><span class="category-card-kicker">${esc(ch.eyebrow)}</span><h2>${esc(ch.name)}</h2><p>${esc(ch.description)}</p></div></div></a>`).join('')}</div>`;
 function channelPageV2({base,url,channel,videos=[],official=[]}){
@@ -174,7 +175,7 @@ function channelPageV4({base,url,canonicalUrl,channel,videos=[],official=[],tota
  const structured={'@context':'https://schema.org','@graph':[{'@type':'WebPage','@id':`${canonicalUrl}#page`,url:canonicalUrl,name:'Brazzers - Videos and Channel | Noxvellox',description:'Editorial Brazzers channel page on Noxvellox, with authorized public videos and real catalog data.'},{'@type':'BreadcrumbList',itemListElement:[{ '@type':'ListItem',position:1,name:'Home',item:base+'/'},{ '@type':'ListItem',position:2,name:'Channels',item:base+'/channels'},{ '@type':'ListItem',position:3,name:channel.name,item:canonicalUrl}]}]};
  const followSlug=JSON.stringify(channel.slug);
  const followScript=`<script>(()=>{const slug=${followSlug},button=document.querySelector('[data-follow-channel="'+slug+'"]'),status=document.querySelector('[data-follow-status="'+slug+'"]');if(!button)return;const key='noxvellox-followed-channels';let memoryFollowed=false;const read=()=>{try{return JSON.parse(localStorage.getItem(key)||'[]')}catch{return memoryFollowed?[slug]:[]}};const write=value=>{memoryFollowed=value.includes(slug);try{localStorage.setItem(key,JSON.stringify(value))}catch{}};const paint=()=>{const active=read().includes(slug);button.textContent=active?'Following channel':'Subscribe';button.setAttribute('aria-pressed',String(active));if(status)status.textContent=active?'Saved on this device':''};paint();button.addEventListener('click',()=>{const current=read(),index=current.indexOf(slug);if(index>=0)current.splice(index,1);else current.push(slug);write(current);paint()})})();</script>`;
- return shell({title:'Brazzers - Videos and Channel | Noxvellox',description:'Canal Brazzers no Noxvellox: vídeos p · blicos autorizados, informações do canal e atualizações do catálogo.',base,url,canonical:canonicalUrl,body:body+followScript,structured});
+ return shell({title:'Brazzers - Videos and Channel | Noxvellox',description:'Brazzers channel on Noxvellox: authorized public videos, channel information and catalog updates.',base,url,canonical:canonicalUrl,body:body+followScript,structured});
 }
 
 // Free, read-only, provider-published embed feed. Unlike admin uploads, this is an
@@ -463,7 +464,7 @@ const homeChannelCardV3=ch=>`<a class="home-channel-card" href="/channels/${enco
 function homePageV3({base,url,videos,official=[],partners}){
  const recent=[...videos.map(v=>({...v,__official:false})),...official.map(v=>({...v,__official:true}))].slice(0,8);
 
- const visibleCategories=categories.slice(0,7);
+ const visibleCategories=VISIBLE_NAV_CATEGORIES;
  const categoryTiles=visibleCategories.map(c=>{const meta=categoryMetaV2[c]||{};return `<a class="home-category-card" href="${categoryHrefV2(c)}"><div class="home-category-art"><img src="${esc(meta.cover||'')}" loading="lazy" decoding="async" data-category-image alt="${esc(c)} category cover"><div class="home-category-shade"></div><span class="home-category-icon" aria-hidden="true">${c==='Brazzers'?'✓':c==='Wellness'?'♡':'✦'}</span></div><div class="home-category-copy"><strong>${esc(c)}</strong><br><small>${esc(meta.eyebrow||'Curated collection')}</small></div></a>`}).join('');
  const channelTiles=partners.slice(0,6).map(partnerTile).join('');
  const recentMarkup=recent.length?recent.map(v=>homeCardV3(v,v.__official===true)).join(''):`<div class="empty"><strong>No recent public videos yet</strong><p>Approved listings will appear here automatically.</p></div>`;
@@ -498,13 +499,13 @@ function listPage({url,base,videos,official=[],title='All videos',subtitle='Brow
   const feedItems=videos.length?videos.map(card):official.map(officialCard);
   const renderedFeed=infinite&&feedItems.length>12?`${feedItems.slice(0,12).join('')}${adSlot('feed')}${feedItems.slice(12).join('')}`:feedItems.join('');
   const body=`<section class="wrap page-head"><div class="section-kicker">Noxvellox library</div><h1>${esc(title)}</h1><p>${esc(subtitle)}</p></section><section class="wrap">${categoryChips(category)}<div class="section" style="margin-top:25px"><div class="video-grid"${infinite?' data-infinite-grid':''}>${renderedFeed||(title==='Free Official Embeds'?'<div class="empty"><strong>Official provider feed temporarily unavailable</strong><p>Please try later. No placeholder videos or unverified embeds will be published.</p></div>':emptyMarkup)}</div>${official.length?(official[0]?.from_snapshot?'<p class="mini"><strong>Contingency catalog:</strong> last observed in the provider official RSS on November 22, 2026. This is NOT a live availability check. Entries may have been removed; playback and rights remain subject to provider policy. No video files are hosted here.</p>':'<p class="mini">Free embeds from the official platform RSS. Video files are not stored on Noxvellox; some content may be region-restricted.</p>'):''}</div>${officialPagination}${infinite?'':adSlot()}</section>`;
-  return shell({title:`${title}${pageSuffix} | Noxvellox`,description:metaDescription,base,url,body});
+  return shell({title:`${title}${pageSuffix} | Noxvellox`,description:metaDescription,base,url,body,robots:pageNumber>10?'noindex,follow':undefined});
 }
 function searchPage({url,base,q,videos,official=[],channels=[],matchedCategories=[]}){
  const cards=[...videos.map(card),...official.map(officialCard)];
  const taxonomy=(channels.length||matchedCategories.length)?`<section class="search-discovery" aria-label="Related channels and categories"><div class="search-discovery-head"><div><div class="section-kicker">Explore by source or interest</div><h2>Related results</h2></div></div><div class="search-entity-grid">${channels.map(ch=>`<a class="search-entity" href="/channels/${encodeURIComponent(ch.slug)}"><span>Channel</span><strong>${esc(ch.name)}</strong><small>${esc(ch.eyebrow||'Curated channel')}</small></a>`).join('')}${matchedCategories.map(category=>`<a class="search-entity" href="/category/${slugify(category)}"><span>Category</span><strong>${esc(category)}</strong><small>${esc(categoryDescriptions[category]||'Browse this collection')}</small></a>`).join('')}</div></section>`:'';
  const body=`<section class="wrap page-head"><div class="section-kicker">Noxvellox search</div><h1>Search: ${esc(q||'Videos')}</h1><p>Results across published videos, official embeds, channels and categories.</p></section><section class="wrap">${taxonomy}<div class="section" style="margin-top:25px"><div class="video-grid">${cards.length?cards.join(''):`<div class="empty"><strong>No matching videos found</strong><p>Try another title, performer, channel or category name.</p></div>`}</div>${official.length?'<p class="mini">Official embeds are linked to the original provider; no video files are hosted by Noxvellox.</p>':''}</div>${adSlot()}</section>`;
-  return shell({title:`Search: ${q||'Videos'} | Noxvellox`,description:`Search Noxvellox videos and official embeds for ${q||'videos'}.`,base,url,body});
+  return shell({title:`Search: ${q||'Videos'} | Noxvellox`,description:`Search Noxvellox videos and official embeds for ${q||'videos'}.`,base,url,body,robots:'noindex,follow'});
 }
 function watchPage({url,base,v,related,relatedCard=card,env}){
   const embed=allowedEmbed(v.embed_url,env);
@@ -651,8 +652,23 @@ async function adminPage({db,env,url,req,base}){
  const body=!configured?'<section class="wrap page-head"><h1>Publisher dashboard unavailable</h1><p>Administrator secrets are not configured. Access is blocked until ADMIN_PASSWORD and SESSION_SECRET are saved as production secrets.</p></section>':adminBody({logged,videos,db,feedReady:feedConfigured(env)})+(logged?'<div class="wrap"><p class="notice"><strong>Active filter:</strong> only videos with a minimum duration of 15:00 can be reviewed and published. Entries without reliable duration, authorized artwork, or an authorized player remain private.</p></div>':'');
   return shell({base,url,gate:false,robots:'noindex,nofollow',title:'Publisher dashboard | Noxvellox',description:'Private content management console.',body:`${body}<script defer src="/assets/admin.v027.js?ver=0.4.2"></script>`});
 }
+function normalizeImportedTitle(raw){
+ const original=safeText(raw,140).replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu,'').replace(/\s+/g,' ').trim();
+ if(!original)return '';
+ const promotional=/^(?:watch|download|free|hot|new|official|full|now|video)[\s!|:_-]+/i;
+ const cleaned=original.replace(promotional,'').replace(/[!?|*_~]+/g,' ').replace(/\s+/g,' ').trim();
+ if(!cleaned)return '';
+ const letters=cleaned.replace(/[^A-Za-zÀ-ÿ]/g,'');
+ const shouldTitle=letters.length>8&&letters===letters.toUpperCase();
+ return shouldTitle?cleaned.toLowerCase().replace(/(^|[\s-])([a-zà-ÿ])/g,(_,p,c)=>p+c.toUpperCase()):cleaned;
+}
+function inferImportedCategory(item,fallback='Featured'){
+ const hay=String([item.title,item.description,item.channel,item.studio,item.language,item.locale].filter(Boolean).join(' ')).toLowerCase();
+ return /\b(brazil|brazilian|brasileir|brasil|rio|s[aã]o paulo|\bsp\b|\bpt[-_]?br\b|portuguese)\b/.test(hay)?'Brazilian':fallback;
+}
+
 async function addVideo(db,item,{fromFeed=false}={}){
- const title=safeText(item.title,140),description=safeText(item.description,1600);
+ const title=normalizeImportedTitle(item.title),description=safeText(item.description,1600)||`${title}. Authorized metadata from ${safeText(item.provider||'the original publisher',80)}.`;
  const uid=streamUid(item.stream_uid||item.streamUid);
  if((item.stream_uid||item.streamUid)&&!uid)throw Error('Cloudflare Stream UID must be exactly 32 hexadecimal characters, from a ready licensed video.');
  if(uid&&(item.embed_url||item.embedUrl))throw Error('Choose one player method: Stream UID or licensed embed URL, not both.');
@@ -665,9 +681,10 @@ async function addVideo(db,item,{fromFeed=false}={}){
  const adults=item.adults_verified===true||item.adults_verified==='yes'||item.adultsVerified===true;
  const provider=uid?'cloudflare-stream':safeText(item.provider|| (fromFeed?'authorized-feed':'manual'),50);
  const source_id=uid||safeText(item.source_id||item.sourceId||'',100);
+ if(source_id){const duplicate=await db.prepare('SELECT id FROM videos WHERE provider=? AND source_id=? LIMIT 1').bind(provider,source_id).first();if(duplicate)return false;}
  const slug=slugify(item.slug||title)+(uid?'-'+uid.slice(0,12):(fromFeed&&source_id?'-'+slugify(source_id).slice(0,20):''));
   const duration=Math.max(0,Math.min(100000,parseInt(item.duration_seconds||item.durationSeconds||0,10)||0));
- const record=[slug,title,description,safeText(item.category||'Featured',40),poster_url,embed_url,source_url,source_id,provider,duration,rights?1:0,adults?1:0];
+ const record=[slug,title,description,inferImportedCategory(item,safeText(item.category||'Featured',40)),poster_url,embed_url,source_url,source_id,provider,duration,rights?1:0,adults?1:0];
  const result=await db.prepare('INSERT OR IGNORE INTO videos (slug,title,description,category,poster_url,embed_url,source_url,source_id,provider,duration_seconds,rights_confirmed,adults_verified,status) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,\'pending\')').bind(...record).run();
  return (result.meta?.changes||0)>0;
 }
