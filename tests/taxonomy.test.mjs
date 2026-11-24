@@ -40,6 +40,26 @@ test('category indexability requires 20 videos and a valid intro length', () => 
   assert.equal(indexableCategory({...brazilian, intro_en: 'short intro'}, 20, taxonomy), false);
   assert.equal(indexableCategory({...brazilian, intro_en: Array(122).fill('word').join(' ')}, 20, taxonomy), false);
 });
+test('category directory marks an approved 20-video category indexable for the sitemap', async () => {
+  const start = worker.indexOf('async function categoryDirectory(db,taxonomy,limit=30){');
+  const end = worker.indexOf('\nasync function taxonomyCategoryVideos(', start);
+  assert.notEqual(start, -1, 'Worker must define the category directory query');
+  assert.notEqual(end, -1, 'Worker category directory boundary must exist');
+  const categoryDirectory = new Function('indexableCategory','MIN_VIDEO_DURATION_SECONDS', worker.slice(start, end) + '; return categoryDirectory;')(indexableCategory, 900);
+  const row = {...brazilian, group_slug:'performers-origin', group_name:'Performers & Origin', count:20};
+  const db = {prepare(){ return {bind(){ return {all:async()=>({results:[row]})}; }}; }};
+  const [entry] = await categoryDirectory(db, taxonomy, 500);
+  assert.equal(entry.seo_indexable, true);
+  assert.equal(entry.count, 20);
+});
+test('sitemap adds eligible categories before optional video queries', () => {
+  const routeStart = worker.indexOf("if(path==='/sitemap.xml'){");
+  const routeEnd = worker.indexOf("if(req.method!=='GET'", routeStart);
+  assert.notEqual(routeStart, -1, 'Worker must define the sitemap route');
+  const sitemapRoute = worker.slice(routeStart, routeEnd);
+  assert.ok(sitemapRoute.indexOf('const categoryPages=await categoryDirectory') < sitemapRoute.indexOf('const published=await db.prepare'));
+  assert.ok(sitemapRoute.indexOf('const categoryPages=await categoryDirectory') < sitemapRoute.indexOf('const official=await db.prepare'));
+});
 test('category renderer shows the 20 cards, index directive, and clean canonical', () => {
   const videos = Array.from({length: 20}, (_, index) => ({title: 'Preview fixture ' + (index + 1)}));
   const page = renderCategory({base:'https://noxvellox.site',url:'https://noxvellox.site/category/brazilian',category:brazilian,videos,total:20,taxonomy,filters:{}});
