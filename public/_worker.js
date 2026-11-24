@@ -850,6 +850,11 @@ async function fetchVastXml(url,depth=0){
  if(!/^https:\/\//i.test(next))return xml;
  return fetchVastXml(next,depth+1);
 }
+const extractVastMedia=xml=>{
+ const media=String(xml||'').match(/<MediaFile\b[^>]*>[\s\S]*?(?:<!\[CDATA\[)?\s*(https:\/\/[^<\]\s]+)\s*(?:\]\]>)?[\s\S]*?<\/MediaFile>/i);
+ const click=String(xml||'').match(/<ClickThrough\b[^>]*>[\s\S]*?(?:<!\[CDATA\[)?\s*(https:\/\/[^<\]\s]+)\s*(?:\]\]>)?[\s\S]*?<\/ClickThrough>/i);
+ return media?{mediaUrl:media[1].trim(),clickUrl:click?.[1]?.trim()||''}:null;
+};
 async function api(req,env,url,db){
  const path=url.pathname;
  if(path==='/api/pre-roll-vast'&&req.method==='GET'){
@@ -857,6 +862,11 @@ async function api(req,env,url,db){
   if(!target)return new Response('Video pre-roll is not configured.',{status:404,headers:{'content-type':'text/plain; charset=utf-8','cache-control':'no-store'}});
   try{
    const xml=await fetchVastXml(target);
+   if(url.searchParams.get('format')==='json'){
+    const ad=extractVastMedia(xml);
+    if(!ad)throw new Error('VAST response has no playable media');
+    return json({ok:true,...ad});
+   }
    return new Response(xml,{status:200,headers:{'content-type':'application/xml; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff'}});
   }catch{return new Response('Video ad provider unavailable.',{status:502,headers:{'content-type':'text/plain; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff'}})}
  }
