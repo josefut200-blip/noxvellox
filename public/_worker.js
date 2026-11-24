@@ -5,6 +5,7 @@
  * Configure D1 binding DB and secrets before using the admin/import features.
  */
 const SITE='Noxvellox';
+const PUBLIC_ORIGIN='https://noxvellox.site';
 const ADSTERra_NATIVE_ID='74f36fcf7e2078b6bab492177d48da06';
 const ADSTERRA_NATIVE_SRC='https://biomanos.org/21/74f36fcf7e2078b6bab492177d48da06';
 const ADSTERRA_SOCIAL_BAR_SRC='https://biomanos.org/14/505d9a85cd6b957598b0e25ba1854db8';
@@ -24,9 +25,9 @@ const prerollVastUrl=env=>{
 };
 const categories=['Featured','Trending','New Releases','Originals','Collections','Interviews','Brazilian','Couples','Solo','Amateur','Wellness','Brazzers','Official embeds'];
 const categoryMeta={
- Featured:{eyebrow:'Escolhas do editor',description:'Hand-picked highlights from verified sources.',cover:'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=1200&q=82'},
- Trending:{eyebrow:'Em alta',description:'The collections visitors are exploring most right now.',cover:'https://images.unsplash.com/photo-1529139574466-a303027c1d8b?auto=format&fit=crop&w=1200&q=82'},
- 'New Releases':{eyebrow:'Novidades',description:'Recently added metadata from approved publishers.',cover:'https://images.unsplash.com/photo-1496747611176-843222e1e57c?auto=format&fit=crop&w=1200&q=82'},
+ Featured:{eyebrow:'Editor picks',description:'Hand-picked highlights from verified sources.',cover:'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=1200&q=82'},
+ Trending:{eyebrow:'Trending',description:'The collections visitors are exploring most right now.',cover:'https://images.unsplash.com/photo-1529139574466-a303027c1d8b?auto=format&fit=crop&w=1200&q=82'},
+ 'New Releases':{eyebrow:'New releases',description:'Recently added metadata from approved publishers.',cover:'https://images.unsplash.com/photo-1496747611176-843222e1e57c?auto=format&fit=crop&w=1200&q=82'},
  Originals:{eyebrow:'Original collections',description:'Independent releases with clear source attribution.',cover:'https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=1200&q=82'},
  Collections:{eyebrow:'Curated themes',description:'Organized collections built for easy discovery.',cover:'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=1200&q=82'},
  Interviews:{eyebrow:'Behind the scenes',description:'Conversation, profile and behind-the-scenes formats.',cover:'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=1200&q=82'},
@@ -45,9 +46,9 @@ const channels=[
 ];
 const esc=v=>String(v??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
 const safeText=(v,max=220)=>String(v??'').replace(/[\u0000-\u001f]/g,' ').trim().slice(0,max);
-const json=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff'}});
-const html=(s,status=200,extra={})=>new Response(s,{status,headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff','referrer-policy':'strict-origin-when-cross-origin','x-frame-options':'DENY','permissions-policy':'camera=(), microphone=(), geolocation=()',...extra}});
-const xml=s=>new Response(s,{headers:{'content-type':'application/xml; charset=utf-8','cache-control':'public, max-age=900'}});
+const json=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff','strict-transport-security':'max-age=31536000; includeSubDomains'}});
+const html=(s,status=200,extra={})=>new Response(s,{status,headers:{'content-type':'text/html; charset=utf-8','cache-control':extra['cache-control']||'public, max-age=60, s-maxage=300, stale-while-revalidate=60','x-content-type-options':'nosniff','strict-transport-security':'max-age=31536000; includeSubDomains','referrer-policy':'strict-origin-when-cross-origin','x-frame-options':'DENY','permissions-policy':'camera=(), microphone=(), geolocation=()',...extra}});
+const xml=s=>new Response(s,{headers:{'content-type':'application/xml; charset=utf-8','cache-control':'public, max-age=900, s-maxage=900, stale-while-revalidate=3600','x-content-type-options':'nosniff','strict-transport-security':'max-age=31536000, includeSubDomains'}});
 const slugify=s=>safeText(s,150).toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,90)||`video-${Date.now()}`;
 const isHttpsUrl=s=>{try{const u=new URL(s);return u.protocol==='https:'&&!u.username&&!u.password;}catch{return false}};
 const isTransformedPreviewImageUrl=s=>{if(!isHttpsUrl(s))return false;try{const u=new URL(s);return /(^|\.)phncdn\.com$/i.test(u.hostname)&&/\/original_[^/]+\.(?:mov|mp4)\/plain\/.*\/rs:fit:\d+:\d+\/vts:\d+(?:\/|$)/i.test(u.pathname)}catch{return false}};
@@ -59,7 +60,7 @@ const streamEmbed=uid=>`https://iframe.videodelivery.net/${uid}`;
 const validStreamEmbed=url=>{try{const u=new URL(url);return u.protocol==='https:'&&u.hostname==='iframe.videodelivery.net'&&/^\/[a-f0-9]{32}\/?$/i.test(u.pathname)&&!u.search&&!u.hash&&!u.username&&!u.password;}catch{return false}};
 
 const adultGate=()=>`<div class="age-overlay" data-age-gate role="dialog" aria-modal="true" aria-labelledby="age-heading"><div class="age-dialog"><div class="emblem">18+</div><h2 id="age-heading">Adults only</h2><p>Noxvellox is intended exclusively for adults aged 18 or older, or the higher legal age required in your jurisdiction. Confirm that you meet the age requirement before accessing the catalog.</p><button class="button" type="button" data-age-confirm>I am 18+ - Enter site</button><div><a class="exit" href="https://www.google.com/">Exit this site</a></div><p class="mini" style="margin-top:20px">This acknowledgement is not a substitute for identity-based age verification where required by law.</p></div></div>`;
-function head({title,description,url,canonical,robots='index,follow',structured='',preview='https://noxvellox.pages.dev/assets/og-noxvellox.svg',ogType='website'}){
+function head({title,description,url,canonical,robots='index,follow',structured='',preview='https://noxvellox.site/assets/og-noxvellox.svg',ogType='website'}){
   const n=esc(title),d=esc(description),c=esc(String(canonical||url).split('?')[0].split('#')[0]);
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="rating" content="adult"><meta name="RATING" content="RTA-5042-1996-1400-1577-RTA"><meta name="google-site-verification" content="TnWlco6s3hCXuvvXnL6SylcJ01OBAHl6yvzDzMRj0J4"><meta name="msvalidate.01" content="0DC5320416F7A8F505471E6805AF42F2"><meta name="robots" content="${robots}"><title>${n}</title><meta name="description" content="${d}"><link rel="canonical" href="${c}"><meta property="og:type" content="${esc(ogType)}"><meta property="og:title" content="${n}"><meta property="og:description" content="${d}"><meta property="og:url" content="${c}">${preview?`<meta property="og:image" content="${esc(preview)}"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta property="og:image:type" content="image/svg+xml">`:''}<meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="${n}"><meta name="twitter:description" content="${d}">${preview?`<meta name="twitter:image" content="${esc(preview)}">`:''}<meta name="theme-color" content="#09090d"><link rel="icon" type="image/svg+xml" href="/favicon.svg"><link rel="stylesheet" href="/assets/style.v027.css?ver=0.4.7"><link rel="stylesheet" href="/assets/home-dashboard.v029.css?ver=0.4.1"><link rel="stylesheet" href="/assets/channel-page.v031.css?ver=0.4.0">${structured?`<script type="application/ld+json">${JSON.stringify(structured).replace(/</g,'\\u003c')}</script>`:''}</head>`;
 }
@@ -69,7 +70,7 @@ function shell({body,title,description,base,url,canonical,structured,gate=true,r
   const footer=`<footer class="footer"><div class="wrap"><div class="footer-inner"><a href="/" class="logo">NOX<span>VELLOX</span></a><nav class="footer-links" aria-label="Footer"><a href="/about">About</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/copyright">Copyright &amp; takedown</a><a href="/contact">Contact</a><a href="/admin">Publisher</a><button class="footer-pref" type="button" data-ad-preferences>Cookie preferences</button><a href="/history">Watch history</a></nav></div><p class="fineprint">© ${new Date().getUTCFullYear()} Noxvellox. For adults only (18+ or higher local legal age). Independent catalog. Individual media remains the property of its respective rights holders. We accept only authorized sources. Independent providers' official embed feeds are displayed under their published embed permissions; separately imported listings require review. Optional advertising is loaded only after visitor permission.</p></div></footer>`;
   const footerWithBadge=footer;
   const headerWithCta=header.replace('<form class="search-form"','<a href="/videos" style="display:inline-flex;align-items:center;justify-content:center;background:#f24a67;color:#fff;border-radius:8px;padding:9px 13px;font-size:11px;font-weight:900;white-space:nowrap">Explore videos</a><form class="search-form"');
- return `${head({title,description,url,canonical:canonical||url,structured,robots,preview,ogType})}<body>${headerWithCta}<main>${body}</main>${footer}${gate?adultGate():''}<script defer src="/assets/site.v028.js?ver=0.4.20"></script><!-- legacy compatibility asset: /assets/app.v027.js --></body></html>`;
+ return `${head({title,description,url,canonical:canonical||PUBLIC_ORIGIN+new URL(url).pathname,structured,robots,preview,ogType})}<body>${headerWithCta}<main>${body}</main>${footer}${gate?adultGate():''}<script defer src="/assets/site.v028.js?ver=0.4.20"></script><!-- legacy compatibility asset: /assets/app.v027.js --></body></html>`;
 }
 const coverTitle=(title,max=66)=>safeText(title,max).replace(/\s+/g,' ').trim();
 const coverSvg=(title,kind='Official embed')=>{
@@ -96,9 +97,9 @@ const adSlot=(placement='inline')=>`<section class="ad-slot native-ad-slot ad-sl
 // Rich category and channel presentation. Covers are editorial, non-player artwork;
 // they never act as video sources. Broken image URLs fall back to the branded visual.
 const categoryMetaV2={
- Featured:{eyebrow:'Escolhas do editor',description:'Hand-picked highlights from verified sources.',cover:'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=1200&q=82'},
- Trending:{eyebrow:'Em alta',description:'The collections visitors are exploring most right now.',cover:'https://images.unsplash.com/photo-1529139574466-a303027c1d8b?auto=format&fit=crop&w=1200&q=82'},
- 'New Releases':{eyebrow:'Novidades',description:'Recently added metadata from approved publishers.',cover:'https://images.unsplash.com/photo-1496747611176-843222e1e57c?auto=format&fit=crop&w=1200&q=82'},
+ Featured:{eyebrow:'Editor picks',description:'Hand-picked highlights from verified sources.',cover:'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=1200&q=82'},
+ Trending:{eyebrow:'Trending',description:'The collections visitors are exploring most right now.',cover:'https://images.unsplash.com/photo-1529139574466-a303027c1d8b?auto=format&fit=crop&w=1200&q=82'},
+ 'New Releases':{eyebrow:'New releases',description:'Recently added metadata from approved publishers.',cover:'https://images.unsplash.com/photo-1496747611176-843222e1e57c?auto=format&fit=crop&w=1200&q=82'},
  Originals:{eyebrow:'Original collections',description:'Independent releases with clear source attribution.',cover:'https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=1200&q=82'},
  Collections:{eyebrow:'Curated themes',description:'Organized collections built for easy discovery.',cover:'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=1200&q=82'},
  Interviews:{eyebrow:'Behind the scenes',description:'Conversation, profile and behind-the-scenes formats.',cover:'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=1200&q=82'},
@@ -170,10 +171,10 @@ function channelPageV4({base,url,canonicalUrl,channel,videos=[],official=[],tota
  const tabs=[['recent','Most recent'],['popular','Most viewed'],['rating','Best rated']].map(([value,label])=>`<a class="${sort===value?'active':''}" aria-current="${sort===value?'page':'false'}" href="${queryUrl({nextSort:value,nextPage:1})}">${label}</a>`).join('');
  const empty=q?`<div class="empty"><strong>No matching public videos</strong><p>Try another title or clear the channel search. Private candidates are not shown.</p></div>`:`<div class="empty"><strong>No verified public videos yet</strong><p>New candidates remain private until rights, adult consent and playback checks are complete.</p></div>`;
  const body=`<section class="wrap channel-hero channel-style channel-brand-${esc(channel.slug)}"><div class="channel-hero-media"><img src="${esc(channel.cover)}" data-category-image alt="${esc(channel.name)} editorial channel cover"><div class="channel-hero-shade"></div><div class="channel-banner-label">NOXVELLOX CHANNEL  ·  EDITORIAL COVER</div></div><div class="channel-hero-content"><div class="channel-identity"><div class="channel-avatar large" aria-label="${esc(channel.name)} channel mark">${esc(channel.name.slice(0,1))}</div><div class="channel-identity-main"><div class="section-kicker">${esc(channel.eyebrow)} ${verify}</div><h1>${esc(channel.name)}</h1><p>${esc(channel.description)}</p><div class="channel-identity-actions"><button class="button ghost" type="button" data-follow-channel="${esc(channel.slug)}">Subscribe</button><span class="follow-status" data-follow-status="${esc(channel.slug)}" role="status"></span></div></div></div><div class="channel-stats">${stats}</div></div></section><section class="wrap channel-main"><aside class="channel-about"><div class="section-kicker">About this channel</div><h2>${esc(channel.name)}</h2><p>${esc(channel.description)}</p><p class="channel-detail"><strong>Type</strong><br>Adult content producer listing</p>${sourceLink}<p class="channel-detail"><strong>Channel created</strong><br>${esc(channel.createdAt||'Not recorded')}</p><p class="channel-policy">Noxvellox shows only approved, attributed and playable listings. No public statistics or verification badges are invented.</p>${sourceBlock}${adSlot()}</aside><div class="channel-feed"><div class="channel-feed-head"><div><div class="section-kicker">${esc(channel.name)} collection</div><h2>Videos from ${esc(channel.name)}</h2><p class="channel-feed-count">${q?`Results for "${esc(q)}"  ·  `:''}${total} public videos</p></div><a class="channel-play-all" href="${firstUrl}">Play all <span aria-hidden="true">▶</span></a></div><form class="channel-search" action="${primaryPath}" method="get"><label for="channel-query">Search this channel</label><div><input id="channel-query" name="q" value="${esc(q)}" placeholder="Search titles in this channel" maxlength="80"><input type="hidden" name="sort" value="${esc(sort)}"><button class="button" type="submit">Search</button></div></form><nav class="channel-feed-tabs" aria-label="Channel sorting">${tabs}<a class="channel-all-tab" href="${primaryPath}">All videos</a></nav><div class="video-grid channel-video-grid">${hasItems?items.join(''):empty}</div>${pagination}</div></section>`;
- const structured={'@context':'https://schema.org','@graph':[{'@type':'WebPage','@id':`${canonicalUrl}#page`,url:canonicalUrl,name:'Brazzers - Vídeos e Canal | Noxvellox',description:'Página editorial do canal Brazzers no Noxvellox, com vídeos públicos autorizados e dados reais do catálogo.'},{'@type':'BreadcrumbList',itemListElement:[{ '@type':'ListItem',position:1,name:'Início',item:base+'/'},{ '@type':'ListItem',position:2,name:'Canais',item:base+'/channels'},{ '@type':'ListItem',position:3,name:channel.name,item:canonicalUrl}]}]};
+ const structured={'@context':'https://schema.org','@graph':[{'@type':'WebPage','@id':`${canonicalUrl}#page`,url:canonicalUrl,name:'Brazzers - Videos and Channel | Noxvellox',description:'Editorial Brazzers channel page on Noxvellox, with authorized public videos and real catalog data.'},{'@type':'BreadcrumbList',itemListElement:[{ '@type':'ListItem',position:1,name:'Home',item:base+'/'},{ '@type':'ListItem',position:2,name:'Channels',item:base+'/channels'},{ '@type':'ListItem',position:3,name:channel.name,item:canonicalUrl}]}]};
  const followSlug=JSON.stringify(channel.slug);
  const followScript=`<script>(()=>{const slug=${followSlug},button=document.querySelector('[data-follow-channel="'+slug+'"]'),status=document.querySelector('[data-follow-status="'+slug+'"]');if(!button)return;const key='noxvellox-followed-channels';let memoryFollowed=false;const read=()=>{try{return JSON.parse(localStorage.getItem(key)||'[]')}catch{return memoryFollowed?[slug]:[]}};const write=value=>{memoryFollowed=value.includes(slug);try{localStorage.setItem(key,JSON.stringify(value))}catch{}};const paint=()=>{const active=read().includes(slug);button.textContent=active?'Following channel':'Subscribe';button.setAttribute('aria-pressed',String(active));if(status)status.textContent=active?'Saved on this device':''};paint();button.addEventListener('click',()=>{const current=read(),index=current.indexOf(slug);if(index>=0)current.splice(index,1);else current.push(slug);write(current);paint()})})();</script>`;
- return shell({title:'Brazzers - Vídeos e Canal | Noxvellox',description:'Canal Brazzers no Noxvellox: vídeos p · blicos autorizados, informações do canal e atualizações do catálogo.',base,url,canonical:canonicalUrl,body:body+followScript,structured});
+ return shell({title:'Brazzers - Videos and Channel | Noxvellox',description:'Canal Brazzers no Noxvellox: vídeos p · blicos autorizados, informações do canal e atualizações do catálogo.',base,url,canonical:canonicalUrl,body:body+followScript,structured});
 }
 
 // Free, read-only, provider-published embed feed. Unlike admin uploads, this is an
@@ -223,7 +224,7 @@ function parseOfficialRSS(xmlText){
 // Return a sanitized diagnosis instead of silently turning all network errors into an empty array.
 async function retrieveOfficialFeed({force=false}={}){
  const cache=(typeof caches!=='undefined'&&caches.default)?caches.default:null;
- const key=new Request('https://noxvellox.pages.dev/__internal/rss-official-cache-026');
+ const key=new Request('https://noxvellox.site/__internal/rss-official-cache-026');
  if(!force&&cache){
   try{const cached=await cache.match(key);if(cached){const entries=parseOfficialRSS(await cached.text());if(entries.length)return {entries,reason:'cached_live_rss',httpStatus:200};}}
   catch{/* Nonfatal cache miss */}
@@ -287,7 +288,7 @@ const posterExpiresSoon=value=>{
 async function officialPagePoster(id){
  if(!/^[a-z0-9]{8,24}$/i.test(String(id||'')))return '';
  const cache=(typeof caches!=='undefined'&&caches.default)?caches.default:null;
- const key=new Request('https://noxvellox.pages.dev/__internal/official-poster-027/'+encodeURIComponent(id));
+ const key=new Request('https://noxvellox.site/__internal/official-poster-027/'+encodeURIComponent(id));
  if(cache){try{const cached=await cache.match(key);if(cached){const url=(await cached.text()).trim();if(officialPoster(url)&&!posterExpiresSoon(url))return url}}catch{/* Ignore thumbnail cache misses */}}
  try{
   const response=await fetch(OFFICIAL_ORIGIN+'/view_video.php?viewkey='+encodeURIComponent(id),{redirect:'follow',headers:{accept:'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8','accept-language':'en-US,en;q=0.9','user-agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/157.0.0.0 Safari/537.36','referer':OFFICIAL_ORIGIN+'/'},signal:AbortSignal.timeout(8000)});
@@ -580,7 +581,7 @@ async function checkAdultEmbedStatus(sourceId){
   if(!/^\d{1,15}$/.test(id))return {known:false,active:false,reason:'Invalid provider video ID'};
   try{
     const resp=await fetch(`https://adultembed.com/api/v1/videos/${id}/status?format=json`,{
-      headers:{accept:'application/json','X-Site-URL':'https://noxvellox.pages.dev/'},
+      headers:{accept:'application/json','X-Site-URL':'https://noxvellox.site/'},
       redirect:'manual',signal:AbortSignal.timeout(9000)
     });
     if((resp.status>=300&&resp.status<400)||resp.type==='opaqueredirect')return {known:false,active:false,reason:'Provider redirect blocked for safety'};
@@ -597,7 +598,7 @@ async function checkAdultEmbedPlayerPage(sourceId){
  if(!/^\d{1,15}$/.test(id))return {known:false,unavailable:false,reason:'Invalid provider ID'};
  try{
   const response=await fetch(`https://adultembed.com/player/embed/${id}/`,{
-   headers:{accept:'text/html','X-Site-URL':'https://noxvellox.pages.dev/'},
+   headers:{accept:'text/html','X-Site-URL':'https://noxvellox.site/'},
    redirect:'manual',signal:AbortSignal.timeout(9000)
   });
   if((response.status>=300&&response.status<400)||response.type==='opaqueredirect')return {known:false,unavailable:false,reason:'Player URL redirects; playback unverified'};
@@ -616,9 +617,10 @@ async function checkAdultEmbedPlayerPage(sourceId){
 async function getVideo(db,slug){if(!db)return null;return db.prepare(`SELECT * FROM videos WHERE slug=? AND status='published' AND duration_seconds >= ${MIN_VIDEO_DURATION_SECONDS} LIMIT 1`).bind(slug).first()}
 function notFound({base,url}){return shell({title:'Page not found | Noxvellox',description:'This page is not available.',base,url,robots:'noindex,follow',gate:false,body:'<section class="wrap page-head"><h1>Page not found</h1><p>This listing may have been removed or the URL changed.</p><p><a class="button" href="/">Return home </a></p></section>'})}
 const authHeaderToken=req=>{const s=req.headers.get('authorization')||'';return s.startsWith('Bearer ')?s.slice(7):''};
+const adminSecretsReady=env=>typeof env?.ADMIN_PASSWORD==='string'&&env.ADMIN_PASSWORD.trim().length>=16&&typeof env?.SESSION_SECRET==='string'&&env.SESSION_SECRET.trim().length>=32;
 const secureCompare=async(a,b)=>{if(!a||!b)return false;const [x,y]=await Promise.all([crypto.subtle.digest('SHA-256',new TextEncoder().encode(String(a))),crypto.subtle.digest('SHA-256',new TextEncoder().encode(String(b)))]);const aa=new Uint8Array(x),bb=new Uint8Array(y);let diff=0;for(let i=0;i<aa.length;i++)diff|=aa[i]^bb[i];return diff===0};
 const sign=async(s,key)=>{const material=await crypto.subtle.importKey('raw',new TextEncoder().encode(String(key)),{name:'HMAC',hash:'SHA-256'},false,['sign']);const bytes=new Uint8Array(await crypto.subtle.sign('HMAC',material,new TextEncoder().encode(s)));return Array.from(bytes).map(b=>b.toString(16).padStart(2,'0')).join('')};
-async function session(req,env){if(!env.SESSION_SECRET)return false;const c=(req.headers.get('cookie')||'').match(/(?:^|;\s*)nox_admin=([^;]+)/);if(!c)return false;const [expiry,sig]=decodeURIComponent(c[1]).split('.');if(!/^\d{13}$/.test(expiry)||Number(expiry)<Date.now()||Number(expiry)>Date.now()+13*3600e3)return false;return secureCompare(sig,await sign(`admin|${expiry}`,env.SESSION_SECRET))}
+async function session(req,env){if(!adminSecretsReady(env))return false;const c=(req.headers.get('cookie')||'').match(/(?:^|;\s*)nox_admin=([^;]+)/);if(!c)return false;const [expiry,sig]=decodeURIComponent(c[1]).split('.');if(!/^\d{13}$/.test(expiry)||Number(expiry)<Date.now()||Number(expiry)>Date.now()+13*3600e3)return false;return secureCompare(sig,await sign(`admin|${expiry}`,env.SESSION_SECRET))}
 const sameOrigin=req=>{const origin=req.headers.get('origin');return !!origin&&origin===new URL(req.url).origin;};
 function adminBody({logged,videos,db,feedReady}){
   if(!logged)return `<section class="wrap page-head"><h1>Publisher login</h1><p>Administrator access only.</p></section><section class="wrap"><div class="admin-panel" style="max-width:450px"><form id="login-form"><div class="form-row"><label for="password">Administrator password</label><input type="password" id="password" name="password" class="field" required autocomplete="current-password"></div><button class="button" type="submit">Sign in</button></form><p id="message" class="message"></p></div></section>`;
@@ -643,9 +645,10 @@ function adminBody({logged,videos,db,feedReady}){
   return `<section class="wrap page-head"><div class="section-kicker">Publisher area</div><h1>Control center</h1><p>Content import, rights review and publishing. New imports are always held for approval.</p><button class="button ghost" id="logout">Log out</button></section><div class="wrap"><div class="admin-panel"><h2>System status</h2><p><a class="button ghost" href="/official-videos" target="_blank" rel="noopener noreferrer">Open automatic official embeds ?</a></p><div class="status-band">D1: ${db?'connected':'NOT CONNECTED'}  ·  Import feed: ${feedReady?'configured':'not configured'}  ·  Ads: Native Banner configured (consent required)</div><p class="helper">This is a separate project. The official feed at /official-videos needs no per-item publish action. Only public video METADATA may be copied from XXX Little Pepper when you explicitly import it: no advertising scripts, passwords, signed MP4 links, cookies or videos are copied. Brazzers studio listings are imported as private metadata candidates only. No download or publication rights are implied; official licenses and participant records must be verified before publishing.</p><button class="button ghost" id="import-pepper" type="button">Import all XXX Little Pepper titles for PRIVATE review</button> <button class="button ghost" id="sync-official" type="button">Import 100+ official embeds now</button><form id="hide-official-form" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:12px 0"><label class="mini">Official embed ID to remove: <input class="field" name="id" pattern="[a-zA-Z0-9]{8,24}" maxlength="24" required placeholder="Provider video ID"></label><button class="button ghost" type="submit">Hide removed embed</button></form> <span class="mini">Uses only official webmaster RSS/search metadata (up to 3 pages  ·  30 plus RSS). New releases synchronize every two hours after the free Cron Worker is deployed; no per-video approval for the provider&#39;s official feed.</span><br><br> <span class="mini">64 titles currently in the source catalog; unavailable or temporary playback links will NOT be copied as playable videos.</span><br><br><button class="button ghost" id="import-now" ${feedReady?'':'disabled'}>Import Brazzers candidates for review ?</button> <button class="button ghost" id="hide-broken" type="button">Hide all published AdultEmbed videos with broken players</button><p class="helper">Provider active/complete flags do not guarantee playback. Use Check player to detect known provider errors, then personally test the actual video and verify commercial permission and adult-consent documentation. No deletion or changes to other providers.</p><p id="message" class="message"></p></div><div class="admin-panel"><h2>Add a ready, licensed video</h2><p class="helper">Video delivery is separate from Pages and D1. First upload your own authorized source file to a video platform such as Cloudflare Stream (separately priced), wait for encoding, and test the player. Then register its UID below. We do not import, transcode or copy third-party films. Public access requires individual rights, participant and playback verification.</p><form id="video-form"><div class="form-grid"><div class="form-row"><label>Video title<input class="field" name="title" maxlength="140" required></label></div><div class="form-row"><label>Category<input class="field" name="category" maxlength="40" value="Featured"></label></div><div class="form-row"><label>Original source URL<input class="field" type="url" name="source_url" placeholder="https://source.example/video" required></label></div><div class="form-row"><label>Authorized embed URL (alternative to Stream UID)<input class="field" type="url" name="embed_url" placeholder="https://approved-source.example/embed/id"></label></div><div class="form-row"><label>Cloudflare Stream video UID (32 hex characters, optional)<input class="field" name="stream_uid" pattern="[a-fA-F0-9]{32}" minlength="32" maxlength="32" inputmode="text" placeholder="Only after uploading a video you own or may distribute"></label><p class="mini">Use ONE method: licensed embed URL, or Cloudflare Stream UID of a ready video. The latter lets Stream handle adaptive HLS/DASH and CDN delivery. A UID is not a video file; obtain it from a separately authorized Stream account. Stream can incur charges and is NOT activated by this package.</p></div><div class="form-row"><label>Poster image URL<input class="field" type="url" name="poster_url" placeholder="https://approved-source.example/poster.jpg"></label></div><div class="form-row"><label>Duration in seconds<input class="field" type="number" name="duration_seconds" min="0" max="100000"></label></div></div><div class="form-row"><label>Description<textarea name="description" rows="3" maxlength="1600"></textarea></label></div><div class="form-row"><label><input type="checkbox" name="rights_confirmed" value="yes" required> I have verified the rights to embed/distribute this video.</label></div><div class="form-row"><label><input type="checkbox" name="adults_verified" value="yes" required> I have verified that every participant is an adult and content is consensual and lawful.</label></div><button class="button" type="submit">Save for review</button></form></div><div class="admin-panel"><h2>Content moderation queue</h2><p class="helper">Click an action to open its confirmation checklist. Results and errors appear beneath that video. Check player detects known external errors but does NOT prove real playback. Imported listings need verified commercial rights, adult-consent records and an actual browser playback test.</p><div style="overflow-x:auto"><table class="admin-table"><thead><tr><th>Title</th><th>Status</th><th>Rights</th><th>Action</th></tr></thead><tbody>${rows}</tbody></table></div></div></div>`;
 }
 async function adminPage({db,env,url,req,base}){
- const logged=await session(req,env);
+ const configured=adminSecretsReady(env);
+ const logged=configured&&await session(req,env);
  const videos=logged&&db?(await db.prepare('SELECT id,title,status,provider,source_url,rights_confirmed,adults_verified FROM videos ORDER BY id DESC LIMIT 200').all()).results||[]:[];
- const body=adminBody({logged,videos,db,feedReady:feedConfigured(env)})+(logged?'<div class="wrap"><p class="notice"><strong>Filtro ativo:</strong> somente vídeos com duração mínima de 15:00 podem ser revisados e publicados. Entradas sem duração confiável, capa autorizada ou player autorizado permanecem privadas.</p></div>':'');
+ const body=!configured?'<section class="wrap page-head"><h1>Publisher dashboard unavailable</h1><p>Administrator secrets are not configured. Access is blocked until ADMIN_PASSWORD and SESSION_SECRET are saved as production secrets.</p></section>':adminBody({logged,videos,db,feedReady:feedConfigured(env)})+(logged?'<div class="wrap"><p class="notice"><strong>Active filter:</strong> only videos with a minimum duration of 15:00 can be reviewed and published. Entries without reliable duration, authorized artwork, or an authorized player remain private.</p></div>':'');
   return shell({base,url,gate:false,robots:'noindex,nofollow',title:'Publisher dashboard | Noxvellox',description:'Private content management console.',body:`${body}<script defer src="/assets/admin.v027.js?ver=0.4.2"></script>`});
 }
 async function addVideo(db,item,{fromFeed=false}={}){
@@ -767,7 +770,7 @@ async function runImport(env,db){
  if(!allowed.includes(host))throw Error('Feed host must be explicitly approved in ALLOWED_FEED_HOSTS.');
  const feedPath=new URL(env.VIDEO_FEED_URL).pathname;
  const isAdultEmbed=host==='adultembed.com' && (feedPath==='/api/feeds/videos.json'||feedPath==='/api/v1/search');
- const response=await fetch(env.VIDEO_FEED_URL,{headers:{accept:'application/json',...(isAdultEmbed?{'X-Site-URL':'https://noxvellox.pages.dev/'}:{}),...(env.VIDEO_FEED_TOKEN?{authorization:`Bearer ${env.VIDEO_FEED_TOKEN}`}:{})},redirect:'manual',signal:AbortSignal.timeout(12000)});
+ const response=await fetch(env.VIDEO_FEED_URL,{headers:{accept:'application/json',...(isAdultEmbed?{'X-Site-URL':'https://noxvellox.site/'}:{}),...(env.VIDEO_FEED_TOKEN?{authorization:`Bearer ${env.VIDEO_FEED_TOKEN}`}:{})},redirect:'manual',signal:AbortSignal.timeout(12000)});
  if((response.status>=300&&response.status<400)||response.type==='opaqueredirect')throw Error('Feed URL redirects to another location. Use a direct allowlisted HTTPS JSON endpoint; redirect was not followed.');
  if(!response.ok)throw Error(`Feed returned ${response.status}`);
  const length=Number(response.headers.get('content-length')||0);if(length>1000000)throw Error('Feed payload too large');
@@ -838,8 +841,9 @@ async function api(req,env,url,db){
  }
  if(!sameOrigin(req))return json({error:'Invalid origin'},403);
  if(path==='/api/admin/login'&&req.method==='POST'){
-   if(!env.ADMIN_PASSWORD||!env.SESSION_SECRET)return json({error:'Admin secrets not configured'},503);
+   if(!adminSecretsReady(env))return json({error:'Admin secrets not configured'},503);
    const form=await req.formData();const password=form.get('password');
+   if(typeof password!=='string'||!password.trim())return json({error:'Password is required'},401);
    if(!(await secureCompare(password,env.ADMIN_PASSWORD)))return json({error:'Incorrect password'},401);
    const expiry=String(Date.now()+12*3600000),signature=await sign(`admin|${expiry}`,env.SESSION_SECRET);
    const res=json({ok:true});res.headers.append('set-cookie',`nox_admin=${expiry}.${signature}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=43200`);return res;
@@ -1113,7 +1117,7 @@ function partnerProfilePage({partner, localFeed, references, profile, base, url}
 }
 
 async function route(req,env){
- const url=new URL(req.url),base=url.origin,path=decodeURIComponent(url.pathname).replace(/\/$/,'')||'/',db=asD1(env.DB);
+ const url=new URL(req.url),base=PUBLIC_ORIGIN,path=decodeURIComponent(url.pathname).replace(/\/$/,'')||'/',db=asD1(env.DB);
  if(path.startsWith('/assets/')||path==='/favicon.svg'||path==='/data/videos.json')return env.ASSETS.fetch(req);
  if(path.startsWith('/api/'))return api(req,env,url,db);
  if(path==='/robots.txt'){
@@ -1128,8 +1132,8 @@ async function route(req,env){
      const entries=['/','/videos','/official-videos','/categories','/channels',...channelsV2.map(c=>`/channels/${c.slug}`),...categories.map(c=>`/category/${slugify(c)}`),'/about','/privacy','/terms','/copyright','/contact'].map(pathname=>({pathname,lastmod:''}));
      try{
        if(db){
-         const published=await db.prepare("SELECT slug,published_at FROM videos WHERE status='published' AND slug IS NOT NULL AND slug<>'' ORDER BY published_at DESC,id DESC").all();
-         const official=await db.prepare("SELECT id,last_seen_at FROM official_embeds WHERE visibility='active' AND id IS NOT NULL AND id<>'' ORDER BY last_seen_at DESC,id DESC").all();
+         const published=await db.prepare("SELECT slug,published_at FROM videos WHERE status='published' AND slug IS NOT NULL AND slug<>'' ORDER BY published_at DESC,id DESC LIMIT 5000").all();
+         const official=await db.prepare("SELECT id,last_seen_at FROM official_embeds WHERE visibility='active' AND id IS NOT NULL AND id<>'' ORDER BY last_seen_at DESC,id DESC LIMIT 5000").all();
          entries.push(...(published.results||[]).map(row=>({pathname:`/watch/${encodeURIComponent(row.slug)}`,lastmod:dateOnly(row.published_at)})));
          entries.push(...(official.results||[]).map(row=>({pathname:`/official-watch/${encodeURIComponent(row.id)}`,lastmod:dateOnly(row.last_seen_at)})));
        }
@@ -1191,9 +1195,9 @@ else if(path.startsWith('/channels/')||path.startsWith('/channel/')){const prefi
  if(!markup)markup=notFound({base,url:url.href});
   const knownStatic=['/','/videos','/official-videos','/search','/categories','/channels','/admin','/about','/privacy','/terms','/copyright','/contact','/history'];
   const missing=(!knownStatic.includes(path)&&!path.startsWith('/watch/')&&!path.startsWith('/official-watch/')&&!path.startsWith('/category/')&&!path.startsWith('/channel/')&&!path.startsWith('/channels/'))||(path.startsWith('/watch/')&&!(await getVideo(db,path.slice(7))))||(path.startsWith('/official-watch/')&&!(await officialById(db,path.slice('/official-watch/'.length),localFeed)))||(path.startsWith('/category/')&&!categories.some(c=>slugify(c)===path.split('/')[2]))||((path.startsWith('/channel/')||path.startsWith('/channels/'))&&!channelsV2.some(c=>c.slug===path.split('/')[2]));
- return html(markup,missing?404:200);
+ return html(markup,missing?404:200,path==='/admin'?{'cache-control':'no-store'}:{});
 }
 export default {
- async fetch(req,env){try{const requestUrl=new URL(req.url);if(requestUrl.hostname==='noxvellox.pages.dev')return Response.redirect(`https://noxvellox.site${requestUrl.pathname}${requestUrl.search}`,301);return await route(req,env)}catch(e){console.error('Noxvellox request error',e);return html('<!doctype html><title>Temporarily unavailable</title><h1>Service temporarily unavailable</h1><p>Please try again.</p>',503)}}
+ async fetch(req,env){try{const requestUrl=new URL(req.url);if(requestUrl.hostname==='noxvellox.site')return Response.redirect(`https://noxvellox.site${requestUrl.pathname}${requestUrl.search}`,301);return await route(req,env)}catch(e){console.error('Noxvellox request error',e);return html('<!doctype html><title>Temporarily unavailable</title><h1>Service temporarily unavailable</h1><p>Please try again.</p>',503)}}
 };
 
