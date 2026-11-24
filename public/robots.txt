@@ -6,4 +6,4 @@ Disallow: /search
 Disallow: /*?*page=
 Disallow: /*?*sort=
 Disallow: /*?*q=
-Sitemap: https://noxvellox.pages.dev/sitemap.xml
+Sitemap: https://noxvellox.site/sitemap.xml
