@@ -1152,8 +1152,8 @@ async function route(req,env){
      const entries=['/','/videos','/official-videos','/categories','/channels',...channelsV2.map(c=>`/channels/${c.slug}`),'/about','/privacy','/terms','/copyright','/contact'].map(pathname=>({pathname,lastmod:''}));
      try{
        if(db){
-         const published=await db.prepare("SELECT slug,title,description,category,poster_url,embed_url,duration_seconds,published_at FROM videos WHERE status='published' AND slug IS NOT NULL AND slug<>'' AND poster_url<>'' AND embed_url<>'' ORDER BY published_at DESC,id DESC LIMIT 5000").all();
-         const official=await db.prepare("SELECT id,title,poster_url,duration_seconds,last_seen_at FROM official_embeds WHERE visibility='active' AND id IS NOT NULL AND id<>'' AND poster_url<>'' ORDER BY last_seen_at DESC,id DESC LIMIT 5000").all();
+         const published=await db.prepare("SELECT slug,title,description,category,poster_url,embed_url,duration_seconds,published_at FROM videos WHERE status='published' AND slug IS NOT NULL AND slug<>'' AND poster_url<>'' AND embed_url<>'' AND duration_seconds >= ${MIN_VIDEO_DURATION_SECONDS} ORDER BY published_at DESC,id DESC LIMIT 5000").all();
+         const official=await db.prepare("SELECT id,title,poster_url,duration_seconds,last_seen_at FROM official_embeds WHERE visibility='active' AND id IS NOT NULL AND id<>'' AND id NOT IN ('696c7c920140e','6937cf5fea785') AND poster_url<>'' AND duration_seconds >= ${MIN_OFFICIAL_DURATION_SECONDS} ORDER BY last_seen_at DESC,id DESC LIMIT 5000").all();
          const categoryCounts=new Map();
          for(const row of (published.results||[])){const key=String(row.category||'').trim();if(key)categoryCounts.set(key,(categoryCounts.get(key)||0)+1)}
          for(const category of VISIBLE_NAV_CATEGORIES){if((categoryCounts.get(category)||0)>=4)entries.push({pathname:`/category/${slugify(category)}`,lastmod:''})}
