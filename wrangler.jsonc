@@ -14,6 +14,7 @@
     "ALLOWED_EMBED_HOSTS": "adultembed.com,iframe.videodelivery.net,www.pornhub.com",
     "ALLOWED_FEED_HOSTS": "adultembed.com",
     "VIDEO_FEED_URL": "https://adultembed.com/api/v1/search?studios=brazzers&per_page=20&sort=newest&format=json",
-    "AUTO_PUBLISH_BRAZZERS": "verified-only"
+    "AUTO_PUBLISH_BRAZZERS": "verified-only",
+    "CONTACT_EMAIL": "contato@noxvellox.site"
   }
 }
