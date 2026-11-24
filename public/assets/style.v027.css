@@ -208,16 +208,19 @@
 .home-dashboard .ad-slot.native-ad-slot > .native-banner-container{
   box-sizing:border-box;
   position:static !important;
-  flex:0 1 300px;
-  width:min(300px,100%);
-  max-width:300px;
+  flex:1 1 900px;
+  width:min(960px,100%);
+  max-width:960px;
   min-width:0;
   min-height:250px;
   height:auto;
   margin:0;
   overflow:hidden;
-  display:grid;
-  place-items:center;
+  display:flex;
+  flex-wrap:wrap;
+  justify-content:center;
+  align-items:center;
+  gap:20px;
   order:1;
 }
 .ad-slot.native-ad-slot .native-banner-container > iframe,
@@ -255,5 +258,6 @@
   .home-dashboard .ad-slot.native-ad-slot > .native-banner-container{
     flex:0 1 100%;
     width:min(300px,100%);
+    max-width:100%;
   }
 }
