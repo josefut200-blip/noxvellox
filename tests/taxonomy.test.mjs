@@ -62,7 +62,7 @@ test('blocked and unsupported terms do not create category assignments', () => {
   assert.deepEqual(unsupported.categories,[]);
   assert.deepEqual(unsupported.formats,[]);
 });
-test('official RSS tags are extracted from category and tag nodes', () => {
+test('official RSS categories and tags are extracted into source metadata', () => {
   assert.deepEqual(rssParser.rssTagValues('<item><category><![CDATA[POV]]></category><tag>Big Tits</tag></item>'),['POV','Big Tits']);
 });
 test('category indexability requires 20 videos and a valid intro length', () => {
