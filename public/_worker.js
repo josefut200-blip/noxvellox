@@ -995,7 +995,7 @@ async function addVideo(db,item,{fromFeed=false}={}){
  const adults=item.adults_verified===true||item.adults_verified==='yes'||item.adultsVerified===true;
  const provider=uid?'cloudflare-stream':safeText(item.provider|| (fromFeed?'authorized-feed':'manual'),50);
  const source_id=uid||safeText(item.source_id||item.sourceId||'',100);
- if(source_id){const duplicate=await db.prepare('SELECT id FROM videos WHERE provider=? AND source_id=? LIMIT 1').bind(provider,source_id).first();if(duplicate)return false;}
+ if(source_id){const duplicate=await db.prepare('SELECT id FROM videos WHERE provider=? AND source_id=? LIMIT 1').bind(provider,source_id).first();if(duplicate){await persistVideoTaxonomy(db,Number(duplicate.id),item,taxonomy);return false;}}
  const slug=slugify(item.slug||title)+(uid?'-'+uid.slice(0,12):(fromFeed&&source_id?'-'+slugify(source_id).slice(0,20):''));
  const duration=Math.max(0,Math.min(100000,parseInt(item.duration_seconds||item.durationSeconds||0,10)||0));
  const record=[slug,title,description,legacyCategory,poster_url,embed_url,source_url,source_id,provider,duration,rights?1:0,adults?1:0];
