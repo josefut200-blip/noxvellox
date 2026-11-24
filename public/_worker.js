@@ -682,6 +682,51 @@ function listPage({url,base,videos,official=[],title='All videos',subtitle='Brow
   const body=`<section class="wrap page-head"><div class="section-kicker">Noxvellox library</div><h1>${esc(title)}</h1><p>${esc(subtitle)}</p></section><section class="wrap">${categoryChips(category)}<div class="section" style="margin-top:25px"><div class="video-grid"${infinite?' data-infinite-grid':''}>${renderedFeed||(title==='Free Official Embeds'?'<div class="empty"><strong>Official provider feed temporarily unavailable</strong><p>Please try later. No placeholder videos or unverified embeds will be published.</p></div>':emptyMarkup)}</div>${official.length?(official[0]?.from_snapshot?'<p class="mini"><strong>Contingency catalog:</strong> last observed in the provider official RSS on November 22, 2026. This is NOT a live availability check. Entries may have been removed; playback and rights remain subject to provider policy. No video files are hosted here.</p>':'<p class="mini">Free embeds from the official platform RSS. Video files are not stored on Noxvellox; some content may be region-restricted.</p>'):''}</div>${officialPagination}${infinite?'':adSlot()}</section>`;
   return shell({title:`${title}${pageSuffix} | Noxvellox`,description:metaDescription,base,url,body,robots:robots||(pageNumber>10?'noindex,follow':undefined)});
 }
+function taxonomyFilters(url,taxonomy){
+ const raw={language:url.searchParams.get('lang'),resolution:url.searchParams.get('res'),frameRate:url.searchParams.get('fps'),format:url.searchParams.get('format'),orientation:url.searchParams.get('orientation')};
+ const filters={};
+ const language=normalizeLanguage(raw.language,taxonomy);if(language)filters.language=language;
+ const resolution=normalizeResolution(raw.resolution,taxonomy);if(resolution)filters.resolution=resolution;
+ const frameRate=normalizeFrameRate(raw.frameRate,taxonomy);if(frameRate)filters.frame_rate=frameRate;
+ const format=(taxonomy.formatAliases||new Map()).get(normalizeTaxonomyToken(raw.format));if(format)filters.format=format;
+ const orientation=(taxonomy.orientationAliases||new Map()).get(normalizeTaxonomyToken(raw.orientation));if(orientation)filters.orientation=orientation;
+ return filters;
+}
+function taxonomyFilterForm(taxonomy,filters){
+ const select=(name,label,items,key)=>'<label>'+label+'<select name="'+name+'"><option value="">All</option>'+items.map(item=>'<option value="'+esc(item[key])+'"'+(filters[key]===item[key]?' selected':'')+'>'+esc(item.name)+'</option>').join('')+'</select></label>';
+ const resolutions=(taxonomy.technical?.resolutions||[]).map(value=>({value,name:value.toUpperCase()}));
+ const frameRates=(taxonomy.technical?.frameRates||[]).map(value=>({value:String(value),name:String(value)+' FPS'}));
+ const filterValues={...filters,frame_rate:filters.frame_rate?String(filters.frame_rate):''};
+ return '<form class="taxonomy-filters" method="get" action=""><label>Language<select name="lang"><option value="">All</option>'+(taxonomy.languages||[]).map(item=>'<option value="'+esc(item.slug)+'"'+(filters.language===item.slug?' selected':'')+'>'+esc(item.name)+'</option>').join('')+'</select></label>'+
+  select('res','Resolution',resolutions,'value')+
+  select('fps','Frame rate',frameRates,'value')+
+  '<label>Format<select name="format"><option value="">All</option>'+(taxonomy.formats||[]).map(item=>'<option value="'+esc(item.slug)+'"'+(filters.format===item.slug?' selected':'')+'>'+esc(item.name)+'</option>').join('')+'</select></label>'+
+  '<label>Orientation<select name="orientation"><option value="">All</option>'+(taxonomy.orientations||[]).map(item=>'<option value="'+esc(item.slug)+'"'+(filters.orientation===item.slug?' selected':'')+'>'+esc(item.name)+'</option>').join('')+'</select></label>'+
+  '<button class="button" type="submit">Apply filters</button></form>';
+}
+function taxonomyCategoryPage({base,url,category,videos,total,taxonomy,filters}){
+ const filtered=url.searchParams.toString().length>0;
+ const words=introWordCount(category.intro_en);
+ const canIndex=indexableCategory(category,total,taxonomy)&&!filtered;
+ const intro=canIndex?'<p class="category-intro">'+esc(category.intro_en)+'</p>':'<p class="category-intro">This collection is being curated. Only approved videos with publisher-supplied category tags are shown.</p>';
+ const cards=videos.length?videos.map(card).join(''):'<div class="empty"><strong>No videos match this category yet</strong><p>Try another filter or browse all categories.</p><a class="button ghost" href="/categories">Browse categories</a></div>';
+ const description=canIndex?String(category.intro_en).replace(/\s+/g,' ').slice(0,155):'Browse approved videos in the '+category.name+' category on Noxvellox.';
+ const title=category.name+' Videos | Noxvellox';
+ const body='<section class="wrap page-head"><div class="section-kicker"><a href="/categories">Categories</a> / '+esc(category.group_name)+'</div><h1>'+esc(category.name)+' Videos</h1>'+intro+'<p>'+Number(total).toLocaleString('en-US')+' approved videos</p></section>'+
+  '<section class="wrap">'+taxonomyFilterForm(taxonomy,filters)+'<div class="video-grid">'+cards+'</div>'+adSlot()+'</section>';
+ return shell({base,url,title,description,canonical:base+'/category/'+encodeURIComponent(category.slug),robots:canIndex?'index,follow':'noindex,follow',body});
+}
+function collectionPage({base,url,collection,videos,total}){
+ const meta={
+  featured:{name:'Featured',description:'Editorially selected videos approved for the Noxvellox catalog.'},
+  trending:{name:'Trending',description:'Videos with the most views during the last seven days.'},
+  'new-releases':{name:'New Releases',description:'Recently published videos with verified metadata.'},
+  'most-viewed':{name:'Most Viewed',description:'Videos ranked by recorded views.'}
+ }[collection];
+ const cards=videos.length?videos.map(card).join(''):'<div class="empty"><strong>No videos in this collection yet</strong><p>This list updates from published catalog data.</p></div>';
+ const body='<section class="wrap page-head"><div class="section-kicker">Noxvellox collections</div><h1>'+esc(meta.name)+'</h1><p>'+esc(meta.description)+'</p><p>'+Number(total).toLocaleString('en-US')+' videos</p></section><section class="wrap"><div class="video-grid">'+cards+'</div>'+adSlot()+'</section>';
+ return shell({base,url,title:meta.name+' | Noxvellox',description:meta.description,robots:'noindex,follow',body});
+}
 function searchPage({url,base,q,videos,official=[],channels=[],matchedCategories=[]}){
  const cards=[...videos.map(card),...official.map(officialCard)];
  const taxonomy=(channels.length||matchedCategories.length)?`<section class="search-discovery" aria-label="Related channels and categories"><div class="search-discovery-head"><div><div class="section-kicker">Explore by source or interest</div><h2>Related results</h2></div></div><div class="search-entity-grid">${channels.map(ch=>`<a class="search-entity" href="/channels/${encodeURIComponent(ch.slug)}"><span>Channel</span><strong>${esc(ch.name)}</strong><small>${esc(ch.eyebrow||'Curated channel')}</small></a>`).join('')}${matchedCategories.map(category=>`<a class="search-entity" href="/category/${slugify(category)}"><span>Category</span><strong>${esc(category)}</strong><small>${esc(categoryDescriptions[category]||'Browse this collection')}</small></a>`).join('')}</div></section>`:'';
