@@ -1,0 +1,783 @@
+{
+  "version": 1,
+  "indexing": {
+    "minimumPublishedVideos": 20,
+    "minimumIntroWords": 80,
+    "maximumIntroWords": 120
+  },
+  "groups": [
+    {
+      "slug": "performers-origin",
+      "name": "Performers & Origin",
+      "categories": [
+        {
+          "slug": "brazilian",
+          "name": "Brazilian",
+          "aliases": [
+            "brazilian",
+            "brazil"
+          ],
+          "intro_en": ""
+        },
+        {
+          "slug": "latina",
+          "name": "Latina",
+          "aliases": [
+            "latina",
+            "latino",
+            "latin"
+          ],
+          "intro_en": ""
+        },
+        {
+          "slug": "british",
+          "name": "British",
+          "aliases": [
+            "british",
+            "uk"
+          ],
+          "intro_en": ""
+        },
+        {
+          "slug": "french",
+          "name": "French",
+          "aliases": [
+            "french"
+          ],
+          "intro_en": ""
+        },
+        {
+          "slug": "german",
+          "name": "German",
+          "aliases": [
+            "german"
+          ],
+          "intro_en": ""
+        },
+        {
+          "slug": "russian",
+          "name": "Russian",
+          "aliases": [
+            "russian"
+          ],
+          "intro_en": ""
+        },
+        {
+          "slug": "czech",
+          "name": "Czech",
+          "aliases": [
+            "czech"
+          ],
+          "intro_en": ""
+        },
+        {
+          "slug": "asian",
+          "name": "Asian",
+          "aliases": [
+            "asian"
+          ],
+          "intro_en": ""
+        },
+        {
+          "slug": "arab",
+          "name": "Arab",
+          "aliases": [
+            "arab"
+          ],
+          "intro_en": ""
+        },
+        {
+          "slug": "european",
+          "name": "European",
+          "aliases": [
+            "european"
+          ],
+          "intro_en": ""
+        },
+        {
+          "slug": "black-women",
+          "name": "Black Women",
+          "aliases": [
+            "black women"
+          ],
+          "intro_en": ""
+        },
+        {
+          "slug": "redheads",
+          "name": "Redheads",
+          "aliases": [
+            "redhead",
+            "redheads",
+            "ginger"
+          ],
+          "intro_en": ""
+        },
+        {
+          "slug": "mature-women",
+          "name": "Mature Women",
+          "aliases": [
+            "milf",
+            "mature",
+            "mature women"
+          ],
+          "intro_en": ""
+        },
+        {
+          "slug": "transgender",
+          "name": "Transgender",
+          "aliases": [
+            "trans",
+            "transgender"
+          ],
+          "intro_en": ""
+        },
+        {
+          "slug": "couples",
+          "name": "Couples",
+          "aliases": [
+            "couple",
+            "couples"
+          ],
+          "intro_en": ""
+        },
+        {
+          "slug": "verified-couples",
+          "name": "Verified Couples",
+          "aliases": [
+            "verified couple",
+            "verified couples"
+          ],
+          "intro_en": ""
+        },
+        {
+          "slug": "porn-stars",
+          "name": "Porn Stars",
+          "aliases": [
+            "porn star",
+            "porn stars",
+            "pornstar",
+            "pornstars"
+          ],
+          "intro_en": ""
+        }
+      ]
+    },
+    {
+      "slug": "body-types",
+      "name": "Body Types",
+      "categories": [
+        {
+          "slug": "busty",
+          "name": "Busty",
+          "aliases": [
+            "big tits",
+            "busty"
+          ],
+          "intro_en": ""
+        },
+        {
+          "slug": "small-breasts",
+          "name": "Small Breasts",
+          "aliases": [
+            "small breasts",
+            "small tits"
+          ],
+          "intro_en": ""
+        },
+        {
+          "slug": "big-booty",
+          "name": "Big Booty",
+          "aliases": [
+            "big ass",
+            "big booty",
+            "booty"
+          ],
+          "intro_en": ""
+        },
+        {
+          "slug": "curvy",
+          "name": "Curvy",
+          "aliases": [
+            "bbw",
+            "curvy",
+            "plus size"
+          ],
+          "intro_en": ""
+        },
+        {
+          "slug": "big-dick",
+          "name": "Big Dick",
+          "aliases": [
+            "big dick",
+            "huge dick"
+          ],
+          "intro_en": ""
+        }
+      ]
+    },
+    {
+      "slug": "acts",
+      "name": "Acts",
+      "categories": [
+        {
+          "slug": "blowjob",
+          "name": "Blowjob",
+          "aliases": [
+            "blowjob",
+            "blow job",
+            "oral sex"
+          ],
+          "intro_en": ""
+        },
+        {
+          "slug": "anal-sex",
+          "name": "Anal Sex",
+          "aliases": [
+            "anal",
+            "anal sex"
+          ],
+          "intro_en": ""
+        },
+        {
+          "slug": "double-penetration",
+          "name": "Double Penetration",
+          "aliases": [
+            "double penetration",
+            "dp"
+          ],
+          "intro_en": ""
+        },
+        {
+          "slug": "fisting",
+          "name": "Fisting",
+          "aliases": [
+            "fisting"
+          ],
+          "intro_en": ""
+        },
+        {
+          "slug": "fingering",
+          "name": "Fingering",
+          "aliases": [
+            "fingering"
+          ],
+          "intro_en": ""
+        },
+        {
+          "slug": "female-orgasm",
+          "name": "Female Orgasm",
+          "aliases": [
+            "female orgasm"
+          ],
+          "intro_en": ""
+        },
+        {
+          "slug": "female-ejaculation",
+          "name": "Female Ejaculation",
+          "aliases": [
+            "female ejaculation",
+            "squirting"
+          ],
+          "intro_en": ""
+        },
+        {
+          "slug": "bukkake",
+          "name": "Bukkake",
+          "aliases": [
+            "bukkake"
+          ],
+          "intro_en": ""
+        },
+        {
+          "slug": "gangbang",
+          "name": "Gangbang",
+          "aliases": [
+            "gangbang"
+          ],
+          "intro_en": ""
+        },
+        {
+          "slug": "orgy",
+          "name": "Orgy",
+          "aliases": [
+            "orgy",
+            "orgies"
+          ],
+          "intro_en": ""
+        },
+        {
+          "slug": "masturbation",
+          "name": "Masturbation",
+          "aliases": [
+            "masturbation",
+            "jerking off"
+          ],
+          "intro_en": ""
+        },
+        {
+          "slug": "strap-on-sex",
+          "name": "Strap-On Sex",
+          "aliases": [
+            "strap-on",
+            "strap on"
+          ],
+          "intro_en": ""
+        },
+        {
+          "slug": "female-solo",
+          "name": "Female Solo",
+          "aliases": [
+            "female solo",
+            "solo female"
+          ],
+          "intro_en": ""
+        }
+      ]
+    },
+    {
+      "slug": "styles-themes",
+      "name": "Styles & Themes",
+      "categories": [
+        {
+          "slug": "pov",
+          "name": "POV",
+          "aliases": [
+            "pov"
+          ],
+          "intro_en": ""
+        },
+        {
+          "slug": "amateur",
+          "name": "Amateur",
+          "aliases": [
+            "amateur",
+            "homemade"
+          ],
+          "intro_en": ""
+        },
+        {
+          "slug": "roleplay",
+          "name": "Roleplay",
+          "aliases": [
+            "roleplay",
+            "role play"
+          ],
+          "intro_en": ""
+        },
+        {
+          "slug": "cosplay",
+          "name": "Cosplay",
+          "aliases": [
+            "cosplay"
+          ],
+          "intro_en": ""
+        },
+        {
+          "slug": "fetish",
+          "name": "Fetish",
+          "aliases": [
+            "fetish"
+          ],
+          "intro_en": ""
+        },
+        {
+          "slug": "cuckold",
+          "name": "Cuckold",
+          "aliases": [
+            "cuckold"
+          ],
+          "intro_en": ""
+        },
+        {
+          "slug": "romantic",
+          "name": "Romantic",
+          "aliases": [
+            "romantic"
+          ],
+          "intro_en": ""
+        },
+        {
+          "slug": "consensual-rough-sex",
+          "name": "Consensual Rough Sex",
+          "aliases": [
+            "consensual rough sex",
+            "rough but consensual"
+          ],
+          "intro_en": ""
+        },
+        {
+          "slug": "striptease",
+          "name": "Striptease",
+          "aliases": [
+            "striptease",
+            "strip tease"
+          ],
+          "intro_en": ""
+        },
+        {
+          "slug": "webcam",
+          "name": "Webcam",
+          "aliases": [
+            "webcam",
+            "cam"
+          ],
+          "intro_en": ""
+        },
+        {
+          "slug": "sex-toys",
+          "name": "Sex Toys",
+          "aliases": [
+            "sex toys",
+            "toys"
+          ],
+          "intro_en": ""
+        },
+        {
+          "slug": "party",
+          "name": "Party",
+          "aliases": [
+            "party"
+          ],
+          "intro_en": ""
+        },
+        {
+          "slug": "parody",
+          "name": "Parody",
+          "aliases": [
+            "parody"
+          ],
+          "intro_en": ""
+        },
+        {
+          "slug": "vintage",
+          "name": "Vintage",
+          "aliases": [
+            "vintage"
+          ],
+          "intro_en": ""
+        },
+        {
+          "slug": "anime",
+          "name": "Anime",
+          "aliases": [
+            "anime",
+            "hentai anime"
+          ],
+          "intro_en": ""
+        },
+        {
+          "slug": "video-games",
+          "name": "Video Games",
+          "aliases": [
+            "video games",
+            "gaming"
+          ],
+          "intro_en": ""
+        },
+        {
+          "slug": "staged-public-scenes",
+          "name": "Staged Public Scenes",
+          "aliases": [
+            "staged public",
+            "public (staged)"
+          ],
+          "intro_en": ""
+        }
+      ]
+    }
+  ],
+  "formats": [
+    {
+      "slug": "compilation",
+      "name": "Compilation",
+      "aliases": [
+        "compilation",
+        "compilations"
+      ]
+    },
+    {
+      "slug": "behind-the-scenes",
+      "name": "Behind the Scenes",
+      "aliases": [
+        "behind the scenes",
+        "behind-the-scenes",
+        "bts"
+      ]
+    },
+    {
+      "slug": "video-with-description",
+      "name": "Video with Description",
+      "aliases": [
+        "video with description",
+        "described video",
+        "audio description"
+      ]
+    },
+    {
+      "slug": "exclusive",
+      "name": "Exclusive",
+      "aliases": [
+        "exclusive",
+        "exclusive video"
+      ]
+    },
+    {
+      "slug": "virtual-reality",
+      "name": "Virtual Reality",
+      "aliases": [
+        "virtual reality",
+        "vr",
+        "360 video"
+      ]
+    }
+  ],
+  "technical": {
+    "resolutions": [
+      "240p",
+      "360p",
+      "480p",
+      "720p",
+      "1080p",
+      "1440p",
+      "4k"
+    ],
+    "frameRates": [
+      24,
+      25,
+      30,
+      50,
+      60,
+      120
+    ]
+  },
+  "languages": [
+    {
+      "slug": "english",
+      "name": "English",
+      "aliases": [
+        "english",
+        "en"
+      ]
+    },
+    {
+      "slug": "portuguese",
+      "name": "Portuguese",
+      "aliases": [
+        "portuguese",
+        "português",
+        "pt",
+        "pt-br",
+        "pt-pt"
+      ]
+    },
+    {
+      "slug": "spanish",
+      "name": "Spanish",
+      "aliases": [
+        "spanish",
+        "español",
+        "es"
+      ]
+    },
+    {
+      "slug": "french",
+      "name": "French",
+      "aliases": [
+        "french",
+        "français",
+        "fr"
+      ]
+    },
+    {
+      "slug": "german",
+      "name": "German",
+      "aliases": [
+        "german",
+        "deutsch",
+        "de"
+      ]
+    },
+    {
+      "slug": "italian",
+      "name": "Italian",
+      "aliases": [
+        "italian",
+        "italiano",
+        "it"
+      ]
+    },
+    {
+      "slug": "russian",
+      "name": "Russian",
+      "aliases": [
+        "russian",
+        "русский",
+        "ru"
+      ]
+    },
+    {
+      "slug": "japanese",
+      "name": "Japanese",
+      "aliases": [
+        "japanese",
+        "日本語",
+        "ja"
+      ]
+    },
+    {
+      "slug": "arabic",
+      "name": "Arabic",
+      "aliases": [
+        "arabic",
+        "العربية",
+        "ar"
+      ]
+    },
+    {
+      "slug": "czech",
+      "name": "Czech",
+      "aliases": [
+        "czech",
+        "čeština",
+        "cs"
+      ]
+    },
+    {
+      "slug": "filipino",
+      "name": "Filipino",
+      "aliases": [
+        "filipino",
+        "tagalog",
+        "tl"
+      ]
+    },
+    {
+      "slug": "thai",
+      "name": "Thai",
+      "aliases": [
+        "thai",
+        "ไทย",
+        "th"
+      ]
+    },
+    {
+      "slug": "ukrainian",
+      "name": "Ukrainian",
+      "aliases": [
+        "ukrainian",
+        "українська",
+        "uk"
+      ]
+    },
+    {
+      "slug": "polish",
+      "name": "Polish",
+      "aliases": [
+        "polish",
+        "polski",
+        "pl"
+      ]
+    },
+    {
+      "slug": "dutch",
+      "name": "Dutch",
+      "aliases": [
+        "dutch",
+        "nederlands",
+        "nl"
+      ]
+    },
+    {
+      "slug": "hindi",
+      "name": "Hindi",
+      "aliases": [
+        "hindi",
+        "हिन्दी",
+        "hi"
+      ]
+    },
+    {
+      "slug": "chinese",
+      "name": "Chinese",
+      "aliases": [
+        "chinese",
+        "mandarin",
+        "中文",
+        "zh"
+      ]
+    },
+    {
+      "slug": "persian",
+      "name": "Persian",
+      "aliases": [
+        "persian",
+        "farsi",
+        "فارسی",
+        "fa"
+      ]
+    }
+  ],
+  "orientations": [
+    {
+      "slug": "heterosexual",
+      "name": "Heterosexual",
+      "aliases": [
+        "heterosexual",
+        "straight"
+      ]
+    },
+    {
+      "slug": "gay",
+      "name": "Gay",
+      "aliases": [
+        "gay"
+      ]
+    },
+    {
+      "slug": "sapphic",
+      "name": "Sapphic",
+      "aliases": [
+        "sapphic",
+        "lesbian"
+      ]
+    }
+  ],
+  "blockedTags": [
+    "teen",
+    "teens",
+    "teenage",
+    "teenager",
+    "school",
+    "college",
+    "young",
+    "old",
+    "step",
+    "stepmom",
+    "step-mom",
+    "stepdad",
+    "step-dad",
+    "stepsister",
+    "step-sister",
+    "stepbrother",
+    "step-brother",
+    "mom",
+    "mommy",
+    "mother",
+    "dad",
+    "daddy",
+    "father",
+    "sister",
+    "brother",
+    "family",
+    "incest",
+    "taboo",
+    "daughter",
+    "son",
+    "grandma",
+    "grandmother",
+    "grandpa",
+    "grandfather",
+    "aunt",
+    "uncle"
+  ]
+}
