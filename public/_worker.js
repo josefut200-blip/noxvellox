@@ -912,7 +912,7 @@ function extractMetadataValue(item,keys){
  return '';
 }
 async function persistVideoTaxonomy(db,videoId,item,taxonomy){
- const raw=safeRawTags(item.raw_tags||item.tags||item.categories||item.keywords,taxonomy);
+ const raw=safeRawTags([...rawTagList(item.raw_tags),...rawTagList(item.tags),...rawTagList(item.categories),...rawTagList(item.category),...rawTagList(item.keywords),...rawTagList(item.tag)],taxonomy);
  const categorySlugs=mapRawTags(raw,taxonomy.categoryAliases,taxonomy);
  const formatValues=[...rawTagList(item.formats),...rawTagList(item.format),...raw];
  const formatSlugs=[...new Set(mapRawTags(formatValues,taxonomy.formatAliases,taxonomy))];
@@ -951,7 +951,7 @@ async function addVideo(db,item,{fromFeed=false}={}){
  if(title.length<3||!isHttpsUrl(source_url)||!isHttpsUrl(embed_url)||poster_url&&!isHttpsUrl(poster_url))throw Error('Required: title and a valid HTTPS original source and licensed embed (or Stream UID).');
  if(uid&&!validStreamEmbed(embed_url))throw Error('Invalid Cloudflare Stream player URL.');
  const taxonomy=taxonomyConfig;
- const raw=safeRawTags(item.raw_tags||item.tags||item.categories||item.keywords,taxonomy);
+ const raw=safeRawTags([...rawTagList(item.raw_tags),...rawTagList(item.tags),...rawTagList(item.categories),...rawTagList(item.category),...rawTagList(item.keywords),...rawTagList(item.tag)],taxonomy);
  const categorySlugs=mapRawTags(raw,taxonomy?.categoryAliases||new Map(),taxonomy);
  const legacyCategory=categorySlugs.length?taxonomy.categoryBySlug[categorySlugs[0]].name:'Uncategorized';
  const rights=item.rights_confirmed===true||item.rights_confirmed==='yes'||item.rightsConfirmed===true;
