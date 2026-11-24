@@ -104,7 +104,7 @@ test('category renderer shows the 20 cards, index directive, and clean canonical
 });
 test('category renderer uses the official embed card for feed records', () => {
   const page=renderCategory({base:'https://noxvellox.site',url:'https://noxvellox.site/category/brazilian',category:brazilian,videos:[{id:'6b01c8e7a798e',slug:'6b01c8e7a798e',title:'Official preview',official:true}],total:20,taxonomy,filters:{}});
-  assert.match(page.body,/<official-card>Official preview<\\/official-card>/);
+  assert.ok(page.body.includes('<official-card>Official preview</official-card>'));
 });
 test('shallow and filtered category pages stay noindex and canonicalize cleanly', () => {
   const shallow = renderCategory({base:'https://noxvellox.site',url:'https://noxvellox.site/category/brazilian',category:brazilian,videos:[],total:19,taxonomy,filters:{}});
