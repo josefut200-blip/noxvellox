@@ -35,7 +35,7 @@ function safeTags(value) {
   });
 }
 function rssFields(block, tag) {
-  const pattern = new RegExp('<' + tag + '(?:\\\\s[^>]*)?>([\\\\s\\\\S]*?)<\\\\/' + tag + '>', 'gi');
+  const pattern = new RegExp('<' + tag + '(?:\\s[^>]*)?>([\\s\\S]*?)<\\/' + tag + '>', 'gi');
   return [...String(block).matchAll(pattern)].map(match => decodeXml(match[1].trim())).filter(Boolean);
 }
 function normalizeSourceLanguage(value) {
@@ -261,7 +261,7 @@ function normalizeEntry(item) {
   const formats = safeTags(valueFrom(item, ['formats', 'format']));
   const language = normalizeSourceLanguage(valueFrom(item, ['language', 'lang', 'audio_language', 'locale']));
   const resolution = text(valueFrom(item, ['resolution', 'max_resolution', 'quality']), 16).toLowerCase();
-  const frame_rate = Number(valueFrom(item, ['frame_rate', 'frameRate', 'fps'])) || 0;
+  const frame_rate = Number(String(valueFrom(item, ['frame_rate', 'frameRate', 'fps'])).match(/\d{2,3}/)?.[0]) || 0;
   const orientation = text(valueFrom(item, ['orientation']), 32).toLowerCase();
   return {
     id,
