@@ -223,7 +223,37 @@
       },{once:true});
     });
   }
+  const releaseClickPlay=button=>{
+    const overlay=button?.closest?.('[data-click-play-overlay]');
+    const player=overlay?.closest?.('[data-player]');
+    if(!overlay||!player)return;
+    player.dataset.clickPlayReleased='yes';
+    player.dataset.prerollFinished='yes';
+    hideOverlay(overlay);
+    releaseEmbeds();
+  };
+  const setupClickToPlay=()=>{
+    document.querySelectorAll('[data-click-play-overlay]').forEach(overlay=>{
+      const player=overlay.closest('[data-player]'),button=overlay.querySelector('[data-click-play]');
+      if(!player||!button||button.dataset.clickPlayBound==='yes')return;
+      button.dataset.clickPlayBound='yes';
+      button.addEventListener('click',event=>{
+        event.preventDefault();
+        releaseClickPlay(button);
+      },{once:true});
+    });
+  };
+  // Delegate the action as a safety net for cached/late-rendered player markup.
+  // This keeps the first click deterministic even when the ad network mutates the slot.
+  document.addEventListener('click',event=>{
+    const button=event.target?.closest?.('[data-click-play]');
+    if(!button)return;
+    event.preventDefault();
+    event.stopPropagation();
+    releaseClickPlay(button);
+  },true);
   setupClickToPlay();
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',setupClickToPlay,{once:true});
   const setupCoverImages=(root=document)=>root.querySelectorAll('[data-cover-image]').forEach(media=>{
     if(media.dataset.coverImageReady==='yes')return;
     media.dataset.coverImageReady='yes';
