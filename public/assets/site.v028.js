@@ -333,6 +333,39 @@
   setupClickToPlay();
   setupVastClickOverlay();
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>{setupClickToPlay();setupVastClickOverlay()},{once:true});
+  const setupFullscreen=()=>{
+    document.querySelectorAll('[data-player-fullscreen]').forEach(button=>{
+      if(button.dataset.fullscreenBound==='yes')return;
+      const player=button.closest('[data-player]');
+      if(!player)return;
+      button.dataset.fullscreenBound='yes';
+      const active=()=>document.fullscreenElement===player||document.webkitFullscreenElement===player;
+      const update=()=>{
+        const on=active();
+        button.textContent=on?'×':'⛶';
+        button.setAttribute('aria-label',on?'Exit fullscreen':'Fullscreen');
+        button.title=on?'Exit fullscreen':'Fullscreen';
+      };
+      button.addEventListener('click',async event=>{
+        event.preventDefault();
+        event.stopPropagation();
+        try{
+          if(active()){
+            const exit=document.exitFullscreen||document.webkitExitFullscreen;
+            if(exit)await exit.call(document);
+          }else{
+            const enter=player.requestFullscreen||player.webkitRequestFullscreen||player.mozRequestFullScreen;
+            if(enter)await enter.call(player);
+          }
+        }catch{/* The provider may deny fullscreen; leave the player usable. */}
+        update();
+      });
+      document.addEventListener('fullscreenchange',update);
+      document.addEventListener('webkitfullscreenchange',update);
+      update();
+    });
+  };
+  setupFullscreen();
   const setupCoverImages=(root=document)=>root.querySelectorAll('[data-cover-image]').forEach(media=>{
     if(media.dataset.coverImageReady==='yes')return;
     media.dataset.coverImageReady='yes';
