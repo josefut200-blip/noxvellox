@@ -844,10 +844,10 @@ async function fetchVastXml(url,depth=0){
  const xml=await response.text();
  // ExoClick can return a VAST Wrapper whose next URL is cross-origin.
  // Resolve wrappers inside the Worker so the browser only requests our same-origin endpoint.
- if(/<MediaFile\\b/i.test(xml))return xml;
- const match=xml.match(/<VASTAdTagURI\\b[^>]*>\\s*([\\s\\S]*?)\\s*<\\/VASTAdTagURI>/i);
- const next=match?.[1]?.replace(/^<!\\[CDATA\\[|\\]]>$/g,'').trim()||'';
- if(!/^https:\\/\\//i.test(next))return xml;
+ if(/<MediaFile\b/i.test(xml))return xml;
+ const match=xml.match(/<VASTAdTagURI\b[^>]*>\s*([\s\S]*?)\s*<\/VASTAdTagURI>/i);
+ const next=match?.[1]?.replace(/^<!\[CDATA\[|\]\]>$/g,'').trim()||'';
+ if(!/^https:\/\//i.test(next))return xml;
  return fetchVastXml(next,depth+1);
 }
 async function api(req,env,url,db){
