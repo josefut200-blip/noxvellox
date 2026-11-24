@@ -653,19 +653,20 @@ async function adminPage({db,env,url,req,base}){
   return shell({base,url,gate:false,robots:'noindex,nofollow',title:'Publisher dashboard | Noxvellox',description:'Private content management console.',body:`${body}<script defer src="/assets/admin.v027.js?ver=0.4.2"></script>`});
 }
 function normalizeImportedTitle(raw){
- const original=safeText(raw,140).replace(/[\\u{1F300}-\\u{1FAFF}\\u{2600}-\\u{27BF}]/gu,'').replace(/\\s+/g,' ').trim();
+ const original=safeText(raw,140).replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu,'').replace(/\s+/g,' ').trim();
  if(!original)return '';
- const promotional=/^(?:watch|download|free|hot|new|official|full|now|video)[\\s!|:_-]+/i;
- const cleaned=original.replace(promotional,'').replace(/[!?|*_~]+/g,' ').replace(/\\s+/g,' ').trim();
+ const promotional=/^(?:watch|download|free|hot|new|official|full|now|video)[\s!|:_-]+/i;
+ const cleaned=original.replace(promotional,'').replace(/[!?|*_~]+/g,' ').replace(/\s+/g,' ').trim();
  if(!cleaned)return '';
  const letters=cleaned.replace(/[^A-Za-zÀ-ÿ]/g,'');
  const shouldTitle=letters.length>8&&letters===letters.toUpperCase();
- return shouldTitle?cleaned.toLowerCase().replace(/(^|[\\s-])([a-zà-ÿ])/g,(_,p,c)=>p+c.toUpperCase()):cleaned;
+ return shouldTitle?cleaned.toLowerCase().replace(/(^|[\s-])([a-zà-ÿ])/g,(_,p,c)=>p+c.toUpperCase()):cleaned;
 }
 function inferImportedCategory(item,fallback='Featured'){
  const hay=String([item.title,item.description,item.channel,item.studio,item.language,item.locale].filter(Boolean).join(' ')).toLowerCase();
- return /\\b(brazil|brazilian|brasileir|brasil|rio|s[aã]o paulo|\\bsp\\b|\\bpt[-_]?br\\b|portuguese)\\b/.test(hay)?'Brazilian':fallback;
+ return /\b(brazil|brazilian|brasileir|brasil|rio|s[aã]o paulo|\bsp\b|\bpt[-_]?br\b|portuguese)\b/.test(hay)?'Brazilian':fallback;
 }
+
 async function addVideo(db,item,{fromFeed=false}={}){
  const title=normalizeImportedTitle(item.title),description=safeText(item.description,1600)||`${title}. Authorized metadata from ${safeText(item.provider||'the original publisher',80)}.`;
  const uid=streamUid(item.stream_uid||item.streamUid);
