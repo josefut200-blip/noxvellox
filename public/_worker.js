@@ -12,7 +12,7 @@ const ADSTERRA_SOCIAL_BAR_SRC='https://biomanos.org/14/505d9a85cd6b957598b0e25ba
 const ADSTERRA_POPUNDER_SRC='https://benchform.org/1/02c67b439b4bd019691a72b99d34c0ca';
 const EXOCLICK_BANNER_ZONE_ID='6104372';
 const EXOCLICK_BANNER_SRC='https://a.magsrv.com/ad-provider.js';
-const VERSION='0.3.10';
+const VERSION='0.3.11';
 const MIN_VIDEO_DURATION_SECONDS=15*60;
 const MIN_OFFICIAL_DURATION_SECONDS=60;
 const EMBED_BLOCKED_OFFICIAL_IDS=new Set(['6937cf5fea785']);
@@ -217,6 +217,15 @@ function rssField(item,tag){
  return v.replace(/&amp;/gi,'&').replace(/&lt;/gi,'<').replace(/&gt;/gi,'>').replace(/&quot;/gi,'"').replace(/&#39;|&apos;/gi,"'").replace(/&#(\d+);/g,(_,n)=>{const code=Number(n);return code>31&&code<127?String.fromCodePoint(code):''});
 }
 function officialPoster(value){try{const u=new URL(String(value||''));if(u.protocol==='https:'&&(u.hostname==='phncdn.com'||u.hostname.endsWith('.phncdn.com')))return u.href}catch{}return ''}
+
+function rssTagValues(entry){
+ const values=[];
+ for(const match of String(entry||'').matchAll(/<(?:[\w.-]+:)?(?:tag|category|subject)\b[^>]*>([\s\S]*?)<\/(?:[\w.-]+:)?(?:tag|category|subject)\s*>/gi)){
+  const value=rssField('<tag>'+match[1]+'</tag>','tag');
+  if(value)values.push(value);
+ }
+ return rawTagList(values);
+}
 function parseOfficialRSS(xmlText){
  const xml=String(xmlText||''); if(xml.length>350000||!/\<rss\b/i.test(xml)||!/<channel>/i.test(xml))return [];
  const out=[],seen=new Set();
@@ -232,7 +241,7 @@ function parseOfficialRSS(xmlText){
   const validPoster=officialPoster(poster);
   const rawDuration=Number(rssField(entry,'duration'));
   if(!Number.isInteger(rawDuration)||rawDuration<MIN_OFFICIAL_DURATION_SECONDS||rawDuration>=60000)continue;
-  out.push({id,title,poster_url:validPoster,source_url:OFFICIAL_ORIGIN+'/view_video.php?viewkey='+id,embed_url:OFFICIAL_ORIGIN+'/embed/'+id,duration_seconds:rawDuration});
+  out.push({id,title,poster_url:validPoster,source_url:OFFICIAL_ORIGIN+'/view_video.php?viewkey='+id,embed_url:OFFICIAL_ORIGIN+'/embed/'+id,duration_seconds:rawDuration,raw_tags:rssTagValues(entry)});
  }
  return out;
 }
@@ -360,6 +369,8 @@ async function officialCatalog(db,{page=1,limit=OFFICIAL_PAGE_SIZE,q='',localEnt
    db.prepare(`SELECT count(*) AS total FROM official_embeds WHERE visibility='active' AND id NOT IN ('696c7c920140e','6937cf5fea785')${where} AND duration_seconds >= ${MIN_OFFICIAL_DURATION_SECONDS}`).bind(...(query?[match]:[])).first()
   ]);
    const entries=await hydrateOfficialPosters((rows.results||[]).map(v=>({...v,source_url:OFFICIAL_ORIGIN+'/view_video.php?viewkey='+v.id,embed_url:OFFICIAL_ORIGIN+'/embed/'+v.id})),db);
+  const taxonomyBackfilled=await db.prepare('SELECT 1 AS ready FROM taxonomy_migrations WHERE version=2').first();
+  if(taxonomyBackfilled)return {entries,total:Number(count?.total||0),persisted:true};
   if(count?.total>0){
    const known=new Set(entries.map(item=>String(item.id)));
    const queryText=String(q||'').trim().toLowerCase();
@@ -400,11 +411,87 @@ async function officialById(db,id,localEntries=null){
 // One-click official webmaster import for administrators. Unlike the
 // separately imported Little Pepper/Brazzers metadata, official embeds in the
 // provider webmaster program are allowed as automatic feed listings.
-async function syncOfficialOnDemand(db){
+
+function validOfficialListing(item,id){
+ try{
+  const source=new URL(String(item?.source_url||'')),embed=new URL(String(item?.embed_url||''));
+  const hosts=new Set(['www.pornhub.com','pornhub.com']);
+  return source.protocol==='https:'&&hosts.has(source.hostname)&&source.pathname==='/view_video.php'&&source.searchParams.get('viewkey')===id&&
+   embed.protocol==='https:'&&hosts.has(embed.hostname)&&embed.pathname==='/embed/'+id;
+ }catch{return false}
+}
+async function persistOfficialRecords(db,items,taxonomy){
+ if(!db)throw Error('D1 database not configured');
+ const dedup=new Map();
+ for(const item of Array.isArray(items)?items:[]){
+  const id=String(item?.id||'');
+  if(!/^[a-z0-9]{8,24}$/i.test(id)||REMOVED_OFFICIAL_IDS.has(id)||EMBED_BLOCKED_OFFICIAL_IDS.has(id))continue;
+  const title=safeText(item?.title||'',160),durationSeconds=Number(item?.duration_seconds||0);
+  if(!title||!Number.isInteger(durationSeconds)||durationSeconds<MIN_OFFICIAL_DURATION_SECONDS||durationSeconds>=60000||!validOfficialListing(item,id))continue;
+  const classified=classifyOfficialMetadata(item,taxonomy);
+  dedup.set(id,{id,title,poster_url:officialPoster(item?.poster_url||''),duration_seconds:durationSeconds,raw_tags:classified.rawTags,categories:classified.categories,formats:classified.formats,blocked:classified.blocked});
+ }
+ const all=[...dedup.values()];
+ let processed=0,blockedTitles=0,matchedCategories=0,matchedFormats=0;
+ for(let offset=0;offset<all.length;offset+=200){
+  const batch=all.slice(offset,offset+200);
+  const rows=batch.map(({id,title,poster_url,duration_seconds})=>({id,title,poster_url,duration_seconds}));
+  const metadata=batch.map(({id,raw_tags})=>({id,raw_tags_json:JSON.stringify(raw_tags)}));
+  const ids=JSON.stringify(batch.map(item=>item.id));
+  const categories=batch.flatMap(item=>item.categories.map(category_slug=>({id:item.id,category_slug})));
+  const formats=batch.flatMap(item=>item.formats.map(format_slug=>({id:item.id,format_slug})));
+  const statements=[
+   db.prepare("INSERT INTO official_embeds (id,title,poster_url,duration_seconds,source,visibility) SELECT json_extract(value,'$.id'),json_extract(value,'$.title'),json_extract(value,'$.poster_url'),json_extract(value,'$.duration_seconds'),'pornhub_official_webmaster','active' FROM json_each(?) WHERE 1 ON CONFLICT(id) DO UPDATE SET title=excluded.title,poster_url=CASE WHEN excluded.poster_url<>'' THEN excluded.poster_url ELSE official_embeds.poster_url END,duration_seconds=excluded.duration_seconds,last_seen_at=datetime('now')").bind(JSON.stringify(rows)),
+   db.prepare("DELETE FROM official_embed_categories WHERE official_video_id IN (SELECT value FROM json_each(?))").bind(ids),
+   db.prepare("DELETE FROM official_embed_formats WHERE official_video_id IN (SELECT value FROM json_each(?))").bind(ids),
+   db.prepare("INSERT INTO official_embed_metadata (official_video_id,raw_tags_json) SELECT json_extract(value,'$.id'),json_extract(value,'$.raw_tags_json') FROM json_each(?) WHERE 1 ON CONFLICT(official_video_id) DO UPDATE SET raw_tags_json=excluded.raw_tags_json").bind(JSON.stringify(metadata)),
+   db.prepare("INSERT OR IGNORE INTO official_embed_categories (official_video_id,category_slug) SELECT json_extract(j.value,'$.id'),json_extract(j.value,'$.category_slug') FROM json_each(?) j JOIN official_embeds o ON o.id=json_extract(j.value,'$.id') JOIN taxonomy_categories tc ON tc.slug=json_extract(j.value,'$.category_slug') WHERE o.visibility='active'").bind(JSON.stringify(categories)),
+   db.prepare("INSERT OR IGNORE INTO official_embed_formats (official_video_id,format_slug) SELECT json_extract(j.value,'$.id'),json_extract(j.value,'$.format_slug') FROM json_each(?) j JOIN official_embeds o ON o.id=json_extract(j.value,'$.id') WHERE o.visibility='active'").bind(JSON.stringify(formats))
+  ];
+  await db.batch(statements);
+  processed+=batch.length;
+  blockedTitles+=batch.filter(item=>item.blocked).length;
+  matchedCategories+=categories.length;
+  matchedFormats+=formats.length;
+ }
+ return {processed,blockedTitles,matchedCategories,matchedFormats};
+}
+async function loadOfficialStaticRecords(env,req){
+ if(!env?.ASSETS?.fetch)throw Error('Static official feed unavailable');
+ const [baseResponse,manualResponse]=await Promise.all([
+  env.ASSETS.fetch(new Request(new URL('/data/videos.json',req.url))),
+  env.ASSETS.fetch(new Request(new URL('/data/manual-official-videos.json',req.url)))
+ ]);
+ const base=baseResponse.ok?await baseResponse.json():null;
+ const manual=manualResponse.ok?await manualResponse.json():null;
+ const entries=[
+  ...(Array.isArray(base)?base:(Array.isArray(base?.entries)?base.entries:[])),
+  ...(Array.isArray(manual)?manual:(Array.isArray(manual?.entries)?manual.entries:[]))
+ ];
+ return entries.filter(item=>item&&/^[a-z0-9]{8,24}$/i.test(String(item.id||''))).map(item=>({...item}));
+}
+async function taxonomyBackfillTokenHash(token){
+ const bytes=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(String(token||'')));
+ return [...new Uint8Array(bytes)].map(byte=>byte.toString(16).padStart(2,'0')).join('');
+}
+async function runOfficialTaxonomyBackfill(db,env,req,taxonomy){
+ if(!db)throw Error('D1 database not configured');
+ await ensureTaxonomySchema(db,taxonomy);
+ const assetRecords=await loadOfficialStaticRecords(env,req);
+ const stored=await db.prepare("SELECT id,title,poster_url,duration_seconds FROM official_embeds WHERE visibility='active' AND id NOT IN ('696c7c920140e','6937cf5fea785')").all();
+ const records=new Map((stored.results||[]).map(row=>[String(row.id),{...row,source_url:OFFICIAL_ORIGIN+'/view_video.php?viewkey='+row.id,embed_url:OFFICIAL_ORIGIN+'/embed/'+row.id}]));
+ for(const item of assetRecords)records.set(String(item.id),item);
+ const persisted=await persistOfficialRecords(db,[...records.values()],taxonomy);
+ await db.prepare("INSERT OR IGNORE INTO taxonomy_migrations(version) VALUES (2)").run();
+ const directory=await categoryDirectory(db,taxonomy,500);
+ const active=directory.filter(item=>item.seo_indexable).map(item=>({slug:item.slug,name:item.name,count:item.count}));
+ return {ok:true,sourceRecords:assetRecords.length,eligibleRecords:persisted.processed,blockedTitles:persisted.blockedTitles,categoryAssignments:persisted.matchedCategories,formatAssignments:persisted.matchedFormats,activeCategoryCount:active.length,activeCategories:active,noMediaHosted:true};
+}
+async function syncOfficialOnDemand(db,taxonomy=taxonomyConfig){
  if(!db)throw Error('D1 database not configured');
  const records=new Map();
  const live=await retrieveOfficialFeed({force:true});
- for(const v of live.entries)records.set(v.id,{id:v.id,title:v.title,poster_url:v.poster_url||'',duration_seconds:v.duration_seconds||0});
+ for(const v of live.entries)records.set(v.id,{id:v.id,title:v.title,poster_url:v.poster_url||'',duration_seconds:v.duration_seconds||0,raw_tags:v.raw_tags||[]});
   for(let page=1;page<=6;page++){
   const addr='https://www.pornhub.com/webmasters/search?search=amateur&page='+page;
   try{
@@ -421,15 +508,15 @@ async function syncOfficialOnDemand(db){
     if(/^\d+:\d\d(?::\d\d)?$/.test(dur))seconds=dur.split(':').map(Number).reduce((n,v)=>n*60+v,0);
     const poster=officialPoster(row.poster_url||row.default_thumb||row.thumb||row.thumbnail||row.image||'');
      if(!Number.isInteger(seconds)||seconds<MIN_OFFICIAL_DURATION_SECONDS||seconds>=60000)continue;
-     records.set(id,{id,title,poster_url:poster,duration_seconds:seconds});
+     records.set(id,{id,title,poster_url:poster,duration_seconds:seconds,raw_tags:rawTagList(row.tags||row.categories||[])});
    }
   }catch(e){console.warn('Webmaster search temporarily unavailable',page,String(e.message||e).slice(0,90));break}
  }
  if(!records.size)throw Error('Official provider is temporarily unavailable; no unverified data imported');
- await db.prepare("CREATE TABLE IF NOT EXISTS official_embeds (id TEXT PRIMARY KEY,title TEXT NOT NULL,poster_url TEXT NOT NULL DEFAULT '',duration_seconds INTEGER NOT NULL DEFAULT 0,source TEXT NOT NULL DEFAULT 'pornhub_webmaster',visibility TEXT NOT NULL DEFAULT 'active',first_seen_at TEXT NOT NULL DEFAULT (datetime('now')),last_seen_at TEXT NOT NULL DEFAULT (datetime('now')))").run();
- const all=[...records.values()];
- for(let i=0;i<all.length;i+=20){await db.batch(all.slice(i,i+20).map(v=>db.prepare("INSERT INTO official_embeds (id,title,poster_url,duration_seconds,source) VALUES (?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET title=excluded.title,poster_url=CASE WHEN excluded.poster_url<>'' THEN excluded.poster_url ELSE official_embeds.poster_url END,duration_seconds=excluded.duration_seconds,last_seen_at=datetime('now')").bind(v.id,v.title,v.poster_url||'',v.duration_seconds,'pornhub_official_webmaster')))}
- return {ok:true,synced:all.length,automaticallyAvailable:true,noVideoFilesCopied:true};
+ if(!taxonomy)throw Error('Taxonomy configuration unavailable');
+ const all=[...records.values()].map(v=>({...v,source_url:OFFICIAL_ORIGIN+'/view_video.php?viewkey='+v.id,embed_url:OFFICIAL_ORIGIN+'/embed/'+v.id}));
+ const persisted=await persistOfficialRecords(db,all,taxonomy);
+ return {ok:true,synced:persisted.processed,categorized:persisted.matchedCategories,formatted:persisted.matchedFormats,automaticallyAvailable:true,noVideoFilesCopied:true};
 }
 const officialCard=v=>`<a class="video-card" href="/official-watch/${encodeURIComponent(v.id)}"><div class="video-art">${coverMarkup(v.poster_url,v.title,'Free official embed',v.embed_url)}<span class="play" aria-hidden="true">▶</span>${v.duration_seconds?`<span class="duration">${duration(v.duration_seconds)}</span>`:''}</div><div class="video-meta"><h3>${esc(v.title)}</h3><div class="sub"><strong>Official embed</strong>  ·  Pornhub</div></div></a>`;
 const officialGrid=(items,heading='Videos from official provider feed')=>`<section class="section wrap"><div class="section-head"><div><div class="section-kicker">No video files hosted here  ·  Free authorized embeds</div><h2>${esc(heading)}</h2></div><a class="section-link" href="/official-videos">View official feed ?</a></div><div class="video-grid">${items.length?items.map(officialCard).join(''):'<div class="empty"><strong>Official provider feed temporarily unavailable</strong><p>Please check the provider or try again later. No placeholder videos will be invented.</p></div>'}</div>${items[0]?.from_snapshot?'<p class="mini"><strong>Dated contingency:</strong> official RSS metadata last observed November 22, 2026; playback is not confirmed and listings can change.</p>':''}<p class="mini">Embedded directly from the original provider under its webmaster embed terms. Availability may depend on region and may change. No files are downloaded or redistributed by Noxvellox.</p></section>`;
@@ -522,6 +609,34 @@ function safeRawTags(tags,taxonomy){
 function mapRawTags(tags,aliasMap,taxonomy){
  return [...new Set(safeRawTags(tags,taxonomy).map(tag=>aliasMap.get(normalizeTaxonomyToken(tag))).filter(Boolean))];
 }
+
+function taxonomyTextMatches(text,aliasMap){
+ const normalized=normalizeTaxonomyToken(text),padded=' '+normalized+' ',matches=[];
+ if(!normalized)return matches;
+ for(const [alias,slug] of aliasMap||[])if(alias&&padded.includes(' '+alias+' '))matches.push(slug);
+ return [...new Set(matches)];
+}
+function officialInputTags(item){
+ const collect=value=>Array.isArray(value)?value:(typeof value==='string'?value.split(/[;,|]/):[]);
+ return rawTagList([...collect(item?.raw_tags),...collect(item?.tags),...collect(item?.tag)]);
+}
+function classifyOfficialMetadata(item,taxonomy){
+ const rawTags=officialInputTags(item);
+ const safeTags=safeRawTags(rawTags,taxonomy);
+ const blocked=hasBlockedTags([String(item?.title||'')],taxonomy)||hasBlockedTags(rawTags,taxonomy);
+ if(blocked)return {rawTags:safeTags,categories:[],formats:[],blocked:true};
+ const categories=[
+  ...mapRawTags(safeTags,taxonomy?.categoryAliases,taxonomy),
+  ...taxonomyTextMatches(item?.title,taxonomy?.categoryAliases),
+  ...rawTagList(item?.categories).filter(slug=>!!taxonomy?.categoryBySlug?.[slug])
+ ];
+ const formats=[
+  ...mapRawTags(safeTags,taxonomy?.formatAliases,taxonomy),
+  ...taxonomyTextMatches(item?.title,taxonomy?.formatAliases),
+  ...rawTagList(item?.formats).filter(slug=>(taxonomy?.formats||[]).some(format=>format.slug===slug))
+ ];
+ return {rawTags:safeTags,categories:[...new Set(categories)],formats:[...new Set(formats)],blocked:false};
+}
 function normalizeLanguage(value,taxonomy){
  return (taxonomy?.languageAliases||new Map()).get(normalizeTaxonomyToken(value))||'';
 }
@@ -556,6 +671,13 @@ async function ensureTaxonomySchema(db,taxonomy){
    "CREATE INDEX IF NOT EXISTS idx_video_formats_slug ON video_formats(format_slug,video_id)",
    "CREATE TABLE IF NOT EXISTS video_views (id INTEGER PRIMARY KEY AUTOINCREMENT,video_id INTEGER NOT NULL,viewed_at TEXT NOT NULL DEFAULT (datetime('now')),FOREIGN KEY(video_id) REFERENCES videos(id) ON DELETE CASCADE)",
    "CREATE INDEX IF NOT EXISTS idx_video_views_video_date ON video_views(video_id,viewed_at)",
+   "CREATE TABLE IF NOT EXISTS official_embeds (id TEXT PRIMARY KEY,title TEXT NOT NULL,poster_url TEXT NOT NULL DEFAULT '',duration_seconds INTEGER NOT NULL DEFAULT 0,source TEXT NOT NULL DEFAULT 'pornhub_webmaster',visibility TEXT NOT NULL DEFAULT 'active',first_seen_at TEXT NOT NULL DEFAULT (datetime('now')),last_seen_at TEXT NOT NULL DEFAULT (datetime('now')))",
+   "CREATE TABLE IF NOT EXISTS official_embed_metadata (official_video_id TEXT PRIMARY KEY,raw_tags_json TEXT NOT NULL DEFAULT '[]',FOREIGN KEY(official_video_id) REFERENCES official_embeds(id) ON DELETE CASCADE)",
+   "CREATE TABLE IF NOT EXISTS official_embed_categories (official_video_id TEXT NOT NULL,category_slug TEXT NOT NULL,PRIMARY KEY(official_video_id,category_slug),FOREIGN KEY(official_video_id) REFERENCES official_embeds(id) ON DELETE CASCADE,FOREIGN KEY(category_slug) REFERENCES taxonomy_categories(slug) ON DELETE CASCADE)",
+   "CREATE INDEX IF NOT EXISTS idx_official_embed_categories_slug ON official_embed_categories(category_slug,official_video_id)",
+   "CREATE TABLE IF NOT EXISTS official_embed_formats (official_video_id TEXT NOT NULL,format_slug TEXT NOT NULL,PRIMARY KEY(official_video_id,format_slug),FOREIGN KEY(official_video_id) REFERENCES official_embeds(id) ON DELETE CASCADE)",
+   "CREATE INDEX IF NOT EXISTS idx_official_embed_formats_slug ON official_embed_formats(format_slug,official_video_id)",
+   "CREATE TABLE IF NOT EXISTS taxonomy_backfill_tokens (token_hash TEXT PRIMARY KEY,expires_at TEXT NOT NULL,used_at TEXT)",
    "CREATE TABLE IF NOT EXISTS taxonomy_migrations (version INTEGER PRIMARY KEY,applied_at TEXT NOT NULL DEFAULT (datetime('now')))"
   ];
   for(const statement of statements)await db.prepare(statement).run();
@@ -589,33 +711,51 @@ async function ensureTaxonomySchema(db,taxonomy){
 }
 async function categoryDirectory(db,taxonomy,limit=30){
  if(!db)return [];
- const result=await db.prepare("SELECT tc.slug,tc.name,tc.group_slug,tc.group_name,tc.intro_en,COUNT(DISTINCT v.id) AS count FROM taxonomy_categories tc JOIN video_categories vc ON vc.category_slug=tc.slug JOIN videos v ON v.id=vc.video_id WHERE v.status='published' AND v.rights_confirmed=1 AND v.adults_verified=1 AND v.duration_seconds>=? AND v.poster_url<>'' AND v.embed_url<>'' GROUP BY tc.slug,tc.name,tc.group_slug,tc.group_name,tc.intro_en ORDER BY count DESC,tc.name COLLATE NOCASE ASC LIMIT ?")
-  .bind(MIN_VIDEO_DURATION_SECONDS,Math.max(1,Math.min(500,limit))).all();
+ const sql="SELECT tc.slug,tc.name,tc.group_slug,tc.group_name,tc.intro_en,COUNT(DISTINCT source.item_id) AS count FROM taxonomy_categories tc JOIN ("+
+  "SELECT vc.category_slug AS category_slug,CAST(v.id AS TEXT) AS item_id FROM video_categories vc JOIN videos v ON v.id=vc.video_id WHERE v.status='published' AND v.rights_confirmed=1 AND v.adults_verified=1 AND v.duration_seconds>=? AND v.poster_url<>'' AND v.embed_url<>'' "+
+  "UNION ALL SELECT oc.category_slug AS category_slug,o.id AS item_id FROM official_embed_categories oc JOIN official_embeds o ON o.id=oc.official_video_id WHERE o.visibility='active' AND o.id NOT IN ('696c7c920140e','6937cf5fea785') AND o.duration_seconds>=? AND o.poster_url<>''"+
+  ") source ON source.category_slug=tc.slug GROUP BY tc.slug,tc.name,tc.group_slug,tc.group_name,tc.intro_en ORDER BY count DESC,tc.name COLLATE NOCASE ASC LIMIT ?";
+ const result=await db.prepare(sql).bind(MIN_VIDEO_DURATION_SECONDS,MIN_OFFICIAL_DURATION_SECONDS,Math.max(1,Math.min(500,limit))).all();
  return (result.results||[]).map(row=>({...row,count:Number(row.count||0),seo_indexable:indexableCategory(row,row.count,taxonomy)}));
+}
+function categoryVideoFilters(filters,params){
+ let where="";
+ if(filters.language){where+=" AND vm.language=?";params.push(filters.language)}
+ if(filters.resolution){where+=" AND vm.resolution=?";params.push(filters.resolution)}
+ if(filters.frame_rate){where+=" AND vm.frame_rate=?";params.push(filters.frame_rate)}
+ if(filters.orientation){where+=" AND vm.orientation=?";params.push(filters.orientation)}
+ if(filters.format){where+=" AND EXISTS (SELECT 1 FROM video_formats vf WHERE vf.video_id=v.id AND vf.format_slug=?)";params.push(filters.format)}
+ return where;
+}
+function officialCategoryFilter(filters,params){
+ let where="";
+ if(filters.language||filters.resolution||filters.frame_rate||filters.orientation)where+=" AND 1=0";
+ if(filters.format){where+=" AND EXISTS (SELECT 1 FROM official_embed_formats ofmt WHERE ofmt.official_video_id=o.id AND ofmt.format_slug=?)";params.push(filters.format)}
+ return where;
 }
 async function taxonomyCategoryVideos(db,category,{filters={},limit=40,offset=0}={}){
  if(!db||!category)return [];
- const params=[category.slug,'published',1,1,MIN_VIDEO_DURATION_SECONDS];
- let where="vc.category_slug=? AND v.status=? AND v.rights_confirmed=? AND v.adults_verified=? AND v.duration_seconds>=? AND v.poster_url<>'' AND v.embed_url<>''";
- if(filters.language){where+=" AND vm.language=?";params.push(filters.language)}
- if(filters.resolution){where+=" AND vm.resolution=?";params.push(filters.resolution)}
- if(filters.frame_rate){where+=" AND vm.frame_rate=?";params.push(filters.frame_rate)}
- if(filters.orientation){where+=" AND vm.orientation=?";params.push(filters.orientation)}
- if(filters.format){where+=" AND EXISTS (SELECT 1 FROM video_formats vf WHERE vf.video_id=v.id AND vf.format_slug=?)";params.push(filters.format)}
- params.push(limit,offset);
- const result=await db.prepare("SELECT v.id,v.slug,v.title,v.description,v.category,v.poster_url,v.embed_url,v.source_url,v.provider,v.duration_seconds,v.status,v.published_at FROM videos v JOIN video_categories vc ON vc.video_id=v.id LEFT JOIN video_metadata vm ON vm.video_id=v.id WHERE "+where+" ORDER BY v.published_at DESC,v.id DESC LIMIT ? OFFSET ?").bind(...params).all();
- return result.results||[];
+ const videoParams=[category.slug,'published',1,1,MIN_VIDEO_DURATION_SECONDS];
+ const videoWhere="vc.category_slug=? AND v.status=? AND v.rights_confirmed=? AND v.adults_verified=? AND v.duration_seconds>=? AND v.poster_url<>'' AND v.embed_url<>''"+categoryVideoFilters(filters,videoParams);
+ const officialParams=[category.slug,MIN_OFFICIAL_DURATION_SECONDS];
+ const officialWhere="oc.category_slug=? AND o.visibility='active' AND o.id NOT IN ('696c7c920140e','6937cf5fea785') AND o.duration_seconds>=? AND o.poster_url<>''"+officialCategoryFilter(filters,officialParams);
+ const sql="SELECT CAST(v.id AS TEXT) AS id,v.slug,v.title,v.description,v.category,v.poster_url,v.embed_url,v.source_url,v.provider,v.duration_seconds,v.status,v.published_at,0 AS is_official FROM videos v JOIN video_categories vc ON vc.video_id=v.id LEFT JOIN video_metadata vm ON vm.video_id=v.id WHERE "+videoWhere+
+  " UNION ALL SELECT o.id AS id,o.id AS slug,o.title,'' AS description,'' AS category,o.poster_url,'"+OFFICIAL_ORIGIN+"/embed/'||o.id AS embed_url,'"+OFFICIAL_ORIGIN+"/view_video.php?viewkey='||o.id AS source_url,o.source AS provider,o.duration_seconds,'published' AS status,o.last_seen_at AS published_at,1 AS is_official FROM official_embeds o JOIN official_embed_categories oc ON oc.official_video_id=o.id WHERE "+officialWhere+
+  " ORDER BY published_at DESC,id DESC LIMIT ? OFFSET ?";
+ const result=await db.prepare(sql).bind(...videoParams,...officialParams,limit,offset).all();
+ return (result.results||[]).map(row=>({...row,id:Number(row.is_official)===1?String(row.id):Number(row.id),official:Number(row.is_official)===1}));
 }
 async function countTaxonomyCategoryVideos(db,category,filters={}){
  if(!db||!category)return 0;
- const params=[category.slug,'published',1,1,MIN_VIDEO_DURATION_SECONDS];
- let where="vc.category_slug=? AND v.status=? AND v.rights_confirmed=? AND v.adults_verified=? AND v.duration_seconds>=? AND v.poster_url<>'' AND v.embed_url<>''";
- if(filters.language){where+=" AND vm.language=?";params.push(filters.language)}
- if(filters.resolution){where+=" AND vm.resolution=?";params.push(filters.resolution)}
- if(filters.frame_rate){where+=" AND vm.frame_rate=?";params.push(filters.frame_rate)}
- if(filters.orientation){where+=" AND vm.orientation=?";params.push(filters.orientation)}
- if(filters.format){where+=" AND EXISTS (SELECT 1 FROM video_formats vf WHERE vf.video_id=v.id AND vf.format_slug=?)";params.push(filters.format)}
- const row=await db.prepare("SELECT COUNT(DISTINCT v.id) AS total FROM videos v JOIN video_categories vc ON vc.video_id=v.id LEFT JOIN video_metadata vm ON vm.video_id=v.id WHERE "+where).bind(...params).first();
+ const videoParams=[category.slug,'published',1,1,MIN_VIDEO_DURATION_SECONDS];
+ const videoWhere="vc.category_slug=? AND v.status=? AND v.rights_confirmed=? AND v.adults_verified=? AND v.duration_seconds>=? AND v.poster_url<>'' AND v.embed_url<>''"+categoryVideoFilters(filters,videoParams);
+ const officialParams=[category.slug,MIN_OFFICIAL_DURATION_SECONDS];
+ const officialWhere="oc.category_slug=? AND o.visibility='active' AND o.id NOT IN ('696c7c920140e','6937cf5fea785') AND o.duration_seconds>=? AND o.poster_url<>''"+officialCategoryFilter(filters,officialParams);
+ const sql="SELECT COUNT(*) AS total FROM ("+
+  "SELECT CAST(v.id AS TEXT) AS id FROM videos v JOIN video_categories vc ON vc.video_id=v.id LEFT JOIN video_metadata vm ON vm.video_id=v.id WHERE "+videoWhere+
+  " UNION ALL SELECT o.id AS id FROM official_embeds o JOIN official_embed_categories oc ON oc.official_video_id=o.id WHERE "+officialWhere+
+  ") combined";
+ const row=await db.prepare(sql).bind(...videoParams,...officialParams).first();
  return Number(row?.total||0);
 }
 async function collectionVideos(db,collection,limit=40){
@@ -750,7 +890,7 @@ function taxonomyCategoryPage({base,url,category,videos,total,taxonomy,filters})
  const words=introWordCount(category.intro_en);
  const canIndex=indexableCategory(category,total,taxonomy)&&!filtered;
  const intro=canIndex?'<p class="category-intro">'+esc(category.intro_en)+'</p>':'<p class="category-intro">This collection is being curated. Only approved videos with publisher-supplied category tags are shown.</p>';
- const cards=videos.length?videos.map(card).join(''):'<div class="empty"><strong>No videos match this category yet</strong><p>Try another filter or browse all categories.</p><a class="button ghost" href="/categories">Browse categories</a></div>';
+ const cards=videos.length?videos.map(v=>v.official?officialCard(v):card(v)).join(''):'<div class="empty"><strong>No videos match this category yet</strong><p>Try another filter or browse all categories.</p><a class="button ghost" href="/categories">Browse categories</a></div>';
  const description=canIndex?String(category.intro_en).replace(/\s+/g,' ').slice(0,155):'Browse approved videos in the '+category.name+' category on Noxvellox.';
  const title=category.name+' Videos | Noxvellox';
  const body='<section class="wrap page-head"><div class="section-kicker"><a href="/categories">Categories</a> / '+esc(category.group_name)+'</div><h1>'+esc(category.name)+' Videos</h1>'+intro+'<p>'+Number(total).toLocaleString('en-US')+' approved videos</p></section>'+
@@ -1210,6 +1350,21 @@ async function api(req,env,url,db){
    try{return json(await runImport(env,db))}catch(e){return json({error:String(e.message||e)},422)}
  }
  if(!sameOrigin(req))return json({error:'Invalid origin'},403);
+
+ if(path==='/api/taxonomy/backfill'&&req.method==='POST'){
+  if(!db)return json({error:'D1 database not configured'},503);
+  const token=authHeaderToken(req);
+  if(!token||token.length<32)return json({error:'Unauthorized'},401);
+  try{
+   const tokenHash=await taxonomyBackfillTokenHash(token);
+   const authorized=await db.prepare("SELECT token_hash FROM taxonomy_backfill_tokens WHERE token_hash=? AND used_at IS NULL AND expires_at>datetime('now')").bind(tokenHash).first();
+   if(!authorized)return json({error:'Unauthorized or expired backfill token'},401);
+   const result=await runOfficialTaxonomyBackfill(db,env,req,taxonomyConfig);
+   await db.prepare("UPDATE taxonomy_backfill_tokens SET used_at=datetime('now') WHERE token_hash=? AND used_at IS NULL").bind(tokenHash).run();
+   return json(result);
+  }catch(error){return json({error:safeText(error.message||error,180)},422)}
+ }
+
  if(path==='/api/record-view'&&req.method==='POST'){
   if(!db)return json({error:'D1 not configured'},503);
   try{
