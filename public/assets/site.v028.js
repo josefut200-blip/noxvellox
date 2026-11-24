@@ -137,11 +137,11 @@
     if(!player||player.dataset.prerollStarted==='yes')return;
     const frame=player.querySelector('[data-embed-url]'),overlay=player.querySelector('[data-pre-roll]');
     if(!frame||!overlay)return;
-    if(consent()!=='granted'){if(!frame.src)frame.src=frame.dataset.embedUrl;player.dataset.prerollFinished='yes';player.dataset.prerollState='consent-not-granted';return;}
+    if(consent()!=='granted'){loadFrame(frame);player.dataset.prerollFinished='yes';player.dataset.prerollState='consent-not-granted';return;}
     const endpoint=overlay.dataset.vastEndpoint||'';
     const container=overlay.querySelector('[data-preroll-container]');
     const status=overlay.querySelector('[data-pre-roll-status]');
-    const finish=()=>{if(player.dataset.prerollFinished==='yes')return;player.dataset.prerollFinished='yes';if(!frame.src)frame.src=frame.dataset.embedUrl;hideOverlay(overlay);player.dataset.prerollState='finished';startMidRoll(player)};
+    const finish=()=>{if(player.dataset.prerollFinished==='yes')return;player.dataset.prerollFinished='yes';loadFrame(frame);hideOverlay(overlay);player.dataset.prerollState='finished';startMidRoll(player)};
     if(!endpoint){
       // No authorized VAST tag is configured. Use the approved native placement
       // as a clearly labeled 15-second sponsored break instead of pretending it
@@ -161,7 +161,7 @@
       let remaining=Math.max(5,Number(overlay.dataset.preRollSeconds)||15);
       const counter=overlay.querySelector('[data-pre-roll-countdown]');
       if(counter)counter.textContent=String(remaining);
-      const finishNative=()=>{if(player.dataset.prerollFinished==='yes')return;player.dataset.prerollFinished='yes';if(!frame.src)frame.src=frame.dataset.embedUrl;hideOverlay(overlay);player.dataset.prerollState='finished';clearInterval(timer);startMidRoll(player)};
+      const finishNative=()=>{if(player.dataset.prerollFinished==='yes')return;player.dataset.prerollFinished='yes';loadFrame(frame);hideOverlay(overlay);player.dataset.prerollState='finished';clearInterval(timer);startMidRoll(player)};
       const timer=setInterval(()=>{remaining-=1;if(counter)counter.textContent=String(Math.max(remaining,0));if(remaining<=0)finishNative()},1000);
       button?.addEventListener('click',finishNative,{once:true});
       return;
@@ -187,11 +187,17 @@
       finish();
     });
   }
+  const loadFrame=frame=>{
+    if(!frame||frame.src)return;
+    const raw=frame.dataset.embedUrl||'';
+    try{const target=new URL(raw,location.href);if(!target.searchParams.has('autoplay'))target.searchParams.set('autoplay','1');frame.src=target.toString()}catch{frame.src=raw}
+  };
   function releaseEmbeds(){
     document.querySelectorAll('[data-embed-url]').forEach(frame=>{
       const player=frame.closest('[data-player]');
-      if(player?.querySelector('[data-pre-roll]')&&consent()==='granted'){startPreRoll(player);return;}
-      if(!frame.src)frame.src=frame.dataset.embedUrl;
+      if(player?.querySelector('[data-click-play-overlay]')&&player.dataset.clickPlayReleased!=='yes')return;
+      if(player?.querySelector('[data-pre-roll]')&&consent()==='granted'&&player.dataset.prerollFinished!=='yes'){startPreRoll(player);return;}
+      loadFrame(frame);
       if(player?.querySelector('[data-pre-roll]')){player.dataset.prerollFinished='yes';player.dataset.prerollState='consent-not-granted';}
       if(frame.dataset.errorBound!=='yes'){
         frame.dataset.errorBound='yes';
@@ -204,6 +210,20 @@
       startMidRoll(player);
     });
   }
+  function setupClickToPlay(){
+    document.querySelectorAll('[data-click-play-overlay]').forEach(overlay=>{
+      const player=overlay.closest('[data-player]'),button=overlay.querySelector('[data-click-play]');
+      if(!player||!button||overlay.dataset.clickPlayBound==='yes')return;
+      overlay.dataset.clickPlayBound='yes';
+      button.addEventListener('click',()=>{
+        player.dataset.clickPlayReleased='yes';
+        player.dataset.prerollFinished='yes';
+        hideOverlay(overlay);
+        releaseEmbeds();
+      },{once:true});
+    });
+  }
+  setupClickToPlay();
   const setupCoverImages=(root=document)=>root.querySelectorAll('[data-cover-image]').forEach(media=>{
     if(media.dataset.coverImageReady==='yes')return;
     media.dataset.coverImageReady='yes';
@@ -275,6 +295,16 @@
     observer.observe(container,{childList:true,subtree:true});
     slot.dataset.adObserver='active';
   });
+  const loadVideoSlider=()=>{
+    if(!location.pathname.startsWith('/official-watch/'))return;
+    if(!ageAccepted()||consent()!=='granted')return;
+    const slot=document.querySelector('[data-exoclick-video-slider]'),src=slot?.dataset.src||'';
+    if(!slot||!/^https:\\/\\//i.test(src)||slot.dataset.loaded==='yes')return;
+    slot.dataset.loaded='yes';
+    const script=document.createElement('script');script.async=true;script.type='application/javascript';script.src=src;script.dataset.exoclickVideoSlider='true';
+    script.addEventListener('error',()=>{slot.dataset.loaded='error'},{once:true});
+    document.body.appendChild(script);
+  };
   const renderAd=()=>{
     const c=consent();
     if(!ageAccepted())return;
@@ -362,6 +392,7 @@
         slot.dataset.adState='loaded';
       }).catch(()=>{slot.dataset.adState='error';});
     });
+    loadVideoSlider();
     if(c==='granted')fetch('/api/ad-health',{credentials:'same-origin',cache:'no-store'}).then(r=>r.json()).then(data=>{adHealth.server=data;adHealth.lastChecked=new Date().toISOString()}).catch(()=>{adHealth.server={ok:false,note:'Banner health endpoint unavailable'}});
     releaseEmbeds();
   };
