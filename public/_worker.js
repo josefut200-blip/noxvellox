@@ -746,7 +746,7 @@ function taxonomyFilterForm(taxonomy,filters){
   '<button class="button" type="submit">Apply filters</button></form>';
 }
 function taxonomyCategoryPage({base,url,category,videos,total,taxonomy,filters}){
- const filtered=url.searchParams.toString().length>0;
+ const currentUrl=new URL(url,base);const filtered=currentUrl.searchParams.toString().length>0;
  const words=introWordCount(category.intro_en);
  const canIndex=indexableCategory(category,total,taxonomy)&&!filtered;
  const intro=canIndex?'<p class="category-intro">'+esc(category.intro_en)+'</p>':'<p class="category-intro">This collection is being curated. Only approved videos with publisher-supplied category tags are shown.</p>';
