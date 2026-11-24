@@ -140,3 +140,51 @@
     max-width:100%;
   }
 }
+
+/* v0.4.11 — cross-browser player fullscreen control */
+.player-fullscreen{
+  position:absolute;
+  right:12px;
+  bottom:12px;
+  z-index:6;
+  width:40px;
+  height:36px;
+  padding:0;
+  border:1px solid #ffffff55;
+  border-radius:5px;
+  background:#050505c9;
+  color:#fff;
+  font:700 22px/1 Arial,sans-serif;
+  cursor:pointer;
+}
+.player-fullscreen:hover,
+.player-fullscreen:focus-visible{
+  background:#f24a67;
+  outline:2px solid #fff;
+  outline-offset:2px;
+}
+.player:fullscreen,
+.player:-webkit-full-screen,
+.player:-moz-full-screen{
+  width:100vw !important;
+  height:100vh !important;
+  max-width:none !important;
+  aspect-ratio:auto !important;
+  border:0 !important;
+  border-radius:0 !important;
+  background:#000;
+}
+.player:fullscreen iframe,
+.player:-webkit-full-screen iframe,
+.player:-moz-full-screen iframe{
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+}
+.player:fullscreen .player-fullscreen,
+.player:-webkit-full-screen .player-fullscreen,
+.player:-moz-full-screen .player-fullscreen{
+  right:18px;
+  bottom:18px;
+}
