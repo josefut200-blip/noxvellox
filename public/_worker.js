@@ -369,6 +369,8 @@ async function officialCatalog(db,{page=1,limit=OFFICIAL_PAGE_SIZE,q='',localEnt
    db.prepare(`SELECT count(*) AS total FROM official_embeds WHERE visibility='active' AND id NOT IN ('696c7c920140e','6937cf5fea785')${where} AND duration_seconds >= ${MIN_OFFICIAL_DURATION_SECONDS}`).bind(...(query?[match]:[])).first()
   ]);
    const entries=await hydrateOfficialPosters((rows.results||[]).map(v=>({...v,source_url:OFFICIAL_ORIGIN+'/view_video.php?viewkey='+v.id,embed_url:OFFICIAL_ORIGIN+'/embed/'+v.id})),db);
+  const taxonomyBackfilled=await db.prepare('SELECT 1 AS ready FROM taxonomy_migrations WHERE version=2').first();
+  if(taxonomyBackfilled)return {entries,total:Number(count?.total||0),persisted:true};
   if(count?.total>0){
    const known=new Set(entries.map(item=>String(item.id)));
    const queryText=String(q||'').trim().toLowerCase();
@@ -409,11 +411,87 @@ async function officialById(db,id,localEntries=null){
 // One-click official webmaster import for administrators. Unlike the
 // separately imported Little Pepper/Brazzers metadata, official embeds in the
 // provider webmaster program are allowed as automatic feed listings.
-async function syncOfficialOnDemand(db){
+
+function validOfficialListing(item,id){
+ try{
+  const source=new URL(String(item?.source_url||'')),embed=new URL(String(item?.embed_url||''));
+  const hosts=new Set(['www.pornhub.com','pornhub.com']);
+  return source.protocol==='https:'&&hosts.has(source.hostname)&&source.pathname==='/view_video.php'&&source.searchParams.get('viewkey')===id&&
+   embed.protocol==='https:'&&hosts.has(embed.hostname)&&embed.pathname==='/embed/'+id;
+ }catch{return false}
+}
+async function persistOfficialRecords(db,items,taxonomy){
+ if(!db)throw Error('D1 database not configured');
+ const dedup=new Map();
+ for(const item of Array.isArray(items)?items:[]){
+  const id=String(item?.id||'');
+  if(!/^[a-z0-9]{8,24}$/i.test(id)||REMOVED_OFFICIAL_IDS.has(id)||EMBED_BLOCKED_OFFICIAL_IDS.has(id))continue;
+  const title=safeText(item?.title||'',160),durationSeconds=Number(item?.duration_seconds||0);
+  if(!title||!Number.isInteger(durationSeconds)||durationSeconds<MIN_OFFICIAL_DURATION_SECONDS||durationSeconds>=60000||!validOfficialListing(item,id))continue;
+  const classified=classifyOfficialMetadata(item,taxonomy);
+  dedup.set(id,{id,title,poster_url:officialPoster(item?.poster_url||''),duration_seconds:durationSeconds,raw_tags:classified.rawTags,categories:classified.categories,formats:classified.formats,blocked:classified.blocked});
+ }
+ const all=[...dedup.values()];
+ let processed=0,blockedTitles=0,matchedCategories=0,matchedFormats=0;
+ for(let offset=0;offset<all.length;offset+=200){
+  const batch=all.slice(offset,offset+200);
+  const rows=batch.map(({id,title,poster_url,duration_seconds})=>({id,title,poster_url,duration_seconds}));
+  const metadata=batch.map(({id,raw_tags})=>({id,raw_tags_json:JSON.stringify(raw_tags)}));
+  const ids=JSON.stringify(batch.map(item=>item.id));
+  const categories=batch.flatMap(item=>item.categories.map(category_slug=>({id:item.id,category_slug})));
+  const formats=batch.flatMap(item=>item.formats.map(format_slug=>({id:item.id,format_slug})));
+  const statements=[
+   db.prepare("INSERT INTO official_embeds (id,title,poster_url,duration_seconds,source,visibility) SELECT json_extract(value,'$.id'),json_extract(value,'$.title'),json_extract(value,'$.poster_url'),json_extract(value,'$.duration_seconds'),'pornhub_official_webmaster','active' FROM json_each(?) WHERE 1 ON CONFLICT(id) DO UPDATE SET title=excluded.title,poster_url=CASE WHEN excluded.poster_url<>'' THEN excluded.poster_url ELSE official_embeds.poster_url END,duration_seconds=excluded.duration_seconds,last_seen_at=datetime('now')").bind(JSON.stringify(rows)),
+   db.prepare("DELETE FROM official_embed_categories WHERE official_video_id IN (SELECT value FROM json_each(?))").bind(ids),
+   db.prepare("DELETE FROM official_embed_formats WHERE official_video_id IN (SELECT value FROM json_each(?))").bind(ids),
+   db.prepare("INSERT INTO official_embed_metadata (official_video_id,raw_tags_json) SELECT json_extract(value,'$.id'),json_extract(value,'$.raw_tags_json') FROM json_each(?) WHERE 1 ON CONFLICT(official_video_id) DO UPDATE SET raw_tags_json=excluded.raw_tags_json").bind(JSON.stringify(metadata)),
+   db.prepare("INSERT OR IGNORE INTO official_embed_categories (official_video_id,category_slug) SELECT json_extract(j.value,'$.id'),json_extract(j.value,'$.category_slug') FROM json_each(?) j JOIN official_embeds o ON o.id=json_extract(j.value,'$.id') JOIN taxonomy_categories tc ON tc.slug=json_extract(j.value,'$.category_slug') WHERE o.visibility='active'").bind(JSON.stringify(categories)),
+   db.prepare("INSERT OR IGNORE INTO official_embed_formats (official_video_id,format_slug) SELECT json_extract(j.value,'$.id'),json_extract(j.value,'$.format_slug') FROM json_each(?) j JOIN official_embeds o ON o.id=json_extract(j.value,'$.id') WHERE o.visibility='active'").bind(JSON.stringify(formats))
+  ];
+  await db.batch(statements);
+  processed+=batch.length;
+  blockedTitles+=batch.filter(item=>item.blocked).length;
+  matchedCategories+=categories.length;
+  matchedFormats+=formats.length;
+ }
+ return {processed,blockedTitles,matchedCategories,matchedFormats};
+}
+async function loadOfficialStaticRecords(env,req){
+ if(!env?.ASSETS?.fetch)throw Error('Static official feed unavailable');
+ const [baseResponse,manualResponse]=await Promise.all([
+  env.ASSETS.fetch(new Request(new URL('/data/videos.json',req.url))),
+  env.ASSETS.fetch(new Request(new URL('/data/manual-official-videos.json',req.url)))
+ ]);
+ const base=baseResponse.ok?await baseResponse.json():null;
+ const manual=manualResponse.ok?await manualResponse.json():null;
+ const entries=[
+  ...(Array.isArray(base)?base:(Array.isArray(base?.entries)?base.entries:[])),
+  ...(Array.isArray(manual)?manual:(Array.isArray(manual?.entries)?manual.entries:[]))
+ ];
+ return entries.filter(item=>item&&/^[a-z0-9]{8,24}$/i.test(String(item.id||''))).map(item=>({...item}));
+}
+async function taxonomyBackfillTokenHash(token){
+ const bytes=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(String(token||'')));
+ return [...new Uint8Array(bytes)].map(byte=>byte.toString(16).padStart(2,'0')).join('');
+}
+async function runOfficialTaxonomyBackfill(db,env,req,taxonomy){
+ if(!db)throw Error('D1 database not configured');
+ await ensureTaxonomySchema(db,taxonomy);
+ const assetRecords=await loadOfficialStaticRecords(env,req);
+ const stored=await db.prepare("SELECT id,title,poster_url,duration_seconds FROM official_embeds WHERE visibility='active' AND id NOT IN ('696c7c920140e','6937cf5fea785')").all();
+ const records=new Map((stored.results||[]).map(row=>[String(row.id),{...row,source_url:OFFICIAL_ORIGIN+'/view_video.php?viewkey='+row.id,embed_url:OFFICIAL_ORIGIN+'/embed/'+row.id}]));
+ for(const item of assetRecords)records.set(String(item.id),item);
+ const persisted=await persistOfficialRecords(db,[...records.values()],taxonomy);
+ await db.prepare("INSERT OR IGNORE INTO taxonomy_migrations(version) VALUES (2)").run();
+ const directory=await categoryDirectory(db,taxonomy,500);
+ const active=directory.filter(item=>item.seo_indexable).map(item=>({slug:item.slug,name:item.name,count:item.count}));
+ return {ok:true,sourceRecords:assetRecords.length,eligibleRecords:persisted.processed,blockedTitles:persisted.blockedTitles,categoryAssignments:persisted.matchedCategories,formatAssignments:persisted.matchedFormats,activeCategoryCount:active.length,activeCategories:active,noMediaHosted:true};
+}
+async function syncOfficialOnDemand(db,taxonomy=taxonomyConfig){
  if(!db)throw Error('D1 database not configured');
  const records=new Map();
  const live=await retrieveOfficialFeed({force:true});
- for(const v of live.entries)records.set(v.id,{id:v.id,title:v.title,poster_url:v.poster_url||'',duration_seconds:v.duration_seconds||0});
+ for(const v of live.entries)records.set(v.id,{id:v.id,title:v.title,poster_url:v.poster_url||'',duration_seconds:v.duration_seconds||0,raw_tags:v.raw_tags||[]});
   for(let page=1;page<=6;page++){
   const addr='https://www.pornhub.com/webmasters/search?search=amateur&page='+page;
   try{
@@ -430,15 +508,15 @@ async function syncOfficialOnDemand(db){
     if(/^\d+:\d\d(?::\d\d)?$/.test(dur))seconds=dur.split(':').map(Number).reduce((n,v)=>n*60+v,0);
     const poster=officialPoster(row.poster_url||row.default_thumb||row.thumb||row.thumbnail||row.image||'');
      if(!Number.isInteger(seconds)||seconds<MIN_OFFICIAL_DURATION_SECONDS||seconds>=60000)continue;
-     records.set(id,{id,title,poster_url:poster,duration_seconds:seconds});
+     records.set(id,{id,title,poster_url:poster,duration_seconds:seconds,raw_tags:rawTagList(row.tags||row.categories||[])});
    }
   }catch(e){console.warn('Webmaster search temporarily unavailable',page,String(e.message||e).slice(0,90));break}
  }
  if(!records.size)throw Error('Official provider is temporarily unavailable; no unverified data imported');
- await db.prepare("CREATE TABLE IF NOT EXISTS official_embeds (id TEXT PRIMARY KEY,title TEXT NOT NULL,poster_url TEXT NOT NULL DEFAULT '',duration_seconds INTEGER NOT NULL DEFAULT 0,source TEXT NOT NULL DEFAULT 'pornhub_webmaster',visibility TEXT NOT NULL DEFAULT 'active',first_seen_at TEXT NOT NULL DEFAULT (datetime('now')),last_seen_at TEXT NOT NULL DEFAULT (datetime('now')))").run();
- const all=[...records.values()];
- for(let i=0;i<all.length;i+=20){await db.batch(all.slice(i,i+20).map(v=>db.prepare("INSERT INTO official_embeds (id,title,poster_url,duration_seconds,source) VALUES (?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET title=excluded.title,poster_url=CASE WHEN excluded.poster_url<>'' THEN excluded.poster_url ELSE official_embeds.poster_url END,duration_seconds=excluded.duration_seconds,last_seen_at=datetime('now')").bind(v.id,v.title,v.poster_url||'',v.duration_seconds,'pornhub_official_webmaster')))}
- return {ok:true,synced:all.length,automaticallyAvailable:true,noVideoFilesCopied:true};
+ if(!taxonomy)throw Error('Taxonomy configuration unavailable');
+ const all=[...records.values()].map(v=>({...v,source_url:OFFICIAL_ORIGIN+'/view_video.php?viewkey='+v.id,embed_url:OFFICIAL_ORIGIN+'/embed/'+v.id}));
+ const persisted=await persistOfficialRecords(db,all,taxonomy);
+ return {ok:true,synced:persisted.processed,categorized:persisted.matchedCategories,formatted:persisted.matchedFormats,automaticallyAvailable:true,noVideoFilesCopied:true};
 }
 const officialCard=v=>`<a class="video-card" href="/official-watch/${encodeURIComponent(v.id)}"><div class="video-art">${coverMarkup(v.poster_url,v.title,'Free official embed',v.embed_url)}<span class="play" aria-hidden="true">▶</span>${v.duration_seconds?`<span class="duration">${duration(v.duration_seconds)}</span>`:''}</div><div class="video-meta"><h3>${esc(v.title)}</h3><div class="sub"><strong>Official embed</strong>  ·  Pornhub</div></div></a>`;
 const officialGrid=(items,heading='Videos from official provider feed')=>`<section class="section wrap"><div class="section-head"><div><div class="section-kicker">No video files hosted here  ·  Free authorized embeds</div><h2>${esc(heading)}</h2></div><a class="section-link" href="/official-videos">View official feed ?</a></div><div class="video-grid">${items.length?items.map(officialCard).join(''):'<div class="empty"><strong>Official provider feed temporarily unavailable</strong><p>Please check the provider or try again later. No placeholder videos will be invented.</p></div>'}</div>${items[0]?.from_snapshot?'<p class="mini"><strong>Dated contingency:</strong> official RSS metadata last observed November 22, 2026; playback is not confirmed and listings can change.</p>':''}<p class="mini">Embedded directly from the original provider under its webmaster embed terms. Availability may depend on region and may change. No files are downloaded or redistributed by Noxvellox.</p></section>`;
@@ -812,7 +890,7 @@ function taxonomyCategoryPage({base,url,category,videos,total,taxonomy,filters})
  const words=introWordCount(category.intro_en);
  const canIndex=indexableCategory(category,total,taxonomy)&&!filtered;
  const intro=canIndex?'<p class="category-intro">'+esc(category.intro_en)+'</p>':'<p class="category-intro">This collection is being curated. Only approved videos with publisher-supplied category tags are shown.</p>';
- const cards=videos.length?videos.map(card).join(''):'<div class="empty"><strong>No videos match this category yet</strong><p>Try another filter or browse all categories.</p><a class="button ghost" href="/categories">Browse categories</a></div>';
+ const cards=videos.length?videos.map(v=>v.official?officialCard(v):card(v)).join(''):'<div class="empty"><strong>No videos match this category yet</strong><p>Try another filter or browse all categories.</p><a class="button ghost" href="/categories">Browse categories</a></div>';
  const description=canIndex?String(category.intro_en).replace(/\s+/g,' ').slice(0,155):'Browse approved videos in the '+category.name+' category on Noxvellox.';
  const title=category.name+' Videos | Noxvellox';
  const body='<section class="wrap page-head"><div class="section-kicker"><a href="/categories">Categories</a> / '+esc(category.group_name)+'</div><h1>'+esc(category.name)+' Videos</h1>'+intro+'<p>'+Number(total).toLocaleString('en-US')+' approved videos</p></section>'+
@@ -1272,6 +1350,21 @@ async function api(req,env,url,db){
    try{return json(await runImport(env,db))}catch(e){return json({error:String(e.message||e)},422)}
  }
  if(!sameOrigin(req))return json({error:'Invalid origin'},403);
+
+ if(path==='/api/taxonomy/backfill'&&req.method==='POST'){
+  if(!db)return json({error:'D1 database not configured'},503);
+  const token=authHeaderToken(req);
+  if(!token||token.length<32)return json({error:'Unauthorized'},401);
+  try{
+   const tokenHash=await taxonomyBackfillTokenHash(token);
+   const authorized=await db.prepare("SELECT token_hash FROM taxonomy_backfill_tokens WHERE token_hash=? AND used_at IS NULL AND expires_at>datetime('now')").bind(tokenHash).first();
+   if(!authorized)return json({error:'Unauthorized or expired backfill token'},401);
+   const result=await runOfficialTaxonomyBackfill(db,env,req,taxonomyConfig);
+   await db.prepare("UPDATE taxonomy_backfill_tokens SET used_at=datetime('now') WHERE token_hash=? AND used_at IS NULL").bind(tokenHash).run();
+   return json(result);
+  }catch(error){return json({error:safeText(error.message||error,180)},422)}
+ }
+
  if(path==='/api/record-view'&&req.method==='POST'){
   if(!db)return json({error:'D1 not configured'},503);
   try{
