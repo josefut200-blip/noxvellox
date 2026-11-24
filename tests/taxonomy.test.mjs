@@ -20,6 +20,10 @@ const taxonomyForClassification={...taxonomy,categories,categoryBySlug:Object.fr
 taxonomyForClassification.blockedSet=new Set(taxonomy.blockedTags.map(classifier.normalizeTaxonomyToken));
 taxonomyForClassification.categoryAliases=classifier.buildAliasMap(categories);
 taxonomyForClassification.formatAliases=classifier.buildAliasMap(taxonomy.formats);
+const rssStart=worker.indexOf('function rssField(item,tag){');
+const rssEnd=worker.indexOf('function parseOfficialRSS',rssStart);
+const rssSource=worker.slice(rssStart,rssEnd);
+const rssParser=new Function('rawTagList',rssSource+'; return {rssTagValues};')(classifier.rawTagList);
 const pageStart = worker.indexOf('function taxonomyCategoryPage({');
 const pageEnd = worker.indexOf('\nfunction collectionPage(', pageStart);
 assert.notEqual(pageStart, -1, 'Worker must define category page renderer');
@@ -58,6 +62,9 @@ test('blocked and unsupported terms do not create category assignments', () => {
   assert.deepEqual(unsupported.categories,[]);
   assert.deepEqual(unsupported.formats,[]);
 });
+test('official RSS tags are extracted from category and tag nodes', () => {
+  assert.deepEqual(rssParser.rssTagValues('<item><category><![CDATA[POV]]></category><tag>Big Tits</tag></item>'),['POV','Big Tits']);
+});
 test('category indexability requires 20 videos and a valid intro length', () => {
   assert.equal(taxonomy.indexing.minimumPublishedVideos, 20);
   assert.equal(indexableCategory(brazilian, 19, taxonomy), false);
@@ -94,6 +101,10 @@ test('category renderer shows the 20 cards, index directive, and clean canonical
   assert.equal(page.canonical, 'https://noxvellox.site/category/brazilian');
   assert.equal((page.body.match(/<article>/g) || []).length, 20);
   assert.match(page.body, /Preview fixture 20/);
+});
+test('category renderer uses the official embed card for feed records', () => {
+  const page=renderCategory({base:'https://noxvellox.site',url:'https://noxvellox.site/category/brazilian',category:brazilian,videos:[{id:'6b01c8e7a798e',slug:'6b01c8e7a798e',title:'Official preview',official:true}],total:20,taxonomy,filters:{}});
+  assert.match(page.body,/<official-card>Official preview<\\/official-card>/);
 });
 test('shallow and filtered category pages stay noindex and canonicalize cleanly', () => {
   const shallow = renderCategory({base:'https://noxvellox.site',url:'https://noxvellox.site/category/brazilian',category:brazilian,videos:[],total:19,taxonomy,filters:{}});
