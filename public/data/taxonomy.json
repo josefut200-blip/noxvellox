@@ -1,0 +1,848 @@
+{
+  "version": 1,
+  "indexing": {
+    "minimumPublishedVideos": 20,
+    "minimumIntroWords": 80,
+    "maximumIntroWords": 120
+  },
+  "groups": [
+    {
+      "slug": "performers-origin",
+      "name": "Performers & Origin",
+      "categories": [
+        {
+          "slug": "brazilian",
+          "name": "Brazilian",
+          "aliases": [
+            "brazilian",
+            "brazil"
+          ],
+          "intro_en": "Browse adult video listings carrying a Brazilian tag from the original publisher. The label organizes catalog entries by performer origin, while the publisher remains the source of that metadata. Language is shown separately when supplied; a Brazilian tag does not establish that dialogue is in Portuguese. Compare available titles and source details before opening an authorized player. Listings require a matching publisher tag and must pass rights, adult-participation, and playback checks. Counts use approved records; filtered URLs stay out of search indexing. Availability changes as approved records evolve."
+        },
+        {
+          "slug": "latina",
+          "name": "Latina",
+          "aliases": [
+            "latina",
+            "latino",
+            "latin"
+          ],
+          "intro_en": "This collection brings together adult listings tagged Latina by their publishers. The term can cover performers with varied backgrounds, so the page relies on the source label instead of guessing identity from a title, image, or language. Use the cards to explore the approved catalog and check each listing’s attribution. Language and studio details remain separate fields whenever the feed provides them. Listings require a matching publisher tag and must pass rights, adult-participation, and playback checks. Counts use approved records; filtered URLs stay out of search indexing. Availability changes as approved records evolve."
+        },
+        {
+          "slug": "british",
+          "name": "British",
+          "aliases": [
+            "british",
+            "uk"
+          ],
+          "intro_en": "Browse publisher-tagged British adult video listings in one dedicated catalog page. The label describes the source’s performer-origin tag; it does not imply a particular accent, filming location, or language. Review each title and its attribution in the video card, then open the original authorized player if you choose. Language and publisher identity are displayed independently when those details are available. Listings require a matching publisher tag and must pass rights, adult-participation, and playback checks. Counts use approved records; filtered URLs stay out of search indexing. Availability changes as approved records evolve."
+        },
+        {
+          "slug": "french",
+          "name": "French",
+          "aliases": [
+            "french"
+          ],
+          "intro_en": "Explore adult video listings that carry a French tag from the original publisher. This category makes source-labeled performer-origin entries easier to find without treating the tag as proof of nationality, dialogue, or recording location. Each card provides the available title and source information. When the publisher supplies language or studio metadata, those details can be used as separate filters. Listings require a matching publisher tag and must pass rights, adult-participation, and playback checks. Counts use approved records; filtered URLs stay out of search indexing. Availability changes as approved records evolve."
+        },
+        {
+          "slug": "german",
+          "name": "German",
+          "aliases": [
+            "german"
+          ],
+          "intro_en": "This page groups adult listings tagged German by their publishers. The category is intended for browsing source-supplied performer-origin metadata, not for inferring where a scene was filmed or what language is spoken. Check the title and attribution shown on each card before opening an authorized player. Language, format, and technical details remain separate catalog attributes when supplied. Listings require a matching publisher tag and must pass rights, adult-participation, and playback checks. Counts use approved records; filtered URLs stay out of search indexing. Availability changes as approved records evolve."
+        },
+        {
+          "slug": "russian",
+          "name": "Russian",
+          "aliases": [
+            "russian"
+          ],
+          "intro_en": "Browse adult video listings carrying a Russian tag from the publisher. The label helps organize the catalog by source-supplied performer-origin information; it does not confirm a performer’s nationality or the language used in a video. Use the available cards to compare approved titles and source attribution. A separate language filter appears only when the feed includes language metadata. Listings require a matching publisher tag and must pass rights, adult-participation, and playback checks. Counts use approved records; filtered URLs stay out of search indexing. Availability changes as approved records evolve."
+        },
+        {
+          "slug": "czech",
+          "name": "Czech",
+          "aliases": [
+            "czech"
+          ],
+          "intro_en": "Find adult listings tagged Czech by their original publishers on this category page. Noxvellox keeps this source label separate from spoken language, studio, and technical specifications so each detail can be understood on its own. Review the listing card for its title and attribution, then continue to the authorized player when desired. Only approved catalog records are shown. Listings require a matching publisher tag and must pass rights, adult-participation, and playback checks. Counts use approved records; filtered URLs stay out of search indexing. Availability changes as approved records evolve."
+        },
+        {
+          "slug": "asian",
+          "name": "Asian",
+          "aliases": [
+            "asian"
+          ],
+          "intro_en": "Browse publisher-tagged Asian adult listings in a single category. The source tag can represent varied backgrounds across a broad region, so Noxvellox does not infer a more specific identity from titles or images. Use the available listings to explore the approved catalog and check their publisher attribution. Language, studio, and video format remain separate details when the feed supplies them. Listings require a matching publisher tag and must pass rights, adult-participation, and playback checks. Counts use approved records; filtered URLs stay out of search indexing. Availability changes as approved records evolve."
+        },
+        {
+          "slug": "arab",
+          "name": "Arab",
+          "aliases": [
+            "arab"
+          ],
+          "intro_en": "This category collects adult listings tagged Arab by their original publishers. It uses the publisher’s own classification rather than making assumptions from a performer’s appearance, name, location, or spoken language. Browse the approved titles and review the source attribution attached to each card. If language or studio metadata is available, it can be explored through a separate filter. Listings require a matching publisher tag and must pass rights, adult-participation, and playback checks. Counts use approved records; filtered URLs stay out of search indexing. Availability changes as approved records evolve."
+        },
+        {
+          "slug": "european",
+          "name": "European",
+          "aliases": [
+            "european"
+          ],
+          "intro_en": "Browse adult listings with a European tag supplied by the publisher. The category offers a broad origin-related way to explore the catalog and does not claim a specific country, language, or filming location. Check the title and source shown on each card before opening the authorized player. More specific origin and language details remain separate when provided by the feed. Listings require a matching publisher tag and must pass rights, adult-participation, and playback checks. Counts use approved records; filtered URLs stay out of search indexing. Availability changes as approved records evolve."
+        },
+        {
+          "slug": "black-women",
+          "name": "Black Women",
+          "aliases": [
+            "black women"
+          ],
+          "intro_en": "Explore adult listings that publishers label Black Women. This page uses the source’s category metadata to make relevant catalog entries easier to browse and does not infer identity from appearance or title text. Review the approved listings and their attribution in the cards. Publisher, language, and production-format information are separate fields when those details are present. Listings require a matching publisher tag and must pass rights, adult-participation, and playback checks. Counts use approved records; filtered URLs stay out of search indexing. Availability changes as approved records evolve."
+        },
+        {
+          "slug": "redheads",
+          "name": "Redheads",
+          "aliases": [
+            "redhead",
+            "redheads",
+            "ginger"
+          ],
+          "intro_en": "Browse adult video listings carrying a Redheads tag from the original publisher. The category provides a simple way to explore source-labeled performer descriptions while keeping other details, such as nationality, language, and studio, separate. Check each card for its title and attribution before continuing to an authorized player. The catalog changes as approved publisher records are added or removed. Listings require a matching publisher tag and must pass rights, adult-participation, and playback checks. Counts use approved records; filtered URLs stay out of search indexing. Availability changes as approved records evolve."
+        },
+        {
+          "slug": "mature-women",
+          "name": "Mature Women",
+          "aliases": [
+            "milf",
+            "mature",
+            "mature women"
+          ],
+          "intro_en": "This category is for adult listings that publishers tag Mature Women. Noxvellox uses exact source metadata and does not infer age from a title, thumbnail, or appearance. Tags suggesting teens, school, college, or unclear ages are excluded by the import rules. Browse the approved cards and review their attribution; language and studio details are separate when supplied by the feed. Listings require a matching publisher tag and must pass rights, adult-participation, and playback checks. Counts use approved records; filtered URLs stay out of search indexing. Availability changes as approved records evolve."
+        },
+        {
+          "slug": "transgender",
+          "name": "Transgender",
+          "aliases": [
+            "trans",
+            "transgender"
+          ],
+          "intro_en": "Browse adult listings carrying a Transgender tag from their original publishers. The category uses source-supplied metadata and does not guess a performer’s identity from a title or image. Review the available approved cards and their attribution before opening an authorized player. Publisher, language, and technical details remain separate catalog fields when those details are provided. Listings require a matching publisher tag and must pass rights, adult-participation, and playback checks. Counts use approved records; filtered URLs stay out of search indexing. Availability changes as approved records evolve."
+        },
+        {
+          "slug": "couples",
+          "name": "Couples",
+          "aliases": [
+            "couple",
+            "couples"
+          ],
+          "intro_en": "Explore adult listings tagged Couples by their publishers. The category helps visitors browse records described by the source as featuring couples, without making additional claims about performers or relationships. Each card shows the available title and publisher attribution. Use separate language, format, or technical filters when metadata exists, and open only the authorized player linked from the listing. Listings require a matching publisher tag and must pass rights, adult-participation, and playback checks. Counts use approved records; filtered URLs stay out of search indexing. Availability changes as approved records evolve."
+        },
+        {
+          "slug": "verified-couples",
+          "name": "Verified Couples",
+          "aliases": [
+            "verified couple",
+            "verified couples"
+          ],
+          "intro_en": "Browse listings carrying a Verified Couples label from the original publisher. That label is displayed as source metadata and is not a separate identity verification performed by Noxvellox. The catalog itself shows only records that pass its publication, rights, adult-participation, and playback checks. Review the title and attribution on each card before opening the authorized source player. Listings require a matching publisher tag and must pass rights, adult-participation, and playback checks. Counts use approved records; filtered URLs stay out of search indexing. Availability changes as approved records evolve."
+        },
+        {
+          "slug": "porn-stars",
+          "name": "Porn Stars",
+          "aliases": [
+            "porn star",
+            "porn stars",
+            "pornstar",
+            "pornstars"
+          ],
+          "intro_en": "This page groups adult listings tagged Porn Stars by their publishers. The label helps visitors explore source-designated performer categories; it does not imply an endorsement or independent identity claim by Noxvellox. Review each video card for its title and attribution, then follow the authorized player if desired. Studio and language details appear separately whenever the source provides them. Listings require a matching publisher tag and must pass rights, adult-participation, and playback checks. Counts use approved records; filtered URLs stay out of search indexing. Availability changes as approved records evolve."
+        }
+      ]
+    },
+    {
+      "slug": "body-types",
+      "name": "Body Types",
+      "categories": [
+        {
+          "slug": "busty",
+          "name": "Busty",
+          "aliases": [
+            "big tits",
+            "busty"
+          ],
+          "intro_en": "Browse adult listings tagged Busty by the original publisher. This body-description category is based on supplied metadata, not on an image-based judgment made by Noxvellox. Use the cards to explore approved titles and their source attribution, and consider the separate language or format filters when available. Counts reflect the live approved catalog rather than estimates from other websites. Listings require a matching publisher tag and must pass rights, adult-participation, and playback checks. Counts use approved records; filtered URLs stay out of search indexing. Availability changes as approved records evolve."
+        },
+        {
+          "slug": "small-breasts",
+          "name": "Small Breasts",
+          "aliases": [
+            "small breasts",
+            "small tits"
+          ],
+          "intro_en": "Explore adult listings carrying a Small Breasts tag from their publishers. The category organizes source-described entries and does not make additional claims about performers. Review the title and attribution on each card before opening an authorized player. Language, studio, and technical specifications are kept separate so visitors can narrow the catalog only with metadata supplied by the feed. Listings require a matching publisher tag and must pass rights, adult-participation, and playback checks. Counts use approved records; filtered URLs stay out of search indexing. Availability changes as approved records evolve."
+        },
+        {
+          "slug": "big-booty",
+          "name": "Big Booty",
+          "aliases": [
+            "big ass",
+            "big booty",
+            "booty"
+          ],
+          "intro_en": "This category gathers adult listings tagged Big Booty by the publisher. Its purpose is to make source-labeled body-description entries easier to browse without inferring attributes from titles or thumbnails. Compare the available approved cards and check their attribution before continuing to an authorized player. Other catalog dimensions, including language, resolution, and format, remain separate filters. Listings require a matching publisher tag and must pass rights, adult-participation, and playback checks. Counts use approved records; filtered URLs stay out of search indexing. Availability changes as approved records evolve."
+        },
+        {
+          "slug": "curvy",
+          "name": "Curvy",
+          "aliases": [
+            "bbw",
+            "curvy",
+            "plus size"
+          ],
+          "intro_en": "Browse adult listings that publishers describe with Curvy or related source tags. Noxvellox maps approved aliases to one clear category so visitors can find related records without creating duplicate pages for every wording variation. Each card retains its available source attribution. Language and production details are separate fields when included in the feed. Listings require a matching publisher tag and must pass rights, adult-participation, and playback checks. Counts use approved records; filtered URLs stay out of search indexing. Availability changes as approved records evolve."
+        },
+        {
+          "slug": "big-dick",
+          "name": "Big Dick",
+          "aliases": [
+            "big dick",
+            "huge dick"
+          ],
+          "intro_en": "Explore publisher-tagged adult listings in the Big Dick category. The label comes from the source’s metadata and is used only to organize approved catalog records. Review each listing’s title and publisher attribution before opening the linked authorized player. The page keeps this category distinct from video quality, language, format, and other technical filters. Listings require a matching publisher tag and must pass rights, adult-participation, and playback checks. Counts use approved records; filtered URLs stay out of search indexing. Availability changes as approved records evolve."
+        }
+      ]
+    },
+    {
+      "slug": "acts",
+      "name": "Acts",
+      "categories": [
+        {
+          "slug": "blowjob",
+          "name": "Blowjob",
+          "aliases": [
+            "blowjob",
+            "blow job",
+            "oral sex"
+          ],
+          "intro_en": "Browse adult listings that the original publisher tags Blowjob. This category groups source-labeled records under one English name, including exact approved aliases, while preserving the publisher as the origin of the classification. Review the title and source attribution on each card before continuing to an authorized player. Other filters narrow by language, format, resolution, or frame rate when supplied. Listings require a matching publisher tag and must pass rights, adult-participation, and playback checks. Counts use approved records; filtered URLs stay out of search indexing. Availability changes as approved records evolve."
+        },
+        {
+          "slug": "anal-sex",
+          "name": "Anal Sex",
+          "aliases": [
+            "anal",
+            "anal sex"
+          ],
+          "intro_en": "This page organizes adult listings carrying an Anal Sex tag from the publisher. Category assignment depends on exact source metadata; titles are not used to infer a video’s subject. Browse the approved cards and review their source attribution before opening an authorized player. Language, studio, and technical specifications remain independent filters when the feed provides them. Listings require a matching publisher tag and must pass rights, adult-participation, and playback checks. Counts use approved records; filtered URLs stay out of search indexing. Availability changes as approved records evolve."
+        },
+        {
+          "slug": "double-penetration",
+          "name": "Double Penetration",
+          "aliases": [
+            "double penetration",
+            "dp"
+          ],
+          "intro_en": "Explore adult catalog entries tagged Double Penetration by their original publishers. The category gives visitors a consistent English label for source-supplied tags and does not infer content from a title or thumbnail. Review available cards and their publisher attribution before opening an authorized player. Separate filters can narrow results by language, format, resolution, or frame rate. Listings require a matching publisher tag and must pass rights, adult-participation, and playback checks. Counts use approved records; filtered URLs stay out of search indexing. Availability changes as approved records evolve."
+        },
+        {
+          "slug": "fisting",
+          "name": "Fisting",
+          "aliases": [
+            "fisting"
+          ],
+          "intro_en": "Browse publisher-tagged adult listings in the Fisting category. Noxvellox uses the exact approved tag supplied with a record rather than guessing from its title. Each card shows the available title and attribution, helping visitors decide whether to continue to the authorized player. Language, studio, and video specifications remain separate catalog details when available. Listings require a matching publisher tag and must pass rights, adult-participation, and playback checks. Counts use approved records; filtered URLs stay out of search indexing. Availability changes as approved records evolve."
+        },
+        {
+          "slug": "fingering",
+          "name": "Fingering",
+          "aliases": [
+            "fingering"
+          ],
+          "intro_en": "This category brings together adult listings that publishers tag Fingering. It provides a clear browse path for that source-described topic while keeping all category assignment tied to feed metadata. Review the title and publisher attribution on each card before continuing. Other details, including language and format, are shown separately when present in the approved catalog. Listings require a matching publisher tag and must pass rights, adult-participation, and playback checks. Counts use approved records; filtered URLs stay out of search indexing. Availability changes as approved records evolve."
+        },
+        {
+          "slug": "female-orgasm",
+          "name": "Female Orgasm",
+          "aliases": [
+            "female orgasm"
+          ],
+          "intro_en": "Browse adult listings tagged Female Orgasm by the original publisher. The category groups approved records using source-supplied labels and does not infer a video’s subject from its title, thumbnail, or player. Check each card for attribution before opening the authorized source. Language, format, resolution, and frame-rate filters remain separate and appear only when data is available. Listings require a matching publisher tag and must pass rights, adult-participation, and playback checks. Counts use approved records; filtered URLs stay out of search indexing. Availability changes as approved records evolve."
+        },
+        {
+          "slug": "female-ejaculation",
+          "name": "Female Ejaculation",
+          "aliases": [
+            "female ejaculation",
+            "squirting"
+          ],
+          "intro_en": "Explore adult listings carrying a Female Ejaculation tag from their publishers. Approved aliases are grouped under one English category name, while the original source remains responsible for its metadata. Review each title and attribution in the catalog before opening an authorized player. Use the separate language and technical filters only when the feed supplies those values. Listings require a matching publisher tag and must pass rights, adult-participation, and playback checks. Counts use approved records; filtered URLs stay out of search indexing. Availability changes as approved records evolve."
+        },
+        {
+          "slug": "bukkake",
+          "name": "Bukkake",
+          "aliases": [
+            "bukkake"
+          ],
+          "intro_en": "This page gathers adult listings that the publisher tags Bukkake. The category is assigned from source metadata only, keeping title-based guesses out of the catalog. Browse the approved cards and check their source attribution before opening an authorized player. Language, format, studio, and technical specifications are separate fields and are displayed only when supplied. Listings require a matching publisher tag and must pass rights, adult-participation, and playback checks. Counts use approved records; filtered URLs stay out of search indexing. Availability changes as approved records evolve."
+        },
+        {
+          "slug": "gangbang",
+          "name": "Gangbang",
+          "aliases": [
+            "gangbang"
+          ],
+          "intro_en": "Browse publisher-tagged adult listings in the Gangbang category. This page organizes approved records by their source-supplied label and does not make assumptions based on titles or preview images. Review each listing’s attribution before continuing to an authorized player. Other details, including language, resolution, and format, remain separate filters when those values are present. Listings require a matching publisher tag and must pass rights, adult-participation, and playback checks. Counts use approved records; filtered URLs stay out of search indexing. Availability changes as approved records evolve."
+        },
+        {
+          "slug": "orgy",
+          "name": "Orgy",
+          "aliases": [
+            "orgy",
+            "orgies"
+          ],
+          "intro_en": "Explore adult listings tagged Orgy by the original publisher. The category keeps synonymous approved source labels together under one English slug, making the directory easier to browse. Each card carries the available title and attribution. Use the separate metadata filters when the publisher supplies language, resolution, frame rate, or format information. Listings require a matching publisher tag and must pass rights, adult-participation, and playback checks. Counts use approved records; filtered URLs stay out of search indexing. Availability changes as approved records evolve."
+        },
+        {
+          "slug": "masturbation",
+          "name": "Masturbation",
+          "aliases": [
+            "masturbation",
+            "jerking off"
+          ],
+          "intro_en": "Browse adult listings carrying a Masturbation tag from their publisher. Noxvellox uses exact source-supplied metadata to place records in this category and does not infer topics from titles. Check the title and attribution on each approved card before opening an authorized player. Language and technical specifications are separate catalog attributes when available. Listings require a matching publisher tag and must pass rights, adult-participation, and playback checks. Counts use approved records; filtered URLs stay out of search indexing. Availability changes as approved records evolve."
+        },
+        {
+          "slug": "strap-on-sex",
+          "name": "Strap-On Sex",
+          "aliases": [
+            "strap-on",
+            "strap on"
+          ],
+          "intro_en": "This category groups adult listings tagged Strap-On Sex by the original source. Approved aliases map to one English category, while the publisher remains responsible for the tag itself. Browse the available titles and source attribution before opening an authorized player. Language, video format, resolution, and frame rate are separate filters when supplied by the feed. Listings require a matching publisher tag and must pass rights, adult-participation, and playback checks. Counts use approved records; filtered URLs stay out of search indexing. Availability changes as approved records evolve."
+        },
+        {
+          "slug": "female-solo",
+          "name": "Female Solo",
+          "aliases": [
+            "female solo",
+            "solo female"
+          ],
+          "intro_en": "Browse adult listings that publishers label Female Solo. This category helps visitors find source-described solo-performer records without using title text or images to assign topics. Review each approved card for its title and attribution before continuing to the authorized player. Separate filters can narrow the catalog by language, format, and video specifications when those fields are available. Listings require a matching publisher tag and must pass rights, adult-participation, and playback checks. Counts use approved records; filtered URLs stay out of search indexing. Availability changes as approved records evolve."
+        }
+      ]
+    },
+    {
+      "slug": "styles-themes",
+      "name": "Styles & Themes",
+      "categories": [
+        {
+          "slug": "pov",
+          "name": "POV",
+          "aliases": [
+            "pov"
+          ],
+          "intro_en": "Explore adult listings tagged POV by their original publishers. The label describes a source-designated point-of-view format and is not inferred from a title or thumbnail. Browse approved cards, compare their available metadata, and check source attribution before opening an authorized player. Language, resolution, frame rate, and format remain separate filters when provided by the feed. Listings require a matching publisher tag and must pass rights, adult-participation, and playback checks. Counts use approved records; filtered URLs stay out of search indexing. Availability changes as approved records evolve."
+        },
+        {
+          "slug": "amateur",
+          "name": "Amateur",
+          "aliases": [
+            "amateur",
+            "homemade",
+            "real",
+            "real life"
+          ],
+          "intro_en": "This category collects adult listings tagged Amateur or Homemade by the publisher. Exact approved aliases are grouped together so related source descriptions lead to one clear browse page. The label is not independently verified as a production claim by Noxvellox. Review the title and attribution on each card before opening the authorized player; language and technical details remain separate. Listings require a matching publisher tag and must pass rights, adult-participation, and playback checks. Counts use approved records; filtered URLs stay out of search indexing. Availability changes as approved records evolve."
+        },
+        {
+          "slug": "roleplay",
+          "name": "Roleplay",
+          "aliases": [
+            "roleplay",
+            "role play"
+          ],
+          "intro_en": "Browse adult listings carrying a Roleplay tag from the original publisher. This category groups source-described performance themes without making assumptions from titles or images. Review the available approved cards and their attribution before continuing to an authorized player. Language, studio, format, resolution, and frame rate are separate catalog fields when supplied by the feed. Listings require a matching publisher tag and must pass rights, adult-participation, and playback checks. Counts use approved records; filtered URLs stay out of search indexing. Availability changes as approved records evolve."
+        },
+        {
+          "slug": "cosplay",
+          "name": "Cosplay",
+          "aliases": [
+            "cosplay"
+          ],
+          "intro_en": "Explore adult listings tagged Cosplay by their publishers. The page groups source-labeled costume and character-theme entries under a consistent English category name, without making claims about specific characters or rights beyond the approved listing. Check the title and attribution on each card before opening an authorized player. Other filters use separate feed metadata. Listings require a matching publisher tag and must pass rights, adult-participation, and playback checks. Counts use approved records; filtered URLs stay out of search indexing. Availability changes as approved records evolve."
+        },
+        {
+          "slug": "fetish",
+          "name": "Fetish",
+          "aliases": [
+            "fetish"
+          ],
+          "intro_en": "Browse adult listings that publishers classify with a Fetish tag. The category offers a broad entry point for source-described niche themes; it does not infer a specific interest from the title or preview. Review each approved card’s available details and source attribution before continuing to an authorized player. Language and technical filters stay separate. Listings require a matching publisher tag and must pass rights, adult-participation, and playback checks. Counts use approved records; filtered URLs stay out of search indexing. Availability changes as approved records evolve."
+        },
+        {
+          "slug": "cuckold",
+          "name": "Cuckold",
+          "aliases": [
+            "cuckold"
+          ],
+          "intro_en": "This page groups adult listings carrying a Cuckold tag from their original publishers. Category placement uses the supplied source label rather than title-based inference. Browse approved cards and review their attribution before opening an authorized player. Separate metadata filters can help narrow results by language, format, resolution, or frame rate when those details are present. Listings require a matching publisher tag and must pass rights, adult-participation, and playback checks. Counts use approved records; filtered URLs stay out of search indexing. Availability changes as approved records evolve."
+        },
+        {
+          "slug": "romantic",
+          "name": "Romantic",
+          "aliases": [
+            "romantic"
+          ],
+          "intro_en": "Explore adult listings tagged Romantic by the publisher. This category offers a source-labeled route for visitors looking for softer relationship-focused themes while keeping the tag’s meaning tied to the original feed. Review titles and source attribution on each card before continuing to an authorized player. Language and production format remain independent filters. Listings require a matching publisher tag and must pass rights, adult-participation, and playback checks. Counts use approved records; filtered URLs stay out of search indexing. Availability changes as approved records evolve."
+        },
+        {
+          "slug": "consensual-rough-sex",
+          "name": "Consensual Rough Sex",
+          "aliases": [
+            "consensual rough sex",
+            "rough but consensual"
+          ],
+          "intro_en": "Browse adult listings that the publisher explicitly tags Consensual Rough Sex. The category retains the source’s consent-related wording, but a tag is not a substitute for reviewing content or reporting concerns. Only records approved for publication appear here. Check each listing’s attribution before opening the authorized player; other catalog filters rely on separate metadata. Listings require a matching publisher tag and must pass rights, adult-participation, and playback checks. Counts use approved records; filtered URLs stay out of search indexing. Availability changes as approved records evolve."
+        },
+        {
+          "slug": "striptease",
+          "name": "Striptease",
+          "aliases": [
+            "striptease",
+            "strip tease"
+          ],
+          "intro_en": "This category gathers adult listings tagged Striptease by their publishers. It gives visitors a clear browse path for source-described performance and dance themes, without inferring a tag from the title. Review the approved cards and publisher attribution before continuing to an authorized player. Language and format can be filtered separately when provided. Listings require a matching publisher tag and must pass rights, adult-participation, and playback checks. Counts use approved records; filtered URLs stay out of search indexing. Availability changes as approved records evolve."
+        },
+        {
+          "slug": "webcam",
+          "name": "Webcam",
+          "aliases": [
+            "webcam",
+            "cam"
+          ],
+          "intro_en": "Browse adult listings carrying a Webcam tag from the original source. The label identifies a publisher-described recording or broadcast style and is kept separate from studio and performer categories. Compare the available approved titles and source attribution in each card before opening an authorized player. Language and technical filters appear only when feed metadata is available. Listings require a matching publisher tag and must pass rights, adult-participation, and playback checks. Counts use approved records; filtered URLs stay out of search indexing. Availability changes as approved records evolve."
+        },
+        {
+          "slug": "sex-toys",
+          "name": "Sex Toys",
+          "aliases": [
+            "sex toys",
+            "toys"
+          ],
+          "intro_en": "Explore adult listings that publishers tag Sex Toys. This category uses exact source labels and approved aliases to organize related records under one English name. Review each card’s title and attribution before opening an authorized player. Video quality, frame rate, language, and other production details remain independent catalog fields when the feed supplies them. Listings require a matching publisher tag and must pass rights, adult-participation, and playback checks. Counts use approved records; filtered URLs stay out of search indexing. Availability changes as approved records evolve."
+        },
+        {
+          "slug": "party",
+          "name": "Party",
+          "aliases": [
+            "party"
+          ],
+          "intro_en": "Browse adult listings carrying a Party tag from their publishers. The category organizes source-described group or celebration themes without guessing from titles, images, or location. Check the listing card for its available title and source attribution before continuing to an authorized player. Language and format filters are separate and depend on feed metadata. Listings require a matching publisher tag and must pass rights, adult-participation, and playback checks. Counts use approved records; filtered URLs stay out of search indexing. Availability changes as approved records evolve."
+        },
+        {
+          "slug": "parody",
+          "name": "Parody",
+          "aliases": [
+            "parody"
+          ],
+          "intro_en": "This page groups adult listings tagged Parody by their original publishers. It helps visitors browse source-described comic or spoof themes while keeping the label distinct from production format and studio. Review each approved card and its attribution before opening an authorized player. Separate filters use language and technical specifications only when supplied. Listings require a matching publisher tag and must pass rights, adult-participation, and playback checks. Counts use approved records; filtered URLs stay out of search indexing. Availability changes as approved records evolve."
+        },
+        {
+          "slug": "vintage",
+          "name": "Vintage",
+          "aliases": [
+            "vintage"
+          ],
+          "intro_en": "Explore adult listings that the publisher labels Vintage. The category keeps source-designated retro-themed records together without treating the tag as a verified production date. Check each card for title and attribution before opening the authorized player. Other details, including language, format, and resolution, remain separate catalog metadata when available. Listings require a matching publisher tag and must pass rights, adult-participation, and playback checks. Counts use approved records; filtered URLs stay out of search indexing. Availability changes as approved records evolve."
+        },
+        {
+          "slug": "anime",
+          "name": "Anime",
+          "aliases": [
+            "anime",
+            "hentai anime"
+          ],
+          "intro_en": "Browse adult animated listings carrying an Anime tag from the publisher. The category uses exact source metadata and keeps animation separate from live-action performer classifications. Review the available approved cards and their attribution before opening an authorized player. Language and format filters remain separate, and no category is inferred from a title alone. Listings require a matching publisher tag and must pass rights, adult-participation, and playback checks. Counts use approved records; filtered URLs stay out of search indexing. Availability changes as approved records evolve."
+        },
+        {
+          "slug": "video-games",
+          "name": "Video Games",
+          "aliases": [
+            "video games",
+            "gaming"
+          ],
+          "intro_en": "This category collects adult listings tagged Video Games by their publishers. It provides a source-labeled browse path for gaming-related themes while keeping studio and production format separate. Review the title and attribution on each approved card before continuing to an authorized player. Language, resolution, and frame rate can be filtered when the feed includes those values. Listings require a matching publisher tag and must pass rights, adult-participation, and playback checks. Counts use approved records; filtered URLs stay out of search indexing. Availability changes as approved records evolve."
+        },
+        {
+          "slug": "staged-public-scenes",
+          "name": "Staged Public Scenes",
+          "aliases": [
+            "staged public",
+            "public (staged)"
+          ],
+          "intro_en": "Browse adult listings explicitly tagged as staged public scenes by their original publishers. The category is limited to source-labeled, staged themes; the system does not infer public settings from titles or images. Review each card’s attribution and approved listing details before opening an authorized player. Any concern about consent or legality can be reported through the site’s safety channels. Listings require a matching publisher tag and must pass rights, adult-participation, and playback checks. Counts use approved records; filtered URLs stay out of search indexing. Availability changes as approved records evolve."
+        },
+        {
+          "slug": "feet",
+          "name": "Feet",
+          "aliases": [
+            "feet",
+            "foot fetish"
+          ],
+          "group_slug": "styles-themes",
+          "group_name": "Styles & Themes",
+          "intro_en": "Explore adult listings carrying a Feet tag from their publishers. This category groups source-described foot-related themes under one English label and does not infer details from titles or images. Review available cards and their attribution before opening an authorized player. Language, format, resolution, and frame rate remain separate filters when the feed provides them. Listings require a matching publisher tag and must pass rights, adult-participation, and playback checks. Counts use approved records; filtered URLs stay out of search indexing. Availability changes as approved records evolve."
+        },
+        {
+          "slug": "bondage",
+          "name": "Bondage",
+          "aliases": [
+            "bondage"
+          ],
+          "group_slug": "styles-themes",
+          "group_name": "Styles & Themes",
+          "intro_en": "Browse adult listings tagged Bondage by the original publisher. The page groups records by that source-supplied theme and does not infer other interests or production details. Check the title and attribution on each approved card before continuing to an authorized player. Language, format, resolution, and frame rate can be filtered separately when available. Listings require a matching publisher tag and must pass rights, adult-participation, and playback checks. Counts use approved records; filtered URLs stay out of search indexing. Availability changes as approved records evolve."
+        },
+        {
+          "slug": "smoking",
+          "name": "Smoking",
+          "aliases": [
+            "smoking"
+          ],
+          "group_slug": "styles-themes",
+          "group_name": "Styles & Themes",
+          "intro_en": "This category gathers adult listings that publishers tag Smoking. The source label is used only to organize approved catalog records; it does not describe a health recommendation or imply that every listing contains the same details. Review the available title and attribution before opening an authorized player. Language and technical metadata remain separate fields. Listings require a matching publisher tag and must pass rights, adult-participation, and playback checks. Counts use approved records; filtered URLs stay out of search indexing. Availability changes as approved records evolve."
+        },
+        {
+          "slug": "reaction",
+          "name": "Reaction",
+          "aliases": [
+            "reaction",
+            "reaction video"
+          ],
+          "group_slug": "styles-themes",
+          "group_name": "Styles & Themes",
+          "intro_en": "Browse adult listings tagged Reaction or Reaction Video by their publishers. This category organizes source-described commentary or response-style entries without treating the tag as a quality or endorsement claim. Review each approved card for its title and attribution before opening an authorized player. Other filters rely on separate language, format, and technical metadata. Listings require a matching publisher tag and must pass rights, adult-participation, and playback checks. Counts use approved records; filtered URLs stay out of search indexing. Availability changes as approved records evolve."
+        }
+      ]
+    }
+  ],
+  "formats": [
+    {
+      "slug": "compilation",
+      "name": "Compilation",
+      "aliases": [
+        "compilation",
+        "compilations"
+      ]
+    },
+    {
+      "slug": "behind-the-scenes",
+      "name": "Behind the Scenes",
+      "aliases": [
+        "behind the scenes",
+        "behind-the-scenes",
+        "bts"
+      ]
+    },
+    {
+      "slug": "video-with-description",
+      "name": "Video with Description",
+      "aliases": [
+        "video with description",
+        "described video",
+        "audio description"
+      ]
+    },
+    {
+      "slug": "exclusive",
+      "name": "Exclusive",
+      "aliases": [
+        "exclusive",
+        "exclusive video"
+      ]
+    },
+    {
+      "slug": "virtual-reality",
+      "name": "Virtual Reality",
+      "aliases": [
+        "virtual reality",
+        "vr",
+        "360 video"
+      ]
+    },
+    {
+      "slug": "podcast",
+      "name": "Podcast",
+      "aliases": [
+        "podcast",
+        "video podcast"
+      ]
+    }
+  ],
+  "technical": {
+    "resolutions": [
+      "240p",
+      "360p",
+      "480p",
+      "720p",
+      "1080p",
+      "1440p",
+      "4k"
+    ],
+    "frameRates": [
+      24,
+      25,
+      30,
+      50,
+      60,
+      120
+    ]
+  },
+  "languages": [
+    {
+      "slug": "english",
+      "name": "English",
+      "aliases": [
+        "english",
+        "en"
+      ]
+    },
+    {
+      "slug": "portuguese",
+      "name": "Portuguese",
+      "aliases": [
+        "portuguese",
+        "português",
+        "pt",
+        "pt-br",
+        "pt-pt"
+      ]
+    },
+    {
+      "slug": "spanish",
+      "name": "Spanish",
+      "aliases": [
+        "spanish",
+        "español",
+        "es"
+      ]
+    },
+    {
+      "slug": "french",
+      "name": "French",
+      "aliases": [
+        "french",
+        "français",
+        "fr"
+      ]
+    },
+    {
+      "slug": "german",
+      "name": "German",
+      "aliases": [
+        "german",
+        "deutsch",
+        "de"
+      ]
+    },
+    {
+      "slug": "italian",
+      "name": "Italian",
+      "aliases": [
+        "italian",
+        "italiano",
+        "it"
+      ]
+    },
+    {
+      "slug": "russian",
+      "name": "Russian",
+      "aliases": [
+        "russian",
+        "русский",
+        "ru"
+      ]
+    },
+    {
+      "slug": "japanese",
+      "name": "Japanese",
+      "aliases": [
+        "japanese",
+        "日本語",
+        "ja"
+      ]
+    },
+    {
+      "slug": "arabic",
+      "name": "Arabic",
+      "aliases": [
+        "arabic",
+        "العربية",
+        "ar"
+      ]
+    },
+    {
+      "slug": "czech",
+      "name": "Czech",
+      "aliases": [
+        "czech",
+        "čeština",
+        "cs"
+      ]
+    },
+    {
+      "slug": "filipino",
+      "name": "Filipino",
+      "aliases": [
+        "filipino",
+        "tagalog",
+        "tl"
+      ]
+    },
+    {
+      "slug": "thai",
+      "name": "Thai",
+      "aliases": [
+        "thai",
+        "ไทย",
+        "th"
+      ]
+    },
+    {
+      "slug": "ukrainian",
+      "name": "Ukrainian",
+      "aliases": [
+        "ukrainian",
+        "українська",
+        "uk"
+      ]
+    },
+    {
+      "slug": "polish",
+      "name": "Polish",
+      "aliases": [
+        "polish",
+        "polski",
+        "pl"
+      ]
+    },
+    {
+      "slug": "dutch",
+      "name": "Dutch",
+      "aliases": [
+        "dutch",
+        "nederlands",
+        "nl"
+      ]
+    },
+    {
+      "slug": "hindi",
+      "name": "Hindi",
+      "aliases": [
+        "hindi",
+        "हिन्दी",
+        "hi"
+      ]
+    },
+    {
+      "slug": "chinese",
+      "name": "Chinese",
+      "aliases": [
+        "chinese",
+        "mandarin",
+        "中文",
+        "zh"
+      ]
+    },
+    {
+      "slug": "persian",
+      "name": "Persian",
+      "aliases": [
+        "persian",
+        "farsi",
+        "فارسی",
+        "fa"
+      ]
+    }
+  ],
+  "orientations": [
+    {
+      "slug": "heterosexual",
+      "name": "Heterosexual",
+      "aliases": [
+        "heterosexual",
+        "straight"
+      ]
+    },
+    {
+      "slug": "gay",
+      "name": "Gay",
+      "aliases": [
+        "gay"
+      ]
+    },
+    {
+      "slug": "sapphic",
+      "name": "Sapphic",
+      "aliases": [
+        "sapphic",
+        "lesbian"
+      ]
+    }
+  ],
+  "blockedTags": [
+    "teen",
+    "teens",
+    "teenage",
+    "teenager",
+    "school",
+    "college",
+    "young",
+    "old",
+    "step",
+    "stepmom",
+    "step-mom",
+    "stepdad",
+    "step-dad",
+    "stepsister",
+    "step-sister",
+    "stepbrother",
+    "step-brother",
+    "mom",
+    "mommy",
+    "mother",
+    "dad",
+    "daddy",
+    "father",
+    "sister",
+    "brother",
+    "family",
+    "incest",
+    "taboo",
+    "daughter",
+    "son",
+    "grandma",
+    "grandmother",
+    "grandpa",
+    "grandfather",
+    "aunt",
+    "uncle",
+    "schoolgirl",
+    "schoolgirls",
+    "schoolboy",
+    "schoolboys",
+    "collegegirl",
+    "collegegirls",
+    "collegeboy",
+    "collegeboys",
+    "highschool",
+    "stepfantasy",
+    "stepfamily",
+    "stepmother",
+    "stepfather"
+  ]
+}

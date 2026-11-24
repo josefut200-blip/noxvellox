@@ -15,6 +15,37 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const root = process.cwd();
+const taxonomyConfig = JSON.parse(fs.readFileSync(path.join(root, 'public', 'data', 'taxonomy.json'), 'utf8'));
+const blockedTagSet = new Set((taxonomyConfig.blockedTags || []).map(normalizeTag));
+function normalizeTag(value) {
+  return String(value ?? '').normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+    .replace(/&/g, ' and ').replace(/[^a-z0-9]+/g, ' ').trim().replace(/\s+/g, ' ');
+}
+function tagValues(value) {
+  const values = Array.isArray(value) ? value : typeof value === 'string' ? value.split(/[;,|]/) : [];
+  return [...new Set(values.map(item => item && typeof item === 'object'
+    ? String(item.slug || item.name || item.label || item.tag || '')
+    : String(item ?? '')).map(item => text(item, 80)).filter(Boolean))].slice(0, 80);
+}
+function safeTags(value) {
+  return tagValues(value).filter(tag => {
+    const normalized = normalizeTag(tag);
+    const tokens = normalized.split(' ');
+    return ![...blockedTagSet].some(term => normalized === term || tokens.includes(term));
+  });
+}
+function rssFields(block, tag) {
+  const pattern = new RegExp('<' + tag + '(?:\\s[^>]*)?>([\\s\\S]*?)<\\/' + tag + '>', 'gi');
+  return [...String(block).matchAll(pattern)].map(match => decodeXml(match[1].trim())).filter(Boolean);
+}
+function normalizeSourceLanguage(value) {
+  const normalized = normalizeTag(value);
+  for (const language of taxonomyConfig.languages || []) {
+    if ([language.slug, language.name, ...(language.aliases || [])].some(alias => normalizeTag(alias) === normalized)) return language.slug;
+  }
+  return '';
+}
+
 const sourceFile = path.join(root, 'data', 'videos.json');
 const publicFile = path.join(root, 'public', 'data', 'videos.json');
 const feedUrl = String(process.env.OFFICIAL_FEED_URL || '').trim();
@@ -226,6 +257,12 @@ function normalizeEntry(item) {
   }
 
   const seconds = durationSeconds(valueFrom(item, ['duration_seconds', 'durationSeconds', 'duration']));
+  const rawTags = safeTags(['tags', 'raw_tags', 'categories', 'category', 'keywords', 'tag'].flatMap(key => tagValues(valueFrom(item, [key]))));
+  const formats = safeTags(valueFrom(item, ['formats', 'format']));
+  const language = normalizeSourceLanguage(valueFrom(item, ['language', 'lang', 'audio_language', 'locale']));
+  const resolution = text(valueFrom(item, ['resolution', 'max_resolution', 'quality']), 16).toLowerCase();
+  const frame_rate = Number(String(valueFrom(item, ['frame_rate', 'frameRate', 'fps'])).match(/\d{2,3}/)?.[0]) || 0;
+  const orientation = text(valueFrom(item, ['orientation']), 32).toLowerCase();
   return {
     id,
     title,
@@ -233,7 +270,13 @@ function normalizeEntry(item) {
     ...partnerProfile(item),
     embed_url: embedUrl.href,
     source_url: sourceUrl.href,
-    duration_seconds: Number.isInteger(seconds) && seconds > 0 && seconds < 60000 ? seconds : 0
+    duration_seconds: Number.isInteger(seconds) && seconds > 0 && seconds < 60000 ? seconds : 0,
+    raw_tags: rawTags,
+    formats,
+    language,
+    resolution,
+    frame_rate: Number.isInteger(frame_rate) ? frame_rate : 0,
+    orientation
   };
 }
 
@@ -248,6 +291,11 @@ function parseRss(xml) {
       source_url: field(block, 'link'),
       poster_url: field(block, 'thumb') || block.match(/<(?:media:)?thumbnail\b[^>]*\burl=["']([^"']+)["']/i)?.[1] || '',
       duration_seconds: field(block, 'duration'),
+      tags: [...rssFields(block, 'tag'), ...rssFields(block, 'tags'), ...rssFields(block, 'category')],
+      language: field(block, 'language') || field(block, 'lang'),
+      resolution: field(block, 'resolution') || field(block, 'quality'),
+      frame_rate: field(block, 'frame_rate') || field(block, 'fps'),
+      orientation: field(block, 'orientation'),
       embed_url: ''
     }));
   }
@@ -320,7 +368,7 @@ async function requestFeed() {
 
 function writeSnapshot(entries) {
   const payload = JSON.stringify({
-    version: 1,
+    version: 2,
     source: 'authorized-provider-feed',
     updatedAt: new Date().toISOString(),
     entries

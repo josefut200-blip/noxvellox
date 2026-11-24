@@ -16,5 +16,16 @@
     "VIDEO_FEED_URL": "https://adultembed.com/api/v1/search?studios=brazzers&per_page=20&sort=newest&format=json",
     "AUTO_PUBLISH_BRAZZERS": "verified-only",
     "CONTACT_EMAIL": "contato@noxvellox.site"
+  },
+  "env": {
+    "preview": {
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "noxvellox-preview-db",
+          "database_id": "37221c6d-f4a6-48fe-8c99-eb9df25ccbcd"
+        }
+      ]
+    }
   }
 }

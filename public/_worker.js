@@ -25,8 +25,13 @@ const prerollVastUrl=env=>{
   }
   return '';
 };
-const categories=['Featured','Trending','New Releases','Originals','Collections','Interviews','Brazilian','Couples','Solo','Amateur','Wellness','Brazzers','Official embeds'];
-const VISIBLE_NAV_CATEGORIES=['Featured','Trending','New Releases','Brazilian','Brazzers','Official embeds'];
+let categories=[];
+let VISIBLE_NAV_CATEGORIES=[];
+let taxonomyLoadPromise=null;
+let taxonomyConfig=null;
+let taxonomySchemaPromise=null;
+const COLLECTIONS=['featured','trending','new-releases','most-viewed'];
+const MIN_INDEXABLE_CATEGORY_VIDEOS=20;
 const categoryMeta={
  Featured:{eyebrow:'Editor picks',description:'Hand-picked highlights from verified sources.',cover:'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=1200&q=82'},
  Trending:{eyebrow:'Trending',description:'The collections visitors are exploring most right now.',cover:'https://images.unsplash.com/photo-1529139574466-a303027c1d8b?auto=format&fit=crop&w=1200&q=82'},
@@ -51,7 +56,7 @@ const esc=v=>String(v??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'
 const safeText=(v,max=220)=>String(v??'').replace(/[\u0000-\u001f]/g,' ').trim().slice(0,max);
 const json=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff','strict-transport-security':'max-age=31536000; includeSubDomains'}});
 const html=(s,status=200,extra={})=>new Response(s,{status,headers:{'content-type':'text/html; charset=utf-8','cache-control':extra['cache-control']||'public, max-age=60, s-maxage=300, stale-while-revalidate=60','x-content-type-options':'nosniff','strict-transport-security':'max-age=31536000; includeSubDomains','referrer-policy':'strict-origin-when-cross-origin','x-frame-options':'DENY','permissions-policy':'camera=(), microphone=(), geolocation=()',...extra}});
-const xml=s=>new Response(s,{headers:{'content-type':'application/xml; charset=utf-8','cache-control':'public, max-age=900, s-maxage=900, stale-while-revalidate=3600','x-content-type-options':'nosniff','strict-transport-security':'max-age=31536000, includeSubDomains'}});
+const xml=s=>new Response(s,{headers:{'content-type':'application/xml; charset=utf-8','cache-control':'public, max-age=60, s-maxage=60, stale-while-revalidate=60','x-content-type-options':'nosniff','strict-transport-security':'max-age=31536000, includeSubDomains'}});
 const slugify=s=>safeText(s,150).toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,90)||`video-${Date.now()}`;
 const isHttpsUrl=s=>{try{const u=new URL(s);return u.protocol==='https:'&&!u.username&&!u.password;}catch{return false}};
 const isTransformedPreviewImageUrl=s=>{if(!isHttpsUrl(s))return false;try{const u=new URL(s);return /(^|\.)phncdn\.com$/i.test(u.hostname)&&/\/original_[^/]+\.(?:mov|mp4)\/plain\/.*\/rs:fit:\d+:\d+\/vts:\d+(?:\/|$)/i.test(u.pathname)}catch{return false}};
@@ -68,7 +73,7 @@ function head({title,description,url,canonical,robots='index,follow',structured=
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="rating" content="adult"><meta name="RATING" content="RTA-5042-1996-1400-1577-RTA"><meta name="google-site-verification" content="TnWlco6s3hCXuvvXnL6SylcJ01OBAHl6yvzDzMRj0J4"><meta name="6a97888e-site-verification" content="661f478ed74153a3cdaeae59d5b80e0f"><meta name="msvalidate.01" content="0DC5320416F7A8F505471E6805AF42F2"><meta name="robots" content="${robots}"><title>${n}</title><meta name="description" content="${d}"><link rel="canonical" href="${c}"><meta property="og:type" content="${esc(ogType)}"><meta property="og:title" content="${n}"><meta property="og:description" content="${d}"><meta property="og:url" content="${c}">${preview?`<meta property="og:image" content="${esc(preview)}"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta property="og:image:type" content="image/svg+xml">`:''}<meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="${n}"><meta name="twitter:description" content="${d}">${preview?`<meta name="twitter:image" content="${esc(preview)}">`:''}<meta name="theme-color" content="#09090d"><link rel="icon" type="image/svg+xml" href="/favicon.svg"><link rel="stylesheet" href="/assets/style.v027.css?ver=0.4.11"><link rel="stylesheet" href="/assets/home-dashboard.v029.css?ver=0.4.5"><link rel="stylesheet" href="/assets/channel-page.v031.css?ver=0.4.0">${structured?`<script type="application/ld+json">${JSON.stringify(structured).replace(/</g,'\\u003c')}</script>`:''}</head>`;
 }
 function shell({body,title,description,base,url,canonical,structured,gate=true,robots,preview,ogType='website'}){
-  const navigation=`<nav class="navigation" data-nav aria-label="Main navigation"><a href="/">Home</a><a href="/videos">Videos</a><a href="/official-videos">Free embeds</a><a href="/categories">Categories</a><a href="/channels">Channels</a><a href="/about">About</a></nav>`;
+  const navigation=`<nav class="navigation" data-nav aria-label="Main navigation"><a href="/">Home</a><a href="/videos">Videos</a><a href="/categories">Categories</a><a href="/channels">Channels</a><a href="/trending">Trending</a><a href="/most-viewed">Most Viewed</a><a href="/official-videos">Free embeds</a><a href="/about">About</a></nav>`;
   const header=`<header class="site-header"><div class="wrap head-inner"><a href="/" class="logo" aria-label="Noxvellox home">NOX<span>VELLOX</span><small>FREE ADULT ENTERTAINMENT</small></a>${navigation}<form class="search-form" role="search" method="get" action="/search" data-search-form><input name="q" placeholder="Search videos..." aria-label="Search videos" maxlength="80"><button type="submit" aria-label="Search"><svg viewBox="0 0 24 24" aria-hidden="true" width="18" height="18"><circle cx="10.8" cy="10.8" r="6.8" fill="none" stroke="currentColor" stroke-width="2"/><path d="m16 16 5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button></form><span class="age-pill">18+</span><button class="menu-btn" data-menu type="button" aria-label="Toggle navigation" aria-expanded="false"><svg viewBox="0 0 24 24" aria-hidden="true" width="20" height="20"><path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button></div></header>`;
   const footer=`<footer class="footer"><div class="wrap"><div class="footer-inner"><a href="/" class="logo">NOX<span>VELLOX</span></a><nav class="footer-links" aria-label="Footer"><a href="/about">About</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/copyright">Copyright &amp; takedown</a><a href="/contact">Contact</a><a href="/admin">Publisher</a><button class="footer-pref" type="button" data-ad-preferences>Cookie preferences</button><a href="/history">Watch history</a></nav></div>${adSlot('footer-banner')}<p class="fineprint">© ${new Date().getUTCFullYear()} Noxvellox. For adults only (18+ or higher local legal age). Independent catalog. Individual media remains the property of its respective rights holders. We accept only authorized sources. Independent providers' official embed feeds are displayed under their published embed permissions; separately imported listings require review. Optional advertising is loaded only after visitor permission.</p></div></footer>`;
   const footerWithBadge=footer;
@@ -90,7 +95,7 @@ const coverMarkup=(poster,title,kind='Video preview',embed='')=>{const source=is
 const card=(v)=>{const slug=encodeURIComponent(v.slug);const dur=v.duration_seconds?duration(v.duration_seconds):'';const href=v.official?`/official-watch/${slug}`:`/watch/${slug}`;return `<a class="video-card" href="${href}"><div class="video-art">${coverMarkup(v.poster_url,v.title,'Video preview',v.embed_url)}<span class="play" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22"><path d="M8 5v14l11-7z" fill="currentColor"/></svg></span>${dur?`<span class="duration">${dur}</span>`:''}</div><div class="video-meta"><h3>${esc(v.title)}</h3><div class="sub"><strong>${esc(v.category)}</strong>  ·  ${esc(v.provider||'Catalog')}</div></div></a>`;};
 const duration=n=>{let x=Math.max(0,Number(n)||0);return `${Math.floor(x/60)}:${String(x%60).padStart(2,'0')}`};
 const emptyMarkup=`<div class="empty"><div><strong>New collection coming soon</strong><p>We are curating authorized videos. This launch preview does not contain unlicensed or fabricated video listings.</p></div></div>`;
-const categoryChips=(current='')=>`<div class="chip-row"><a class="chip ${!current?'active':''}" href="/videos">All videos</a>${VISIBLE_NAV_CATEGORIES.map(c=>`<a class="chip ${current===c?'active':''}" href="/category/${slugify(c)}">${esc(c)}</a>`).join('')}</div>`;
+const categoryChips=(current='')=>'<div class="chip-row"><a class="chip '+(!current?'active':'')+'" href="/videos">All videos</a><a class="chip" href="/categories">Categories</a><a class="chip" href="/featured">Featured</a><a class="chip" href="/trending">Trending</a><a class="chip" href="/new-releases">New Releases</a><a class="chip" href="/most-viewed">Most Viewed</a></div>';
 const searchTaxonomy=q=>{const term=String(q||'').trim().toLowerCase();if(!term)return {channels:[],categories:[]};const channels=channelsV2.filter(ch=>[ch.name,ch.slug,ch.category,ch.eyebrow,ch.description].some(value=>String(value||'').toLowerCase().includes(term)));const matchedCategories=categories.filter(category=>String(category).toLowerCase().includes(term));return {channels, categories:matchedCategories};};
 const categoryDescriptions={Featured:'Hand-picked catalog highlights.',Trending:'Popular titles being explored now.','New Releases':'Freshly added official metadata.',Originals:'Independent original collections.',Collections:'Curated themes grouped together.',Interviews:'Conversation and behind-the-scenes formats.',Brazilian:'Portuguese-language and Brazil-focused collections.',Couples:'Authorized couple and partner collections.',Solo:'Solo performances from approved sources.',Amateur:'Independent amateur collections with source attribution.',Wellness:'Adult wellness and education-oriented collections.',Brazzers:'Brazzers candidates, shown only after verification.','Official embeds':'Publisher-supplied embeds with source attribution.'};
 const categoryCards=()=>`<div class="category-grid">${categories.map(c=>`<a class="category-card" href="/category/${slugify(c)}"><span class="category-card-kicker">Noxvellox collection</span><h2>${esc(c)}</h2><p>${esc(categoryDescriptions[c]||'Browse this curated collection.')}</p><span class="category-card-link">Browse category </span></a>`).join('')}</div>`;
@@ -121,7 +126,15 @@ const channelsV2=[
 ];
 const categoryDescriptionsV2=Object.fromEntries(categories.map(c=>[c,categoryMetaV2[c]?.description||'Browse this curated collection.']));
 const categoryHrefV2=c=>`/category/${slugify(c)}`;
-const categoryCardsV2=()=>`<div class="category-grid">${VISIBLE_NAV_CATEGORIES.map(c=>{const meta=categoryMetaV2[c]||{};return `<a class="category-card" href="${categoryHrefV2(c)}"><div class="category-card-media"><img src="${esc(meta.cover||'')}" loading="lazy" decoding="async" data-category-image alt="${esc(c)} category cover"><div class="category-card-shade"></div><span class="category-card-count">${esc(meta.eyebrow||'Noxvellox collection')}</span></div><div class="category-card-body"><h2>${esc(c)}</h2><p>${esc(categoryDescriptionsV2[c])}</p><span class="category-card-link">Browse collection</span></div></a>`}).join('')}</div>`;
+const categoryCardsV2=items=>{
+ if(!items.length)return '<div class="empty"><strong>Categories are being curated</strong><p>Approved publisher tags will appear here when videos are available.</p></div>';
+ const groups=new Map();
+ for(const item of items){if(!groups.has(item.group_slug))groups.set(item.group_slug,{name:item.group_name,items:[]});groups.get(item.group_slug).items.push(item)}
+ return [...groups.values()].map(group=>'<section class="category-group"><h2>'+esc(group.name)+'</h2><div class="category-grid">'+group.items.map(item=>{
+  const meta=categoryMetaV2[item.name]||categoryMetaV2.Collections||{};
+  return '<a class="category-card" href="/category/'+encodeURIComponent(item.slug)+'"><div class="category-card-media"><img src="'+esc(meta.cover||'')+'" loading="lazy" decoding="async" data-category-image alt="'+esc(item.name)+' category cover"><div class="category-card-shade"></div><span class="category-card-count">'+Number(item.count).toLocaleString('en-US')+' videos</span></div><div class="category-card-body"><h3>'+esc(item.name)+'</h3><span class="category-card-link">Browse category</span></div></a>'
+ }).join('')+'</div></section>').join('');
+};
 const discoveryModelV2=()=>`<section class="discovery-model"><div class="discovery-model-copy"><div class="section-kicker">Simple discovery</div><h2>Find by interest or by source</h2><p>Categories answer <strong>what</strong> you want to explore. Channels answer <strong>who</strong> publishes it. The two systems stay separate so browsing remains clear.</p></div><div class="discovery-model-grid"><a href="/categories"><span>WHAT</span><strong>Categories</strong><small>Theme, style or niche</small></a><a href="/channels"><span>WHO</span><strong>Channels</strong><small>Studio, publisher or creator</small></a></div></section>`;
 const channelCardsV2=()=>`<div class="channel-grid">${channelsV2.map(ch=>`<a class="channel-card" href="/channels/${encodeURIComponent(ch.slug)}"><div class="channel-banner"><img src="${esc(ch.cover)}" loading="lazy" decoding="async" data-category-image alt="${esc(ch.name)} channel cover"><div class="channel-banner-shade"></div></div><div class="channel-card-body"><div class="channel-avatar">${esc(ch.name.slice(0,1))}</div><div><span class="category-card-kicker">${esc(ch.eyebrow)}</span><h2>${esc(ch.name)}</h2><p>${esc(ch.description)}</p></div></div></a>`).join('')}</div>`;
 function channelPageV2({base,url,channel,videos=[],official=[]}){
@@ -370,7 +383,7 @@ async function officialCatalog(db,{page=1,limit=OFFICIAL_PAGE_SIZE,q='',localEnt
  const filtered=query?eligible.filter(item=>String(item.title||'').toLowerCase().includes(query)):eligible;
  return {entries:filtered.slice(offset,offset+limit),total:filtered.length,persisted:false};
 }
-function officialCategory(id){let hash=0;for(const ch of String(id||''))hash=((hash*31)+ch.charCodeAt(0))>>>0;return categories[hash%categories.length]}
+function officialCategory(id){return 'Official embeds'}
 async function officialForCategory(db,category,localEntries=null){if(category!=='Official embeds')return [];return (await officialCatalog(db,{page:1,limit:500,localEntries})).entries}
 async function officialById(db,id,localEntries=null){
  if(REMOVED_OFFICIAL_IDS.has(String(id)))return null;
@@ -453,6 +466,214 @@ const rotateRelated=(items,currentId,limit=30)=>{
  return pool.slice(0,limit);
 };
 const asD1=db=>db&&typeof db.prepare==='function'?db:null;
+async function loadTaxonomy(env,req){
+ if(taxonomyLoadPromise)return taxonomyLoadPromise;
+ taxonomyLoadPromise=(async()=>{
+  const response=await env.ASSETS.fetch(new URL('/data/taxonomy.json',req.url));
+  if(!response.ok)throw new Error('Taxonomy configuration unavailable');
+  const data=await response.json();
+  if(data?.version!==1||!Array.isArray(data.groups))throw new Error('Taxonomy configuration is invalid');
+  data.categories=data.groups.flatMap(group=>(group.categories||[]).map(item=>({...item,group_slug:group.slug,group_name:group.name})));
+  data.categoryBySlug=Object.fromEntries(data.categories.map(item=>[item.slug,item]));
+  taxonomyConfig=data;
+  data.blockedSet=new Set((data.blockedTags||[]).map(normalizeTaxonomyToken));
+  data.categoryAliases=buildAliasMap(data.categories);
+  data.formatAliases=buildAliasMap(data.formats||[]);
+  data.orientationAliases=buildAliasMap(data.orientations||[]);
+  data.languageAliases=buildAliasMap(data.languages||[]);
+  categories=data.categories.map(item=>item.name);
+  VISIBLE_NAV_CATEGORIES=data.categories.slice(0,6).map(item=>item.name);
+  return data;
+ })().catch(error=>{taxonomyLoadPromise=null;throw error});
+ return taxonomyLoadPromise;
+}
+function normalizeTaxonomyToken(value){
+ return String(value??'').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/&/g,' and ').replace(/[^a-z0-9]+/g,' ').trim().replace(/\s+/g,' ');
+}
+function rawTagList(value){
+ const values=Array.isArray(value)?value:(typeof value==='string'?value.split(/[;,|]/):[]);
+ return [...new Set(values.map(item=>{
+  if(item&&typeof item==='object')return String(item.slug||item.name||item.label||item.tag||'');
+  return String(item??'');
+ }).map(item=>item.replace(/[\u0000-\u001f]/g,' ').trim().slice(0,80)).filter(Boolean))].slice(0,80);
+}
+function hasBlockedTags(tags,taxonomy){
+ const blocked=taxonomy?.blockedSet||new Set();
+ return rawTagList(tags).some(tag=>{
+  const normalized=normalizeTaxonomyToken(tag);
+  if(!normalized)return false;
+  const tokens=normalized.split(' ');
+  return [...blocked].some(term=>normalized===term||tokens.includes(term));
+ });
+}
+function buildAliasMap(items){
+ const map=new Map();
+ for(const item of items||[]){
+  for(const alias of [item.slug,item.name,...(item.aliases||[])]){
+   const key=normalizeTaxonomyToken(alias);
+   if(key&&!map.has(key))map.set(key,item.slug);
+  }
+ }
+ return map;
+}
+function safeRawTags(tags,taxonomy){
+ return rawTagList(tags).filter(tag=>!hasBlockedTags([tag],taxonomy));
+}
+function mapRawTags(tags,aliasMap,taxonomy){
+ return [...new Set(safeRawTags(tags,taxonomy).map(tag=>aliasMap.get(normalizeTaxonomyToken(tag))).filter(Boolean))];
+}
+function normalizeLanguage(value,taxonomy){
+ return (taxonomy?.languageAliases||new Map()).get(normalizeTaxonomyToken(value))||'';
+}
+function normalizeResolution(value,taxonomy){
+ const normalized=normalizeTaxonomyToken(value).replace(/\s+/g,'');
+ const canonical=normalized==='2160p'?'4k':normalized;
+ const allowed=new Set(taxonomy?.technical?.resolutions||[]);
+ return allowed.has(canonical)?canonical:'';
+}
+function normalizeFrameRate(value,taxonomy){
+ const n=Number(String(value??'').match(/\d{2,3}/)?.[0]);
+ return (taxonomy?.technical?.frameRates||[]).includes(n)?n:null;
+}
+function introWordCount(value){return String(value||'').trim().split(/\s+/).filter(Boolean).length}
+function indexableCategory(category,count,taxonomy){
+ const words=introWordCount(category?.intro_en);
+ return Number(count)>=Number(taxonomy?.indexing?.minimumPublishedVideos||MIN_INDEXABLE_CATEGORY_VIDEOS)&&
+  words>=Number(taxonomy?.indexing?.minimumIntroWords||80)&&words<=Number(taxonomy?.indexing?.maximumIntroWords||120);
+}
+async function ensureTaxonomySchema(db,taxonomy){
+ if(!db)return false;
+ if(taxonomySchemaPromise)return taxonomySchemaPromise;
+ taxonomySchemaPromise=(async()=>{
+  const statements=[
+   "CREATE TABLE IF NOT EXISTS taxonomy_categories (slug TEXT PRIMARY KEY,name TEXT NOT NULL,group_slug TEXT NOT NULL,group_name TEXT NOT NULL,intro_en TEXT NOT NULL DEFAULT '',updated_at TEXT NOT NULL DEFAULT (datetime('now')))",
+   "CREATE TABLE IF NOT EXISTS video_categories (video_id INTEGER NOT NULL,category_slug TEXT NOT NULL,PRIMARY KEY(video_id,category_slug),FOREIGN KEY(video_id) REFERENCES videos(id) ON DELETE CASCADE,FOREIGN KEY(category_slug) REFERENCES taxonomy_categories(slug) ON DELETE CASCADE)",
+   "CREATE INDEX IF NOT EXISTS idx_video_categories_slug ON video_categories(category_slug,video_id)",
+   "CREATE TABLE IF NOT EXISTS video_metadata (video_id INTEGER PRIMARY KEY,channel_id TEXT NOT NULL DEFAULT '',studio TEXT NOT NULL DEFAULT '',resolution TEXT NOT NULL DEFAULT '',frame_rate INTEGER,language TEXT NOT NULL DEFAULT '',orientation TEXT NOT NULL DEFAULT '',raw_tags_json TEXT NOT NULL DEFAULT '[]',featured INTEGER NOT NULL DEFAULT 0,FOREIGN KEY(video_id) REFERENCES videos(id) ON DELETE CASCADE)",
+   "CREATE INDEX IF NOT EXISTS idx_video_metadata_filters ON video_metadata(language,resolution,frame_rate,orientation)",
+   "CREATE INDEX IF NOT EXISTS idx_video_metadata_channel ON video_metadata(channel_id,studio)",
+   "CREATE TABLE IF NOT EXISTS video_formats (video_id INTEGER NOT NULL,format_slug TEXT NOT NULL,PRIMARY KEY(video_id,format_slug),FOREIGN KEY(video_id) REFERENCES videos(id) ON DELETE CASCADE)",
+   "CREATE INDEX IF NOT EXISTS idx_video_formats_slug ON video_formats(format_slug,video_id)",
+   "CREATE TABLE IF NOT EXISTS video_views (id INTEGER PRIMARY KEY AUTOINCREMENT,video_id INTEGER NOT NULL,viewed_at TEXT NOT NULL DEFAULT (datetime('now')),FOREIGN KEY(video_id) REFERENCES videos(id) ON DELETE CASCADE)",
+   "CREATE INDEX IF NOT EXISTS idx_video_views_video_date ON video_views(video_id,viewed_at)",
+   "CREATE TABLE IF NOT EXISTS taxonomy_migrations (version INTEGER PRIMARY KEY,applied_at TEXT NOT NULL DEFAULT (datetime('now')))"
+  ];
+  for(const statement of statements)await db.prepare(statement).run();
+  for(const category of taxonomy.categories){
+   await db.prepare("INSERT INTO taxonomy_categories (slug,name,group_slug,group_name,intro_en) VALUES (?,?,?,?,?) ON CONFLICT(slug) DO UPDATE SET name=excluded.name,group_slug=excluded.group_slug,group_name=excluded.group_name,intro_en=CASE WHEN trim(excluded.intro_en)<>'' THEN excluded.intro_en ELSE taxonomy_categories.intro_en END,updated_at=datetime('now')")
+    .bind(category.slug,category.name,category.group_slug,category.group_name,String(category.intro_en||'')).run();
+  }
+  await db.prepare("INSERT OR IGNORE INTO video_metadata (video_id,channel_id,studio) SELECT id,CASE WHEN lower(provider)='adultembed' THEN 'brazzers' ELSE '' END,CASE WHEN lower(provider)='adultembed' THEN 'brazzers' ELSE '' END FROM videos").run();
+  const applied=await db.prepare("SELECT version FROM taxonomy_migrations WHERE version=1").first();
+  if(!applied){
+   for(const category of taxonomy.categories){
+    const aliases=[category.slug,category.name,...(category.aliases||[])].map(normalizeTaxonomyToken).filter(Boolean);
+    if(!aliases.length)continue;
+    const placeholders=aliases.map(()=>'?').join(',');
+    await db.prepare("INSERT OR IGNORE INTO video_categories (video_id,category_slug) SELECT id,? FROM videos WHERE lower(trim(category)) IN ("+placeholders+")")
+     .bind(category.slug,...aliases).run();
+   }
+   for(const format of taxonomy.formats||[]){
+    const aliases=[format.slug,format.name,...(format.aliases||[])].map(normalizeTaxonomyToken).filter(Boolean);
+    if(!aliases.length)continue;
+    const placeholders=aliases.map(()=>'?').join(',');
+    await db.prepare("INSERT OR IGNORE INTO video_formats (video_id,format_slug) SELECT id,? FROM videos WHERE lower(trim(category)) IN ("+placeholders+")")
+     .bind(format.slug,...aliases).run();
+   }
+   await db.prepare("UPDATE video_metadata SET channel_id='brazzers',studio='brazzers' WHERE video_id IN (SELECT id FROM videos WHERE lower(trim(category))='brazzers' OR lower(provider)='adultembed')").run();
+   await db.prepare("INSERT OR IGNORE INTO taxonomy_migrations(version) VALUES (1)").run();
+  }
+  return true;
+ })().catch(error=>{taxonomySchemaPromise=null;throw error});
+ return taxonomySchemaPromise;
+}
+async function categoryDirectory(db,taxonomy,limit=30){
+ if(!db)return [];
+ const result=await db.prepare("SELECT tc.slug,tc.name,tc.group_slug,tc.group_name,tc.intro_en,COUNT(DISTINCT v.id) AS count FROM taxonomy_categories tc JOIN video_categories vc ON vc.category_slug=tc.slug JOIN videos v ON v.id=vc.video_id WHERE v.status='published' AND v.rights_confirmed=1 AND v.adults_verified=1 AND v.duration_seconds>=? AND v.poster_url<>'' AND v.embed_url<>'' GROUP BY tc.slug,tc.name,tc.group_slug,tc.group_name,tc.intro_en ORDER BY count DESC,tc.name COLLATE NOCASE ASC LIMIT ?")
+  .bind(MIN_VIDEO_DURATION_SECONDS,Math.max(1,Math.min(500,limit))).all();
+ return (result.results||[]).map(row=>({...row,count:Number(row.count||0),seo_indexable:indexableCategory(row,row.count,taxonomy)}));
+}
+async function taxonomyCategoryVideos(db,category,{filters={},limit=40,offset=0}={}){
+ if(!db||!category)return [];
+ const params=[category.slug,'published',1,1,MIN_VIDEO_DURATION_SECONDS];
+ let where="vc.category_slug=? AND v.status=? AND v.rights_confirmed=? AND v.adults_verified=? AND v.duration_seconds>=? AND v.poster_url<>'' AND v.embed_url<>''";
+ if(filters.language){where+=" AND vm.language=?";params.push(filters.language)}
+ if(filters.resolution){where+=" AND vm.resolution=?";params.push(filters.resolution)}
+ if(filters.frame_rate){where+=" AND vm.frame_rate=?";params.push(filters.frame_rate)}
+ if(filters.orientation){where+=" AND vm.orientation=?";params.push(filters.orientation)}
+ if(filters.format){where+=" AND EXISTS (SELECT 1 FROM video_formats vf WHERE vf.video_id=v.id AND vf.format_slug=?)";params.push(filters.format)}
+ params.push(limit,offset);
+ const result=await db.prepare("SELECT v.id,v.slug,v.title,v.description,v.category,v.poster_url,v.embed_url,v.source_url,v.provider,v.duration_seconds,v.status,v.published_at FROM videos v JOIN video_categories vc ON vc.video_id=v.id LEFT JOIN video_metadata vm ON vm.video_id=v.id WHERE "+where+" ORDER BY v.published_at DESC,v.id DESC LIMIT ? OFFSET ?").bind(...params).all();
+ return result.results||[];
+}
+async function countTaxonomyCategoryVideos(db,category,filters={}){
+ if(!db||!category)return 0;
+ const params=[category.slug,'published',1,1,MIN_VIDEO_DURATION_SECONDS];
+ let where="vc.category_slug=? AND v.status=? AND v.rights_confirmed=? AND v.adults_verified=? AND v.duration_seconds>=? AND v.poster_url<>'' AND v.embed_url<>''";
+ if(filters.language){where+=" AND vm.language=?";params.push(filters.language)}
+ if(filters.resolution){where+=" AND vm.resolution=?";params.push(filters.resolution)}
+ if(filters.frame_rate){where+=" AND vm.frame_rate=?";params.push(filters.frame_rate)}
+ if(filters.orientation){where+=" AND vm.orientation=?";params.push(filters.orientation)}
+ if(filters.format){where+=" AND EXISTS (SELECT 1 FROM video_formats vf WHERE vf.video_id=v.id AND vf.format_slug=?)";params.push(filters.format)}
+ const row=await db.prepare("SELECT COUNT(DISTINCT v.id) AS total FROM videos v JOIN video_categories vc ON vc.video_id=v.id LEFT JOIN video_metadata vm ON vm.video_id=v.id WHERE "+where).bind(...params).first();
+ return Number(row?.total||0);
+}
+async function collectionVideos(db,collection,limit=40){
+ if(!db)return [];
+ const params=['published',1,1,MIN_VIDEO_DURATION_SECONDS];
+ let order="v.published_at DESC,v.id DESC",where="v.status=? AND v.rights_confirmed=? AND v.adults_verified=? AND v.duration_seconds>=? AND v.poster_url<>'' AND v.embed_url<>''";
+ if(collection==='featured')where+=" AND vm.featured=1";
+ if(collection==='trending')order="(SELECT COUNT(*) FROM video_views vv WHERE vv.video_id=v.id AND vv.viewed_at>=datetime('now','-7 days')) DESC,v.published_at DESC";
+ if(collection==='most-viewed')order="(SELECT COUNT(*) FROM video_views vv WHERE vv.video_id=v.id) DESC,v.published_at DESC";
+ const result=await db.prepare("SELECT v.id,v.slug,v.title,v.description,v.category,v.poster_url,v.embed_url,v.source_url,v.provider,v.duration_seconds,v.status,v.published_at FROM videos v LEFT JOIN video_metadata vm ON vm.video_id=v.id WHERE "+where+" ORDER BY "+order+" LIMIT ?")
+  .bind(...params,limit).all();
+ return result.results||[];
+}
+async function collectionCounts(db,collection){
+ if(!db)return 0;
+ const where=collection==='featured'?" AND vm.featured=1":'';
+ const order=collection==='trending'?" AND vv.viewed_at>=datetime('now','-7 days)":'';
+ const row=await db.prepare("SELECT COUNT(DISTINCT v.id) AS total FROM videos v LEFT JOIN video_metadata vm ON vm.video_id=v.id LEFT JOIN video_views vv ON vv.video_id=v.id WHERE v.status='published' AND v.rights_confirmed=1 AND v.adults_verified=1 AND v.duration_seconds>=? AND v.poster_url<>'' AND v.embed_url<>''"+where+order)
+  .bind(MIN_VIDEO_DURATION_SECONDS).first();
+ return Number(row?.total||0);
+}
+
+function channelDisplayName(value){
+ return String(value||'').split(/[-_\s]+/).filter(Boolean).map(part=>part.length<=3?part.toUpperCase():part[0].toUpperCase()+part.slice(1)).join(' ')||'Publisher channel';
+}
+async function channelDirectory(db,limit=100){
+ if(!db)return [];
+ const result=await db.prepare("SELECT source.slug,MAX(source.studio) AS studio,COUNT(DISTINCT source.video_id) AS count FROM (SELECT vm.channel_id AS slug,vm.studio AS studio,v.id AS video_id FROM video_metadata vm JOIN videos v ON v.id=vm.video_id WHERE vm.channel_id<>'' AND v.status='published' AND v.rights_confirmed=1 AND v.adults_verified=1 AND v.duration_seconds>=? AND v.poster_url<>'' AND v.embed_url<>'' UNION ALL SELECT vm.studio AS slug,vm.studio AS studio,v.id AS video_id FROM video_metadata vm JOIN videos v ON v.id=vm.video_id WHERE vm.studio<>'' AND vm.studio<>vm.channel_id AND v.status='published' AND v.rights_confirmed=1 AND v.adults_verified=1 AND v.duration_seconds>=? AND v.poster_url<>'' AND v.embed_url<>'') source GROUP BY source.slug ORDER BY count DESC,source.slug ASC LIMIT ?")
+  .bind(MIN_VIDEO_DURATION_SECONDS,MIN_VIDEO_DURATION_SECONDS,Math.max(1,Math.min(500,limit))).all();
+ return (result.results||[]).map(row=>({slug:String(row.slug||''),name:channelDisplayName(row.studio||row.slug),count:Number(row.count||0)})).filter(row=>row.slug);
+}
+async function taxonomyChannelVideos(db,slug,{limit=40,offset=0,q='',sort='recent'}={}){
+ if(!db||!slug)return [];
+ const params=[slug,slug,'published',1,1,MIN_VIDEO_DURATION_SECONDS];
+ let where="(vm.channel_id=? OR vm.studio=?) AND v.status=? AND v.rights_confirmed=? AND v.adults_verified=? AND v.duration_seconds>=? AND v.poster_url<>'' AND v.embed_url<>''";
+ if(q){where+=" AND (v.title LIKE ? OR v.description LIKE ?)";const match=`%${q}%`;params.push(match,match)}
+ let order="v.published_at DESC,v.id DESC";
+ if(sort==='popular')order="(SELECT COUNT(*) FROM video_views vv WHERE vv.video_id=v.id) DESC,v.published_at DESC,v.id DESC";
+ params.push(limit,offset);
+ const result=await db.prepare("SELECT v.id,v.slug,v.title,v.description,v.category,v.poster_url,v.embed_url,v.source_url,v.provider,v.duration_seconds,v.status,v.published_at FROM videos v JOIN video_metadata vm ON vm.video_id=v.id WHERE "+where+" ORDER BY "+order+" LIMIT ? OFFSET ?").bind(...params).all();
+ return result.results||[];
+}
+async function countTaxonomyChannelVideos(db,slug,q=''){
+ if(!db||!slug)return 0;
+ const params=[slug,slug,'published',1,1,MIN_VIDEO_DURATION_SECONDS];
+ let where="(vm.channel_id=? OR vm.studio=?) AND v.status=? AND v.rights_confirmed=? AND v.adults_verified=? AND v.duration_seconds>=? AND v.poster_url<>'' AND v.embed_url<>''";
+ if(q){where+=" AND (v.title LIKE ? OR v.description LIKE ?)";const match=`%${q}%`;params.push(match,match)}
+ const row=await db.prepare("SELECT COUNT(DISTINCT v.id) AS total FROM videos v JOIN video_metadata vm ON vm.video_id=v.id WHERE "+where).bind(...params).first();
+ return Number(row?.total||0);
+}
+function taxonomyChannelPage({base,url,channel,videos,total,q='',sort='recent'}){
+ const canonical=base+'/channels/'+encodeURIComponent(channel.slug);
+ const filtered=url.searchParams.toString().length>0;
+ const canIndex=Number(total)>=MIN_INDEXABLE_CATEGORY_VIDEOS&&!filtered;
+ const cards=videos.length?videos.map(card).join(''):'<div class="empty"><strong>No approved videos for this channel yet</strong><p>Only published videos with approved rights and verified adult participation appear here.</p></div>';
+ const body='<section class="wrap page-head"><div class="section-kicker"><a href="/channels">Channels</a></div><h1>'+esc(channel.name)+' Videos</h1><p>Approved publisher listings from '+esc(channel.name)+' on Noxvellox.</p><p>'+Number(total).toLocaleString('en-US')+' approved videos</p></section><section class="wrap"><form class="taxonomy-filters" method="get" action=""><label>Search this channel<input name="q" value="'+esc(q)+'" maxlength="80" placeholder="Search titles"></label><label>Sort<select name="sort"><option value="recent"'+(sort==='recent'?' selected':'')+'>Most recent</option><option value="popular"'+(sort==='popular'?' selected':'')+'>Most viewed</option></select></label><button class="button" type="submit">Apply</button></form><div class="video-grid">'+cards+'</div>'+adSlot()+'</section>';
+ return shell({base,url:url.href,title:channel.name+' Videos | Noxvellox',description:'Browse approved videos from '+channel.name+' on Noxvellox.',canonical,robots:canIndex?'index,follow':'noindex,follow',body});
+}
 function publishedArticle(v,base){const url=v.official?`${base}/official-watch/${encodeURIComponent(v.slug)}`:`${base}/watch/${encodeURIComponent(v.slug)}`;return { '@context':'https://schema.org','@type':'VideoObject',name:v.title,description:v.description||v.title,thumbnailUrl:isHttpsUrl(v.poster_url)?v.poster_url:undefined,embedUrl:isHttpsUrl(v.embed_url)?v.embed_url:undefined,uploadDate:v.published_at?`${v.published_at.replace(' ','T')}Z`:undefined,duration:v.duration_seconds?`PT${Math.floor(v.duration_seconds/60)}M${v.duration_seconds%60}S`:undefined,isFamilyFriendly:false,isAccessibleForFree:true,url};}
 function homePage({base,url,videos,official=[]}){
   const hero=`<section class="wrap hero"><div class="hero-copy"><div class="eyebrow">A new world after dark</div><h1>Stay curious.<br><em>Explore more.</em></h1><p>Discover a thoughtfully organized adults-only video catalog featuring authorized content, fresh collections, and effortless navigation.</p><div class="actions"><a class="button" href="/videos">Explore videos </a><a class="button ghost" href="/categories">Browse categories</a></div><div class="meta-strip"><span>Adults only</span><span>Curated collections</span><span>Independent catalog</span></div></div><div class="hero-art" aria-hidden="true"><div class="hero-mark">N<small>18+</small></div></div></section>`;
@@ -464,14 +685,13 @@ function homePage({base,url,videos,official=[]}){
 const homeDisplayTitle=v=>normalizeImportedTitle(v?.title)||safeText(v?.title||'Untitled video',140)||'Untitled video';
 const homeCardV3=(v,isOfficial=false)=>{const slug=encodeURIComponent(v.slug||v.id||'');const title=homeDisplayTitle(v);const href=isOfficial||v.official?`/official-watch/${slug}`:`/watch/${slug}`;return `<a class="home-video-card" href="${href}"><div class="home-video-art">${coverMarkup(v.poster_url,title,'Video preview',v.embed_url)}<span class="home-quality">HD</span>${v.duration_seconds?`<span class="duration">${duration(v.duration_seconds)}</span>`:''}</div><div class="home-video-meta"><h3>${esc(title)}</h3><div class="home-video-source">${esc(isOfficial?'Official embed':(v.category||'Noxvellox collection'))}</div></div></a>`};
 const homeChannelCardV3=ch=>`<a class="home-channel-card" href="/channels/${encodeURIComponent(ch.slug)}"><div class="home-channel-avatar">${esc(ch.name.slice(0,1))}</div><div class="home-channel-copy"><strong>${esc(ch.name)}</strong><span>${esc(ch.eyebrow)}</span><small>${ch.category==='Brazzers'?'Verified listings only':'Curated channel'}</small></div><span class="home-channel-arrow" aria-hidden="true">></span></a>`;
-function homePageV3({base,url,videos,official=[],partners}){
+function homePageV3({base,url,videos,official=[],partners,categoryList=[]}){
  const recent=[...videos.map(v=>({...v,__official:false})),...official.map(v=>({...v,__official:true}))].slice(0,8);
 
- const visibleCategories=VISIBLE_NAV_CATEGORIES.filter(c=>!['Originals','Collections','Interviews'].includes(c));
- const categoryTiles=visibleCategories.map(c=>{const meta=categoryMetaV2[c]||{};return `<a class="home-category-card" href="${categoryHrefV2(c)}"><div class="home-category-art"><img src="${esc(meta.cover||'')}" loading="lazy" decoding="async" data-category-image alt="${esc(c)} category cover"><div class="home-category-shade"></div><span class="home-category-icon" aria-hidden="true">${c==='Brazzers'?'✓':c==='Wellness'?'♡':'✦'}</span></div><div class="home-category-copy"><strong>${esc(c)}</strong><br><small>${esc(meta.eyebrow||'Curated collection')}</small></div></a>`}).join('');
+ const categoryTiles=categoryList.slice(0,12).map(c=>{const meta=categoryMetaV2[c.name]||categoryMetaV2.Collections||{};return '<a class="home-category-card" href="/category/'+encodeURIComponent(c.slug)+'"><div class="home-category-art"><img src="'+esc(meta.cover||'')+'" loading="lazy" decoding="async" data-category-image alt="'+esc(c.name)+' category cover"><div class="home-category-shade"></div><span class="home-category-icon" aria-hidden="true">✦</span></div><div class="home-category-copy"><strong>'+esc(c.name)+'</strong><br><small>'+Number(c.count).toLocaleString('en-US')+' videos</small></div></a>'}).join('')||'<div class="empty"><strong>No published categories yet</strong><p>Categories appear after approved videos include publisher-supplied tags.</p></div>';
  const channelTiles=partners.slice(0,6).map(partnerTile).join('');
  const recentMarkup=recent.length?recent.map(v=>homeCardV3(v,v.__official===true)).join(''):`<div class="empty"><strong>No recent public videos yet</strong><p>Approved listings will appear here automatically.</p></div>`;
- const sidebar=`<aside class="home-sidebar"><div class="home-sidebar-brand"><span class="home-sidebar-mark">N</span><strong>NOXVELLOX</strong></div><nav aria-label="Quick navigation"><a class="active" href="/"><span></span>Home</a><a href="/videos"><span aria-hidden="true">▶</span>Videos</a><a href="/categories"><span aria-hidden="true">▦</span>Categories</a><a href="/channels"><span aria-hidden="true">♙</span>Channels</a><a href="/channels"><span aria-hidden="true">♡</span>Following</a></nav><div class="home-sidebar-rule"></div><div class="home-sidebar-label">Explore</div><nav aria-label="Explore navigation"><a href="/category/trending"><span aria-hidden="true">↗</span>Trending</a><a href="/category/new-releases"><span aria-hidden="true">✦</span>New releases</a><a href="/videos"><span aria-hidden="true">◉</span>Most viewed</a><a href="/about"><span aria-hidden="true">✉</span>Support</a></nav></aside>`;
+ const sidebar=`<aside class="home-sidebar"><div class="home-sidebar-brand"><span class="home-sidebar-mark">N</span><strong>NOXVELLOX</strong></div><nav aria-label="Quick navigation"><a class="active" href="/"><span></span>Home</a><a href="/videos"><span aria-hidden="true">▶</span>Videos</a><a href="/categories"><span aria-hidden="true">▦</span>Categories</a><a href="/channels"><span aria-hidden="true">♙</span>Channels</a><a href="/channels"><span aria-hidden="true">♡</span>Following</a></nav><div class="home-sidebar-rule"></div><div class="home-sidebar-label">Explore</div><nav aria-label="Explore navigation"><a href="/trending"><span aria-hidden="true">↗</span>Trending</a><a href="/new-releases"><span aria-hidden="true">✦</span>New releases</a><a href="/most-viewed"><span aria-hidden="true">◉</span>Most viewed</a><a href="/about"><span aria-hidden="true">✉</span>Support</a></nav></aside>`;
  const body=`<div class="home-dashboard"><div class="home-dashboard-layout">${sidebar}<div class="home-dashboard-main">${partnerCarousel(partners)}<section class="home-dashboard-columns home-dashboard-columns-single" style="grid-template-columns:minmax(0,1fr)"><div class="home-dashboard-content"><section class="home-dashboard-section"><div class="home-section-heading"><div><span class="home-section-icon" aria-hidden="true">▦</span><div><h2>Categories</h2><p>Browse the site's main topics and collections.</p></div></div><a href="/categories">View all <span>></span></a></div><div class="home-category-grid">${categoryTiles}</div></section><section class="home-dashboard-section"><div class="home-section-heading"><div><span class="home-section-icon pink" aria-hidden="true">♙</span><div><h2>Channels</h2><p>Follow publishers and collections organized by source.</p></div></div><a href="/channels">View all <span>></span></a></div><div class="nv-channel-grid">${channelTiles}</div></section><section class="home-dashboard-section"><div class="home-section-heading"><div><span class="home-section-icon" aria-hidden="true">▶</span><div><h2>Recent videos</h2><p>Browse the latest available releases.</p></div></div><a href="/videos">View all <span>></span></a></div><div class="home-video-grid" data-infinite-grid data-infinite-source="/videos">${recentMarkup}${adSlot('feed')}</div></section></div></section></div></div></div>`;
  const structured={'@context':'https://schema.org','@type':'WebSite',name:SITE,url:base,inLanguage:'en',description:'Noxvellox is an independent adult video catalog organized by categories and channels.'};
  return shell({title:'Noxvellox | Discover Free Adult Video Collections | Explore your way',description:'Explore adult videos by category and channel on Noxvellox.',body,base,url,structured});
@@ -504,6 +724,50 @@ function listPage({url,base,videos,official=[],title='All videos',subtitle='Brow
   const body=`<section class="wrap page-head"><div class="section-kicker">Noxvellox library</div><h1>${esc(title)}</h1><p>${esc(subtitle)}</p></section><section class="wrap">${categoryChips(category)}<div class="section" style="margin-top:25px"><div class="video-grid"${infinite?' data-infinite-grid':''}>${renderedFeed||(title==='Free Official Embeds'?'<div class="empty"><strong>Official provider feed temporarily unavailable</strong><p>Please try later. No placeholder videos or unverified embeds will be published.</p></div>':emptyMarkup)}</div>${official.length?(official[0]?.from_snapshot?'<p class="mini"><strong>Contingency catalog:</strong> last observed in the provider official RSS on November 22, 2026. This is NOT a live availability check. Entries may have been removed; playback and rights remain subject to provider policy. No video files are hosted here.</p>':'<p class="mini">Free embeds from the official platform RSS. Video files are not stored on Noxvellox; some content may be region-restricted.</p>'):''}</div>${officialPagination}${infinite?'':adSlot()}</section>`;
   return shell({title:`${title}${pageSuffix} | Noxvellox`,description:metaDescription,base,url,body,robots:robots||(pageNumber>10?'noindex,follow':undefined)});
 }
+function taxonomyFilters(url,taxonomy){
+ const raw={language:url.searchParams.get('lang'),resolution:url.searchParams.get('res'),frameRate:url.searchParams.get('fps'),format:url.searchParams.get('format'),orientation:url.searchParams.get('orientation')};
+ const filters={};
+ const language=normalizeLanguage(raw.language,taxonomy);if(language)filters.language=language;
+ const resolution=normalizeResolution(raw.resolution,taxonomy);if(resolution)filters.resolution=resolution;
+ const frameRate=normalizeFrameRate(raw.frameRate,taxonomy);if(frameRate)filters.frame_rate=frameRate;
+ const format=(taxonomy.formatAliases||new Map()).get(normalizeTaxonomyToken(raw.format));if(format)filters.format=format;
+ const orientation=(taxonomy.orientationAliases||new Map()).get(normalizeTaxonomyToken(raw.orientation));if(orientation)filters.orientation=orientation;
+ return filters;
+}
+function taxonomyFilterForm(taxonomy,filters){
+ const select=(name,label,items,selected)=>'<label>'+label+'<select name="'+name+'"><option value="">All</option>'+items.map(item=>{const value=item.slug||item.value;return '<option value="'+esc(value)+'"'+(String(selected||'')===String(value)?' selected':'')+'>'+esc(item.name)+'</option>'}).join('')+'</select></label>';
+ const resolutions=(taxonomy.technical?.resolutions||[]).map(value=>({value,name:value.toUpperCase()}));
+ const frameRates=(taxonomy.technical?.frameRates||[]).map(value=>({value:String(value),name:String(value)+' FPS'}));
+ return '<form class="taxonomy-filters" method="get" action=""><label>Language<select name="lang"><option value="">All</option>'+(taxonomy.languages||[]).map(item=>'<option value="'+esc(item.slug)+'"'+(filters.language===item.slug?' selected':'')+'>'+esc(item.name)+'</option>').join('')+'</select></label>'+
+  select('res','Resolution',resolutions,filters.resolution)+
+  select('fps','Frame rate',frameRates,filters.frame_rate)+
+  '<label>Format<select name="format"><option value="">All</option>'+(taxonomy.formats||[]).map(item=>'<option value="'+esc(item.slug)+'"'+(filters.format===item.slug?' selected':'')+'>'+esc(item.name)+'</option>').join('')+'</select></label>'+
+  '<label>Orientation<select name="orientation"><option value="">All</option>'+(taxonomy.orientations||[]).map(item=>'<option value="'+esc(item.slug)+'"'+(filters.orientation===item.slug?' selected':'')+'>'+esc(item.name)+'</option>').join('')+'</select></label>'+
+  '<button class="button" type="submit">Apply filters</button></form>';
+}
+function taxonomyCategoryPage({base,url,category,videos,total,taxonomy,filters}){
+ const currentUrl=new URL(url,base);const filtered=currentUrl.searchParams.toString().length>0;
+ const words=introWordCount(category.intro_en);
+ const canIndex=indexableCategory(category,total,taxonomy)&&!filtered;
+ const intro=canIndex?'<p class="category-intro">'+esc(category.intro_en)+'</p>':'<p class="category-intro">This collection is being curated. Only approved videos with publisher-supplied category tags are shown.</p>';
+ const cards=videos.length?videos.map(card).join(''):'<div class="empty"><strong>No videos match this category yet</strong><p>Try another filter or browse all categories.</p><a class="button ghost" href="/categories">Browse categories</a></div>';
+ const description=canIndex?String(category.intro_en).replace(/\s+/g,' ').slice(0,155):'Browse approved videos in the '+category.name+' category on Noxvellox.';
+ const title=category.name+' Videos | Noxvellox';
+ const body='<section class="wrap page-head"><div class="section-kicker"><a href="/categories">Categories</a> / '+esc(category.group_name)+'</div><h1>'+esc(category.name)+' Videos</h1>'+intro+'<p>'+Number(total).toLocaleString('en-US')+' approved videos</p></section>'+
+  '<section class="wrap">'+taxonomyFilterForm(taxonomy,filters)+'<div class="video-grid">'+cards+'</div>'+adSlot()+'</section>';
+ return shell({base,url,title,description,canonical:base+'/category/'+encodeURIComponent(category.slug),robots:canIndex?'index,follow':'noindex,follow',body});
+}
+function collectionPage({base,url,collection,videos,total}){
+ const meta={
+  featured:{name:'Featured',description:'Editorially selected videos approved for the Noxvellox catalog.'},
+  trending:{name:'Trending',description:'Videos with the most views during the last seven days.'},
+  'new-releases':{name:'New Releases',description:'Recently published videos with verified metadata.'},
+  'most-viewed':{name:'Most Viewed',description:'Videos ranked by recorded views.'}
+ }[collection];
+ const cards=videos.length?videos.map(card).join(''):'<div class="empty"><strong>No videos in this collection yet</strong><p>This list updates from published catalog data.</p></div>';
+ const body='<section class="wrap page-head"><div class="section-kicker">Noxvellox collections</div><h1>'+esc(meta.name)+'</h1><p>'+esc(meta.description)+'</p><p>'+Number(total).toLocaleString('en-US')+' videos</p></section><section class="wrap"><div class="video-grid">'+cards+'</div>'+adSlot()+'</section>';
+ return shell({base,url,title:meta.name+' | Noxvellox',description:meta.description,robots:'noindex,follow',body});
+}
 function searchPage({url,base,q,videos,official=[],channels=[],matchedCategories=[]}){
  const cards=[...videos.map(card),...official.map(officialCard)];
  const taxonomy=(channels.length||matchedCategories.length)?`<section class="search-discovery" aria-label="Related channels and categories"><div class="search-discovery-head"><div><div class="section-kicker">Explore by source or interest</div><h2>Related results</h2></div></div><div class="search-entity-grid">${channels.map(ch=>`<a class="search-entity" href="/channels/${encodeURIComponent(ch.slug)}"><span>Channel</span><strong>${esc(ch.name)}</strong><small>${esc(ch.eyebrow||'Curated channel')}</small></a>`).join('')}${matchedCategories.map(category=>`<a class="search-entity" href="/category/${slugify(category)}"><span>Category</span><strong>${esc(category)}</strong><small>${esc(categoryDescriptions[category]||'Browse this collection')}</small></a>`).join('')}</div></section>`:'';
@@ -535,13 +799,14 @@ function watchPage({url,base,v,related,relatedCard=card,env}){
   const desc=v.description?`<p>${esc(v.description)}</p>`:'<p>Video details and original-source information.</p>';
   const body=`<section class="wrap page-head" style="padding-bottom:10px"><div class="section-kicker">Noxvellox / ${esc(v.category)}</div></section><section class="wrap watch-layout"><div>${player}<div class="watch-head"><h1>${esc(v.title)}</h1><div class="detail-row">${esc(v.category)}${v.duration_seconds?`  ·  ${duration(v.duration_seconds)}`:''}  ·  Provider: ${esc(v.provider)}</div>${desc}<div class="notice player-help"><strong>Playback not working?</strong> ${v.embed_blocked?'The original provider limits this video to playback on its own site. Use the button in the player to open it there.':v.provider==='cloudflare-stream'?'This video uses a separately hosted Cloudflare Stream player. If unavailable, check encoding readiness, delivery permissions and billing in your Stream dashboard.':'This video is hosted by an independent provider. If it says "Video unavailable", playback cannot be fixed here. Report the broken listing to the publisher; do not click suspicious third-party ads.'}</div><p class="mini">Source: <a href="${esc(v.source_url)}" target="_blank" rel="noopener noreferrer">Original provider ?</a></p></div>${adSlot()}</div><aside><div class="section-head"><div><div class="section-kicker">Keep exploring</div><h2 style="font-size:24px">Related videos</h2></div></div><div class="video-grid" data-related-grid style="grid-template-columns:1fr">${related.length?related.map((item,index)=>`<div data-related-candidate${index>=4?' hidden':''}>${card(item)}</div>`).join(''):emptyMarkup}</div></aside></section>`;
   const canMark=Boolean(embed&&v.published_at&&isHttpsUrl(v.poster_url)&&Number(v.duration_seconds)>0);
-  return shell({title:`${v.title} | Noxvellox`,description:(v.official?`Official video listing: ${v.title}. Check the original provider for playback availability.`:(v.description||`${v.title}. Watch authorized content with source attribution on Noxvellox.`)).slice(0,160),base,url,body,preview:poster,structured:canMark?publishedArticle(v,base):undefined,ogType:'video.other'});
+  const viewTracker=v.official?'':'<script>document.addEventListener("DOMContentLoaded",function(){const slug='+JSON.stringify(String(v.slug||''))+';const key="noxvellox-view:"+slug;const record=function(){try{if(sessionStorage.getItem(key))return;sessionStorage.setItem(key,"yes")}catch{}fetch("/api/record-view",{method:"POST",credentials:"same-origin",headers:{"content-type":"application/json"},body:JSON.stringify({slug:slug}),keepalive:true}).catch(function(){})};const gate=document.querySelector("[data-age-gate]");if(gate){gate.querySelector("[data-age-confirm]")?.addEventListener("click",record,{once:true})}else record()},{once:true})</script>';
+  return shell({title:`${v.title} | Noxvellox`,description:(v.official?`Official video listing: ${v.title}. Check the original provider for playback availability.`:(v.description||`${v.title}. Watch authorized content with source attribution on Noxvellox.`)).slice(0,160),base,url,body:body+viewTracker,preview:poster,structured:canMark?publishedArticle(v,base):undefined,ogType:'video.other'});
 }
 function staticPage({name,url,base,contact}){
   let title='',content='',cta='/videos',ctaLabel='Explore videos';
   switch(name){
     case 'about':title='About Noxvellox';content=`<p>Noxvellox is an independent, adults-only catalog for browsing legal and authorized video content. We organize collections and direct visitors to original rights holders or authorized embedded players.</p><h2>Our publishing approach</h2><p>Only sources with permission to embed or distribute content are eligible for publication. Imported records remain subject to source, rights, adult-participation and playback review. We do not claim ownership of third-party videos and do not host files that belong to external providers.</p><h2>Transparent experience</h2><p>Our goal is straightforward navigation, clear source attribution, readable reporting and a safe experience for adults. External players may change or become unavailable because the original provider controls them.</p>`;break;
-    case 'privacy':title='Privacy notice';content=`<p>Noxvellox is an independent adults-only catalog. This notice explains the limited data used to operate the site, remember choices and load optional analytics and advertising.</p><h2>Necessary storage</h2><p>We use session storage to remember the age acknowledgement and local storage to remember analytics, optional advertising and channel-follow choices on this browser. Publisher access may use strictly necessary authentication cookies. The age acknowledgement is not a substitute for identity-based age verification where local law requires it.</p><h2>Optional Google Analytics</h2><p>Google Analytics measurement is off unless you choose to allow it through the entry-screen choice or the analytics consent banner. If allowed, Google may receive page-view, browser, device and interaction information to measure site use under Google's own privacy terms. If you decline, the analytics script is not loaded.</p><h2>Optional third-party advertising</h2><p>Advertising is off by default. If you choose <strong>Allow optional advertisements</strong>, Adsterra and its delivery partners may receive device, browser, approximate location and interaction information needed to serve or measure an advertisement. Their processing is governed by their own notices. If you decline, the catalog remains available and the advertising script is not loaded.</p><h2>Your choices</h2><p>Use <strong>Analytics preferences</strong> and <strong>Ad preferences</strong> in the footer to change these choices on this browser. Withdrawing consent stops future optional loads; it cannot erase information already processed by a third party. You can also clear browser storage or use browser privacy controls.</p><h2>Copyright and safety</h2><p>We do not request intimate images, passwords, payment data or identity documents in an initial report. Reports involving minors, non-consensual material or unlawful content are prioritized for review and may be disabled while investigated.</p><h2>Contact</h2><p>For privacy requests, use the <a href="/contact">Contact page</a>.</p>`;break;
+    case 'privacy':title='Privacy notice';content=`<p>Noxvellox is an independent adults-only catalog. This notice explains the limited data used to operate the site, remember choices and load optional analytics and advertising.</p><h2>Necessary storage</h2><p>We use session storage to remember the age acknowledgement and local storage to remember analytics, optional advertising and channel-follow choices on this browser. Publisher access may use strictly necessary authentication cookies. The age acknowledgement is not a substitute for identity-based age verification where local law requires it.</p><h2>Optional Google Analytics</h2><p>Google Analytics measurement is off unless you choose to allow it through the entry-screen choice or the analytics consent banner. If allowed, Google may receive page-view, browser, device and interaction information to measure site use under Google's own privacy terms. If you decline, the analytics script is not loaded.</p><h2>Optional third-party advertising</h2><p>Advertising is off by default. If you choose <strong>Allow optional advertisements</strong>, Adsterra and its delivery partners may receive device, browser, approximate location and interaction information needed to serve or measure an advertisement. Their processing is governed by their own notices. If you decline, the catalog remains available and the advertising script is not loaded.</p><h2>Catalog view counts</h2><p>After a visitor confirms playback, Noxvellox records the video ID and event time to calculate popularity lists. This counter record does not contain a Noxvellox account or browser identifier.</p><h2>Your choices</h2><p>Use <strong>Analytics preferences</strong> and <strong>Ad preferences</strong> in the footer to change these choices on this browser. Withdrawing consent stops future optional loads; it cannot erase information already processed by a third party. You can also clear browser storage or use browser privacy controls.</p><h2>Copyright and safety</h2><p>We do not request intimate images, passwords, payment data or identity documents in an initial report. Reports involving minors, non-consensual material or unlawful content are prioritized for review and may be disabled while investigated.</p><h2>Contact</h2><p>For privacy requests, use the <a href="/contact">Contact page</a>.</p>`;break;
     case 'terms':title='Terms of use';content=`<p>Noxvellox is intended exclusively for adults aged 18 or older, or the higher age required by local law. Do not access the service where adult content is prohibited.</p><h2>Authorized use</h2><p>Visitors may browse public catalog pages and follow links or embeds only for lawful personal use. Do not scrape, copy, redistribute, bypass access controls, upload material, or submit a source unless you have the required rights and verified adult participation.</p><h2>Safety and reporting</h2><p>We do not permit material involving minors, non-consensual intimate content, exploitation, threats or unlawful activity. A listing may be hidden while a rights, safety, consent or availability report is reviewed.</p><h2>Sources and records</h2><p>Noxvellox is a catalog and embed service, not the producer of third-party media. It does not claim ownership of material supplied by an external publisher. For any original material published by the operator, legally required age, identity and consent records must be maintained by the responsible producer or record custodian. Third-party providers remain responsible for their own records and compliance.</p><h2>Availability and advertising</h2><p>External players can change, restrict regions or become unavailable. Optional advertising is loaded only after the visitor chooses to allow it. External providers control their own accounts, subscriptions and payment systems.</p><h2>Contact</h2><p>For copyright, privacy, safety or technical reports, use the <a href="/contact">Contact page</a>.</p>`;break;
     case 'copyright':title='Copyright & content removal';cta='/contact';ctaLabel='Report content';content=`<p>We respect intellectual property and do not permit unauthorized material, non-consensual intimate content, or material involving minors.</p><h2>Report a listing</h2><p>Submit the exact Noxvellox URL, the original source URL, a short description of the issue, your relationship to the material and a reliable way to contact you. Do not send intimate images, passwords, payment details or identity documents in an initial report.</p><p>${contact?`Send reports to <a href="mailto:${esc(contact)}">${esc(contact)}</a>.`:'Use the <a href="/contact">Contact page</a>. A dedicated legal/takedown email must be configured before full-scale monetization.'}</p><h2>Response</h2><p>Reports are reviewed promptly. Listings may be disabled while the source, rights and consent status are checked. Where a formal legal notice is required, submit the information required by applicable law and identify the rights holder or authorized representative.</p>`;break;
     case 'contact':title='Contact';cta='/copyright';ctaLabel='Copyright & takedown';content=`<p>Welcome to the Noxvellox contact desk. We receive clear, specific messages about authorized embeds, accessibility, privacy, copyright, safety and technical issues. Please identify the exact page or video so the request can be reviewed without unnecessary delay.</p><h2>Copyright and content removal</h2><p>If you represent a rights holder or believe that a listing should not be displayed, provide the exact Noxvellox URL, original source URL, a short explanation, your relationship to the material and a reliable reply address. Do not send copies of protected files or intimate images in an initial message. A precise report allows the catalog team to check source status, rights signals, consent requirements and playback, then remove or disable a listing when it no longer meets our publication rules.</p><h2>Privacy and safety</h2><p>For privacy questions, age-safety concerns or reports involving non-consensual or unlawful material, mark the subject clearly and provide only the minimum information needed. Never send passwords, payment details or identity documents. Reports involving minors or immediate safety risks should be identified as urgent and may be disabled while investigated.</p><h2>Technical support</h2><p>For a broken thumbnail, unavailable official player, incorrect title or page that does not load, include your device, browser, approximate time, affected URL and whether the issue occurs on another network. Screenshots are optional. Requests about subscriptions, billing or creator accounts belonging to an external provider must be directed to that provider because Noxvellox does not control those accounts or payment systems.</p><h2>Contact details</h2><p>${contact?`Email: <a href="mailto:${esc(contact)}">${esc(contact)}</a>`:'Use the Contact page link in the footer while the operator configures a dedicated support address before full-scale monetization.'}</p><p>Messages are reviewed in order. We aim to acknowledge actionable reports promptly, although requests requiring verification with an original provider or rights holder can take longer. Send one request per issue and use a descriptive subject.</p>`;break;
@@ -660,7 +925,7 @@ function adminBody({logged,videos,db,feedReady}){
       <td>${action}${v.provider==='adultembed'?` <button type="button" data-check-player data-id="${Number(v.id)}">Check player</button>`:''}${v.provider==='xxx-little-pepper'?` <button type="button" data-pepper-embed data-id="${Number(v.id)}">Set licensed player</button><div class="row-action-panel" data-pepper-panel hidden><label>Authorized iframe player URL <input type="url" class="field" data-pepper-url placeholder="https://www.pornhub.com/embed/VIDEO_ID" maxlength="1500" aria-label="Official licensed player URL"></label><p class="mini">Official Pornhub player or watch links are converted to the correct embed automatically. Other sources need prior approval in ALLOWED_EMBED_HOSTS. This action does not publish the video; rights and participant checks remain necessary.</p><button type="button" data-pepper-save data-id="${Number(v.id)}">Save licensed player</button> <button type="button" data-pepper-cancel>Cancel</button></div>`:''}<div class="row-action-panel" data-row-panel hidden><p data-panel-description></p><div data-panel-checks></div><div class="row-actions"><button type="button" class="button" data-confirm-action>Continue</button><button type="button" class="button ghost" data-cancel-action>Cancel</button></div></div><p class="row-action-feedback" data-row-message role="status" aria-live="polite"></p></td>
     </tr>`;
   }).join(''):'<tr><td colspan="4">No videos yet. Set up a licensed source or add a verified item.</td></tr>';
-  return `<section class="wrap page-head"><div class="section-kicker">Publisher area</div><h1>Control center</h1><p>Content import, rights review and publishing. New imports are always held for approval.</p><button class="button ghost" id="logout">Log out</button></section><div class="wrap"><div class="admin-panel"><h2>System status</h2><p><a class="button ghost" href="/official-videos" target="_blank" rel="noopener noreferrer">Open automatic official embeds ?</a></p><div class="status-band">D1: ${db?'connected':'NOT CONNECTED'}  ·  Import feed: ${feedReady?'configured':'not configured'}  ·  Ads: Native Banner configured (consent required)</div><p class="helper">This is a separate project. The official feed at /official-videos needs no per-item publish action. Only public video METADATA may be copied from XXX Little Pepper when you explicitly import it: no advertising scripts, passwords, signed MP4 links, cookies or videos are copied. Brazzers studio listings are imported as private metadata candidates only. No download or publication rights are implied; official licenses and participant records must be verified before publishing.</p><button class="button ghost" id="import-pepper" type="button">Import all XXX Little Pepper titles for PRIVATE review</button> <button class="button ghost" id="sync-official" type="button">Import 100+ official embeds now</button><form id="hide-official-form" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:12px 0"><label class="mini">Official embed ID to remove: <input class="field" name="id" pattern="[a-zA-Z0-9]{8,24}" maxlength="24" required placeholder="Provider video ID"></label><button class="button ghost" type="submit">Hide removed embed</button></form> <span class="mini">Uses only official webmaster RSS/search metadata (up to 3 pages  ·  30 plus RSS). New releases synchronize every two hours after the free Cron Worker is deployed; no per-video approval for the provider&#39;s official feed.</span><br><br> <span class="mini">64 titles currently in the source catalog; unavailable or temporary playback links will NOT be copied as playable videos.</span><br><br><button class="button ghost" id="import-now" ${feedReady?'':'disabled'}>Import Brazzers candidates for review ?</button> <button class="button ghost" id="hide-broken" type="button">Hide all published AdultEmbed videos with broken players</button><p class="helper">Provider active/complete flags do not guarantee playback. Use Check player to detect known provider errors, then personally test the actual video and verify commercial permission and adult-consent documentation. No deletion or changes to other providers.</p><p id="message" class="message"></p></div><div class="admin-panel"><h2>Add a ready, licensed video</h2><p class="helper">Video delivery is separate from Pages and D1. First upload your own authorized source file to a video platform such as Cloudflare Stream (separately priced), wait for encoding, and test the player. Then register its UID below. We do not import, transcode or copy third-party films. Public access requires individual rights, participant and playback verification.</p><form id="video-form"><div class="form-grid"><div class="form-row"><label>Video title<input class="field" name="title" maxlength="140" required></label></div><div class="form-row"><label>Category<input class="field" name="category" maxlength="40" value="Featured"></label></div><div class="form-row"><label>Original source URL<input class="field" type="url" name="source_url" placeholder="https://source.example/video" required></label></div><div class="form-row"><label>Authorized embed URL (alternative to Stream UID)<input class="field" type="url" name="embed_url" placeholder="https://approved-source.example/embed/id"></label></div><div class="form-row"><label>Cloudflare Stream video UID (32 hex characters, optional)<input class="field" name="stream_uid" pattern="[a-fA-F0-9]{32}" minlength="32" maxlength="32" inputmode="text" placeholder="Only after uploading a video you own or may distribute"></label><p class="mini">Use ONE method: licensed embed URL, or Cloudflare Stream UID of a ready video. The latter lets Stream handle adaptive HLS/DASH and CDN delivery. A UID is not a video file; obtain it from a separately authorized Stream account. Stream can incur charges and is NOT activated by this package.</p></div><div class="form-row"><label>Poster image URL<input class="field" type="url" name="poster_url" placeholder="https://approved-source.example/poster.jpg"></label></div><div class="form-row"><label>Duration in seconds<input class="field" type="number" name="duration_seconds" min="0" max="100000"></label></div></div><div class="form-row"><label>Description<textarea name="description" rows="3" maxlength="1600"></textarea></label></div><div class="form-row"><label><input type="checkbox" name="rights_confirmed" value="yes" required> I have verified the rights to embed/distribute this video.</label></div><div class="form-row"><label><input type="checkbox" name="adults_verified" value="yes" required> I have verified that every participant is an adult and content is consensual and lawful.</label></div><button class="button" type="submit">Save for review</button></form></div><div class="admin-panel"><h2>Content moderation queue</h2><p class="helper">Click an action to open its confirmation checklist. Results and errors appear beneath that video. Check player detects known external errors but does NOT prove real playback. Imported listings need verified commercial rights, adult-consent records and an actual browser playback test.</p><div style="overflow-x:auto"><table class="admin-table"><thead><tr><th>Title</th><th>Status</th><th>Rights</th><th>Action</th></tr></thead><tbody>${rows}</tbody></table></div></div></div>`;
+  return `<section class="wrap page-head"><div class="section-kicker">Publisher area</div><h1>Control center</h1><p>Content import, rights review and publishing. New imports are always held for approval.</p><button class="button ghost" id="logout">Log out</button></section><div class="wrap"><div class="admin-panel"><h2>System status</h2><p><a class="button ghost" href="/official-videos" target="_blank" rel="noopener noreferrer">Open automatic official embeds ?</a></p><div class="status-band">D1: ${db?'connected':'NOT CONNECTED'}  ·  Import feed: ${feedReady?'configured':'not configured'}  ·  Ads: Native Banner configured (consent required)</div><p class="helper">This is a separate project. The official feed at /official-videos needs no per-item publish action. Only public video METADATA may be copied from XXX Little Pepper when you explicitly import it: no advertising scripts, passwords, signed MP4 links, cookies or videos are copied. Brazzers studio listings are imported as private metadata candidates only. No download or publication rights are implied; official licenses and participant records must be verified before publishing.</p><button class="button ghost" id="import-pepper" type="button">Import all XXX Little Pepper titles for PRIVATE review</button> <button class="button ghost" id="sync-official" type="button">Import 100+ official embeds now</button><form id="hide-official-form" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:12px 0"><label class="mini">Official embed ID to remove: <input class="field" name="id" pattern="[a-zA-Z0-9]{8,24}" maxlength="24" required placeholder="Provider video ID"></label><button class="button ghost" type="submit">Hide removed embed</button></form> <span class="mini">Uses only official webmaster RSS/search metadata (up to 3 pages  ·  30 plus RSS). New releases synchronize every two hours after the free Cron Worker is deployed; no per-video approval for the provider&#39;s official feed.</span><br><br> <span class="mini">64 titles currently in the source catalog; unavailable or temporary playback links will NOT be copied as playable videos.</span><br><br><button class="button ghost" id="import-now" ${feedReady?'':'disabled'}>Import Brazzers candidates for review ?</button> <button class="button ghost" id="hide-broken" type="button">Hide all published AdultEmbed videos with broken players</button><p class="helper">Provider active/complete flags do not guarantee playback. Use Check player to detect known provider errors, then personally test the actual video and verify commercial permission and adult-consent documentation. No deletion or changes to other providers.</p><p id="message" class="message"></p></div><div class="admin-panel"><h2>Add a ready, licensed video</h2><p class="helper">Video delivery is separate from Pages and D1. First upload your own authorized source file to a video platform such as Cloudflare Stream (separately priced), wait for encoding, and test the player. Then register its UID below. We do not import, transcode or copy third-party films. Public access requires individual rights, participant and playback verification.</p><form id="video-form"><div class="form-grid"><div class="form-row"><label>Video title<input class="field" name="title" maxlength="140" required></label></div><div class="form-row"><label>Publisher channel ID<input class="field" name="channel_id" maxlength="80" placeholder="e.g. brazzers"></label></div><div class="form-row"><label>Studio or publisher<input class="field" name="studio" maxlength="80"></label></div><div class="form-row"><label>Publisher tags<input class="field" name="raw_tags" maxlength="800" placeholder="Comma-separated exact source tags"></label></div><div class="form-row"><label>Language<input class="field" name="language" maxlength="40" placeholder="English or en"></label></div><div class="form-row"><label>Formats<input class="field" name="formats" maxlength="300" placeholder="Compilation, Virtual Reality"></label></div><div class="form-row"><label>Resolution<input class="field" name="resolution" maxlength="16" placeholder="1080p or 4K"></label></div><div class="form-row"><label>Frame rate<input class="field" name="frame_rate" type="number" min="24" max="120" step="1" placeholder="60"></label></div><div class="form-row"><label>Orientation<input class="field" name="orientation" maxlength="32" placeholder="Heterosexual, Gay, Sapphic"></label></div><div class="form-row"><label><input type="checkbox" name="featured" value="yes"> Feature this video on the homepage</label></div><div class="form-row"><label>Original source URL<input class="field" type="url" name="source_url" placeholder="https://source.example/video" required></label></div><div class="form-row"><label>Authorized embed URL (alternative to Stream UID)<input class="field" type="url" name="embed_url" placeholder="https://approved-source.example/embed/id"></label></div><div class="form-row"><label>Cloudflare Stream video UID (32 hex characters, optional)<input class="field" name="stream_uid" pattern="[a-fA-F0-9]{32}" minlength="32" maxlength="32" inputmode="text" placeholder="Only after uploading a video you own or may distribute"></label><p class="mini">Use ONE method: licensed embed URL, or Cloudflare Stream UID of a ready video. The latter lets Stream handle adaptive HLS/DASH and CDN delivery. A UID is not a video file; obtain it from a separately authorized Stream account. Stream can incur charges and is NOT activated by this package.</p></div><div class="form-row"><label>Poster image URL<input class="field" type="url" name="poster_url" placeholder="https://approved-source.example/poster.jpg"></label></div><div class="form-row"><label>Duration in seconds<input class="field" type="number" name="duration_seconds" min="0" max="100000"></label></div></div><div class="form-row"><label>Description<textarea name="description" rows="3" maxlength="1600"></textarea></label></div><div class="form-row"><label><input type="checkbox" name="rights_confirmed" value="yes" required> I have verified the rights to embed/distribute this video.</label></div><div class="form-row"><label><input type="checkbox" name="adults_verified" value="yes" required> I have verified that every participant is an adult and content is consensual and lawful.</label></div><button class="button" type="submit">Save for review</button></form></div><div class="admin-panel"><h2>Content moderation queue</h2><p class="helper">Click an action to open its confirmation checklist. Results and errors appear beneath that video. Check player detects known external errors but does NOT prove real playback. Imported listings need verified commercial rights, adult-consent records and an actual browser playback test.</p><div style="overflow-x:auto"><table class="admin-table"><thead><tr><th>Title</th><th>Status</th><th>Rights</th><th>Action</th></tr></thead><tbody>${rows}</tbody></table></div></div></div>`;
 }
 async function adminPage({db,env,url,req,base}){
  const configured=adminSecretsReady(env);
@@ -679,51 +944,84 @@ function normalizeImportedTitle(raw){
  const shouldTitle=letters.length>8&&letters===letters.toUpperCase();
  return shouldTitle?cleaned.toLowerCase().replace(/(^|[\s-])([a-zà-ÿ])/g,(_,p,c)=>p+c.toUpperCase()):cleaned;
 }
-function inferImportedCategory(item,fallback='Featured'){
- const hay=String([item.title,item.description,item.channel,item.studio,item.language,item.locale].filter(Boolean).join(' ')).toLowerCase();
- return /\b(brazil|brazilian|brasileir|brasil|rio|s[aã]o paulo|\bsp\b|\bpt[-_]?br\b|portuguese)\b/.test(hay)?'Brazilian':fallback;
+function extractMetadataValue(item,keys){
+ for(const key of keys){const value=item?.[key];if(value!==undefined&&value!==null&&String(value).trim())return value}
+ return '';
 }
-
+async function persistVideoTaxonomy(db,videoId,item,taxonomy){
+ const raw=safeRawTags([...rawTagList(item.raw_tags),...rawTagList(item.tags),...rawTagList(item.categories),...rawTagList(item.category),...rawTagList(item.keywords),...rawTagList(item.tag)],taxonomy);
+ const categorySlugs=mapRawTags(raw,taxonomy.categoryAliases,taxonomy);
+ const formatValues=[...rawTagList(item.formats),...rawTagList(item.format),...raw];
+ const formatSlugs=[...new Set(mapRawTags(formatValues,taxonomy.formatAliases,taxonomy))];
+ const directLanguage=extractMetadataValue(item,['language','lang','audio_language','audioLanguage','locale']);
+ let language=normalizeLanguage(typeof directLanguage==='object'?(directLanguage.code||directLanguage.name||''):directLanguage,taxonomy);
+ if(!language)for(const tag of raw){language=normalizeLanguage(tag,taxonomy);if(language)break}
+ const rawResolution=extractMetadataValue(item,['resolution','max_resolution','maxResolution','video_quality','quality']);
+ let resolution=normalizeResolution(rawResolution,taxonomy);
+ if(!resolution)for(const tag of raw){resolution=normalizeResolution(tag,taxonomy);if(resolution)break}
+ const rawFps=extractMetadataValue(item,['frame_rate','frameRate','fps']);
+ let frameRate=normalizeFrameRate(rawFps,taxonomy);
+ if(!frameRate)for(const tag of raw){const match=String(tag).match(/^(\d{2,3})\s*(?:fps|frames per second)$/i);if(match){frameRate=normalizeFrameRate(match[1],taxonomy);if(frameRate)break}}
+ const rawOrientation=extractMetadataValue(item,['orientation','sexual_orientation','sexualOrientation']);
+ let orientation=(taxonomy.orientationAliases||new Map()).get(normalizeTaxonomyToken(rawOrientation))||'';
+ if(!orientation)for(const tag of raw){orientation=(taxonomy.orientationAliases||new Map()).get(normalizeTaxonomyToken(tag))||'';if(orientation)break}
+ const studioValue=item.studio&&typeof item.studio==='object'?(item.studio.slug||item.studio.name||''):item.studio;
+ const channelId=normalizeTaxonomyToken(extractMetadataValue(item,['channel_id','channelId','channel_slug','channelSlug'])||studioValue).replace(/\s+/g,'-').slice(0,80);
+ const studio=normalizeTaxonomyToken(studioValue).replace(/\s+/g,'-').slice(0,80);
+ const featured=item.featured===true||item.featured==='true'||item.featured==='yes'||item.featured==='on';
+ await db.prepare("INSERT INTO video_metadata (video_id,channel_id,studio,resolution,frame_rate,language,orientation,raw_tags_json,featured) VALUES (?,?,?,?,?,?,?,?,?) ON CONFLICT(video_id) DO UPDATE SET channel_id=excluded.channel_id,studio=excluded.studio,resolution=excluded.resolution,frame_rate=excluded.frame_rate,language=excluded.language,orientation=excluded.orientation,raw_tags_json=excluded.raw_tags_json,featured=excluded.featured")
+  .bind(videoId,channelId,studio,resolution,frameRate,language,orientation,JSON.stringify(raw),featured?1:0).run();
+ await db.prepare("DELETE FROM video_categories WHERE video_id=?").bind(videoId).run();
+ await db.prepare("DELETE FROM video_formats WHERE video_id=?").bind(videoId).run();
+ for(const categorySlug of categorySlugs)await db.prepare("INSERT OR IGNORE INTO video_categories (video_id,category_slug) VALUES (?,?)").bind(videoId,categorySlug).run();
+ for(const formatSlug of formatSlugs)await db.prepare("INSERT OR IGNORE INTO video_formats (video_id,format_slug) VALUES (?,?)").bind(videoId,formatSlug).run();
+ return {categorySlugs,formatSlugs,rawTags:raw};
+}
 async function addVideo(db,item,{fromFeed=false}={}){
- const title=normalizeImportedTitle(item.title),description=safeText(item.description,1600)||`${title}. Authorized metadata from ${safeText(item.provider||'the original publisher',80)}.`;
+ const title=normalizeImportedTitle(item.title),description=safeText(item.description,1600)||(title+'. Authorized metadata from '+safeText(item.provider||'the original publisher',80)+'.');
  const uid=streamUid(item.stream_uid||item.streamUid);
  if((item.stream_uid||item.streamUid)&&!uid)throw Error('Cloudflare Stream UID must be exactly 32 hexadecimal characters, from a ready licensed video.');
  if(uid&&(item.embed_url||item.embedUrl))throw Error('Choose one player method: Stream UID or licensed embed URL, not both.');
  const embed_url=uid?streamEmbed(uid):String(item.embed_url||item.embedUrl||'');
  const source_url=String(item.source_url||item.sourceUrl||'')|| (uid?embed_url:'');
- const poster_url=String(item.poster_url||item.posterUrl||'')|| (uid?`https://videodelivery.net/${uid}/thumbnails/thumbnail.jpg?time=1s`:'');
+ const poster_url=String(item.poster_url||item.posterUrl||'')|| (uid?'https://videodelivery.net/'+uid+'/thumbnails/thumbnail.jpg?time=1s':'');
  if(title.length<3||!isHttpsUrl(source_url)||!isHttpsUrl(embed_url)||poster_url&&!isHttpsUrl(poster_url))throw Error('Required: title and a valid HTTPS original source and licensed embed (or Stream UID).');
  if(uid&&!validStreamEmbed(embed_url))throw Error('Invalid Cloudflare Stream player URL.');
+ const taxonomy=taxonomyConfig;
+ const raw=safeRawTags([...rawTagList(item.raw_tags),...rawTagList(item.tags),...rawTagList(item.categories),...rawTagList(item.category),...rawTagList(item.keywords),...rawTagList(item.tag)],taxonomy);
+ const categorySlugs=mapRawTags(raw,taxonomy?.categoryAliases||new Map(),taxonomy);
+ const legacyCategory=categorySlugs.length?taxonomy.categoryBySlug[categorySlugs[0]].name:'Uncategorized';
  const rights=item.rights_confirmed===true||item.rights_confirmed==='yes'||item.rightsConfirmed===true;
  const adults=item.adults_verified===true||item.adults_verified==='yes'||item.adultsVerified===true;
  const provider=uid?'cloudflare-stream':safeText(item.provider|| (fromFeed?'authorized-feed':'manual'),50);
  const source_id=uid||safeText(item.source_id||item.sourceId||'',100);
- if(source_id){const duplicate=await db.prepare('SELECT id FROM videos WHERE provider=? AND source_id=? LIMIT 1').bind(provider,source_id).first();if(duplicate)return false;}
+ if(source_id){const duplicate=await db.prepare('SELECT id FROM videos WHERE provider=? AND source_id=? LIMIT 1').bind(provider,source_id).first();if(duplicate){await persistVideoTaxonomy(db,Number(duplicate.id),item,taxonomy);return false;}}
  const slug=slugify(item.slug||title)+(uid?'-'+uid.slice(0,12):(fromFeed&&source_id?'-'+slugify(source_id).slice(0,20):''));
-  const duration=Math.max(0,Math.min(100000,parseInt(item.duration_seconds||item.durationSeconds||0,10)||0));
- const record=[slug,title,description,inferImportedCategory(item,safeText(item.category||'Featured',40)),poster_url,embed_url,source_url,source_id,provider,duration,rights?1:0,adults?1:0];
- const result=await db.prepare('INSERT OR IGNORE INTO videos (slug,title,description,category,poster_url,embed_url,source_url,source_id,provider,duration_seconds,rights_confirmed,adults_verified,status) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,\'pending\')').bind(...record).run();
- return (result.meta?.changes||0)>0;
+ const duration=Math.max(0,Math.min(100000,parseInt(item.duration_seconds||item.durationSeconds||0,10)||0));
+ const record=[slug,title,description,legacyCategory,poster_url,embed_url,source_url,source_id,provider,duration,rights?1:0,adults?1:0];
+ const result=await db.prepare("INSERT OR IGNORE INTO videos (slug,title,description,category,poster_url,embed_url,source_url,source_id,provider,duration_seconds,rights_confirmed,adults_verified,status) VALUES (?,?,?,?,?,?,?,?,?,?,?,?, 'pending')").bind(...record).run();
+ if(!(result.meta?.changes||0))return false;
+ const row=await db.prepare('SELECT id FROM videos WHERE slug=? LIMIT 1').bind(slug).first();
+ if(row?.id!==undefined)await persistVideoTaxonomy(db,Number(row.id),item,taxonomy);
+ return true;
 }
 function normalizeAdultEmbed(v){
  if(!v||!Number.isSafeInteger(Number(v.id))||Number(v.id)<=0)return null;
- // NOXVELLOX: this import route stages Brazzers-studio METADATA only.
- // Studio attribution and source uptime never establish video licensing.
  const studioSlug=String(typeof v.studio==='object'?(v.studio?.slug||''):(v.studio||'')).trim().toLowerCase();
  if(studioSlug!=='brazzers')return null;
- // A stable player URL owned by AdultEmbed is documented for all API v1 records.
- // Do not silently trust a third-party mirror host supplied in embed.url.
- const embedUrl=`https://adultembed.com/player/embed/${Number(v.id)}/`;
+ const embedUrl='https://adultembed.com/player/embed/'+Number(v.id)+'/';
  const durationValue=Number(v.duration_seconds||0);
  const durationSeconds=Number.isFinite(durationValue)&&durationValue>0?Math.floor(durationValue):0;
  const rightsConfirmed=v.rightsConfirmed===true||v.rights_confirmed===true;
  const adultsVerified=v.adultsVerified===true||v.adults_verified===true;
+ const rawTags=[...rawTagList(v.tags||v.raw_tags||v.categories||v.keywords||[]),...rawTagList(v.tag||[])];
  return {
   sourceId:String(v.id),provider:'adultembed',title:String(v.title||''),
-  description:String(v.description||''),category:'Brazzers',
+  description:String(v.description||''),category:'Brazzers',channel_id:'brazzers',studio:'brazzers',
+  raw_tags:rawTags,language:v.language||v.lang||v.locale||'',formats:v.formats||[],
+  resolution:v.resolution||v.max_resolution||v.quality||'',frame_rate:v.frame_rate||v.fps||null,
+  orientation:v.orientation||'',
   sourceUrl:embedUrl,embedUrl,posterUrl:String(v.poster||v.thumbnail||v.thumb||''),durationSeconds,
-  // Provider metadata never counts as proof. These flags are accepted only when
-  // the configured feed explicitly supplies both documented confirmations.
   rightsConfirmed,adultsVerified
  };
 }
@@ -912,6 +1210,17 @@ async function api(req,env,url,db){
    try{return json(await runImport(env,db))}catch(e){return json({error:String(e.message||e)},422)}
  }
  if(!sameOrigin(req))return json({error:'Invalid origin'},403);
+ if(path==='/api/record-view'&&req.method==='POST'){
+  if(!db)return json({error:'D1 not configured'},503);
+  try{
+   const body=await req.json(),slug=String(body?.slug||'').trim();
+   if(!/^[a-z0-9][a-z0-9-]{1,100}$/i.test(slug))return json({error:'Invalid video slug'},400);
+   const video=await db.prepare("SELECT id FROM videos WHERE slug=? AND status='published' AND rights_confirmed=1 AND adults_verified=1 AND duration_seconds>=? LIMIT 1").bind(slug,MIN_VIDEO_DURATION_SECONDS).first();
+   if(!video)return json({error:'Video not available'},404);
+   await db.prepare("INSERT INTO video_views (video_id) VALUES (?)").bind(Number(video.id)).run();
+   return json({ok:true},201);
+  }catch{return json({error:'View could not be recorded'},422)}
+ }
  if(path==='/api/admin/login'&&req.method==='POST'){
    if(!adminSecretsReady(env))return json({error:'Admin secrets not configured'},503);
    const form=await req.formData();const password=form.get('password');
@@ -1190,7 +1499,9 @@ function partnerProfilePage({partner, localFeed, references, profile, base, url}
 
 async function route(req,env){
  const url=new URL(req.url),base=PUBLIC_ORIGIN,path=decodeURIComponent(url.pathname).replace(/\/$/,'')||'/',db=asD1(env.DB);
- if(path.startsWith('/assets/')||path==='/favicon.svg'||path==='/data/videos.json')return env.ASSETS.fetch(req);
+ if(path.startsWith('/assets/')||path==='/favicon.svg'||path==='/data/videos.json'||path==='/data/taxonomy.json')return env.ASSETS.fetch(req);
+ const taxonomy=await loadTaxonomy(env,req);let taxonomyReady=false;
+ if(db){try{taxonomyReady=await ensureTaxonomySchema(db,taxonomy)}catch(error){console.warn('Taxonomy schema unavailable',String(error.message||error).slice(0,100))}}
  if(path.startsWith('/api/'))return api(req,env,url,db);
  if(path==='/robots.txt'){
    const robots=['User-agent: *','Allow: /','Disallow: /admin','Disallow: /api/','Disallow: /search','Disallow: /*?*page=','Disallow: /*?*sort=','Disallow: /*?*q=',`Sitemap: ${base}/sitemap.xml`].join('\\n')+'\\n';
@@ -1207,12 +1518,12 @@ async function route(req,env){
      const entries=['/','/videos','/official-videos','/categories','/channels',...channelsV2.map(c=>`/channels/${c.slug}`),'/about','/privacy','/terms','/copyright','/contact'].map(pathname=>({pathname,lastmod:''}));
      try{
        if(db){
-         const published=await db.prepare("SELECT slug,title,description,category,poster_url,embed_url,duration_seconds,published_at FROM videos WHERE status='published' AND slug IS NOT NULL AND slug<>'' AND poster_url<>'' AND embed_url<>'' AND duration_seconds >= ${MIN_VIDEO_DURATION_SECONDS} ORDER BY published_at DESC,id DESC LIMIT 5000").all();
+         const categoryPages=await categoryDirectory(db,taxonomy,500);
+         for(const category of categoryPages)if(category.seo_indexable)entries.push({pathname:'/category/'+encodeURIComponent(category.slug),lastmod:''});
+         const published=await db.prepare("SELECT slug,title,description,category,poster_url,embed_url,duration_seconds,published_at FROM videos WHERE status='published' AND slug IS NOT NULL AND slug<>'' AND rights_confirmed=1 AND adults_verified=1 AND poster_url<>'' AND embed_url<>'' AND duration_seconds >= ${MIN_VIDEO_DURATION_SECONDS} ORDER BY published_at DESC,id DESC LIMIT 5000").all();
          const official=await db.prepare("SELECT id,title,poster_url,duration_seconds,last_seen_at FROM official_embeds WHERE visibility='active' AND id IS NOT NULL AND id<>'' AND id NOT IN ('696c7c920140e','6937cf5fea785') AND poster_url<>'' AND duration_seconds >= ${MIN_OFFICIAL_DURATION_SECONDS} ORDER BY last_seen_at DESC,id DESC LIMIT 5000").all();
-         const categoryCounts=new Map();
-         for(const row of (published.results||[])){const key=String(row.category||'').trim();if(key)categoryCounts.set(key,(categoryCounts.get(key)||0)+1)}
-         for(const category of VISIBLE_NAV_CATEGORIES){if((categoryCounts.get(category)||0)>=4)entries.push({pathname:`/category/${slugify(category)}`,lastmod:''})}
-         if((official.results||[]).length>=4)entries.push({pathname:'/category/official-embeds',lastmod:''});
+
+         for(const channel of await channelDirectory(db,500))if(channel.count>=MIN_INDEXABLE_CATEGORY_VIDEOS)entries.push({pathname:'/channels/'+encodeURIComponent(channel.slug),lastmod:''});
          for(const row of (published.results||[])){
            if(!isHttpsUrl(row.poster_url)||!isHttpsUrl(row.embed_url))continue;
            const title=cleanVideoTitle(row.title);
@@ -1257,7 +1568,7 @@ async function route(req,env){
  }
  let markup;
  const localFeed=await loadLocalOfficialFeed(env,req);
-if(path==='/'){const videos=await listVideos(db,{limit:8});const official=(await officialCatalog(db,{limit:12,localEntries:localFeed})).entries;markup=homePageV3({base,url:url.href,videos,official,partners:await partnersWithArt(env,req)});}
+if(path==='/'){const videos=await listVideos(db,{limit:8});const official=(await officialCatalog(db,{limit:12,localEntries:localFeed})).entries;markup=homePageV3({base,url:url.href,videos,official,partners:await partnersWithArt(env,req),categoryList:await categoryDirectory(taxonomyReady?db:null,taxonomy)});}
  else if(path==='/videos'){
    const page=officialPageNumber(url.searchParams.get('page')||1),limit=OFFICIAL_PAGE_SIZE;
    const publishedTotal=await countPublishedVideos(db);
@@ -1272,25 +1583,57 @@ if(path==='/'){const videos=await listVideos(db,{limit:8});const official=(await
  else if(path==='/official-videos'){const page=officialPageNumber(url.searchParams.get('page')||1);const results=await officialCatalog(db,{page,localEntries:localFeed});markup=listPage({base,url:url.href,videos:[],official:results.entries,title:'Free Official Embeds',subtitle:'Automatically updated official embeds, saved over time and shown in pages.',page,officialPagination:officialPagination({page,total:results.total})});}
  else if(path.startsWith('/official-watch/')){const id=path.slice('/official-watch/'.length);const video=await officialById(db,id,localFeed);const related=video?rotateRelated((await officialCatalog(db,{page:1,limit:40,localEntries:localFeed})).entries,id,30):[];markup=video?officialWatch({base,url:url.href,video,related,env}):notFound({base,url:url.href});}
  else if(path==='/search'){const q=safeText(url.searchParams.get('q')||'',80);const videos=q?await listVideos(db,{q,limit:40}):[];const official=q?(await officialCatalog(db,{page:1,limit:40,q,localEntries:localFeed})).entries:[];const taxonomy=searchTaxonomy(q);markup=searchPage({base,url:url.href,q,videos,official,channels:taxonomy.channels,matchedCategories:taxonomy.categories})}
-  else if(path==='/categories')markup=shell({base,url:url.href,title:'Explore Categories | Noxvellox',description:'Browse Noxvellox video categories by theme, style and niche.',body:`<section class="wrap page-head"><div class="section-kicker">Discover by interest</div><h1>Categories</h1><p>Browse by theme, style or niche. Categories help visitors find similar content regardless of publisher.</p></section><div class="wrap">${discoveryModelV2()}${categoryChips()}${categoryCardsV2()}${adSlot()}${banner}</div>`});
+  else if(path==='/categories'){const directory=await categoryDirectory(taxonomyReady?db:null,taxonomy,30);markup=shell({base,url:url.href,title:'Browse Video Categories | Noxvellox',description:'Explore approved video categories by performer, body type, act, style and theme.',body:'<section class="wrap page-head"><div class="section-kicker">Discover by interest</div><h1>Categories</h1><p>Browse approved videos by topic. Channels identify the publisher; categories describe the source-provided subject.</p></section><div class="wrap">'+categoryCardsV2(directory)+adSlot()+'</div>'});}
   else if(path==='/channels'){
-    const partners = await partnersWithArt(env,req);
-    markup=shell({base,url:url.href,title:'Channels | Noxvellox',description:'Browse publisher channels and their videos on Noxvellox.',
+    const partners=await partnersWithArt(env,req);
+    const metadataChannels=await channelDirectory(taxonomyReady?db:null,100);
+    const dynamicChannels=metadataChannels.filter(channel=>!channelsV2.some(item=>item.slug===channel.slug));
+    const dynamicGrid=dynamicChannels.length?'<section class="wrap"><h2>Publisher channels</h2><div class="nv-channel-grid">'+dynamicChannels.map(channel=>'<a class="nv-channel" href="/channels/'+encodeURIComponent(channel.slug)+'"><b aria-hidden="true">'+esc(channel.name.slice(0,2))+'</b><strong>'+esc(channel.name)+'</strong><small>'+channel.count.toLocaleString('en-US')+' approved videos</small><span aria-hidden="true">›</span></a>').join('')+'</div></section>':'';
+    markup=shell({base,url:url.href,title:'Channels | Noxvellox',description:'Browse publisher channels and their approved videos on Noxvellox.',
       body:'<div class="wrap nv-directory" id="partners"><h1>Channels</h1>'+partnerCarousel(partners)+
-        '<div class="nv-channel-grid">'+partners.map(partnerTile).join('')+'</div>'+adSlot()+'</div>'});
+        '<div class="nv-channel-grid">'+partners.map(partnerTile).join('')+'</div></div>'+dynamicGrid+adSlot()});
   }
-else if(path.startsWith('/channels/')||path.startsWith('/channel/')){const prefix=path.startsWith('/channels/')?'/channels/':'/channel/';const slug=path.slice(prefix.length).split('/')[0];const channel=channelsV2.find(c=>c.slug===slug);if(channel){const requestedPage=Math.max(1,Math.min(1000,Number(url.searchParams.get('page')||1)));const requestedQuery=safeText(url.searchParams.get('q')||'',80);const requestedSort=['recent','popular','rating'].includes(url.searchParams.get('sort')||'recent')?(url.searchParams.get('sort')||'recent'):'recent';const limit=20;const canonicalUrl=`${base}/channels/${encodeURIComponent(channel.slug)}`;if(channel.category==='Official embeds'){const result=await officialCatalog(db,{page:requestedPage,limit,q:requestedQuery,localEntries:localFeed});markup=channelPageV4({base,url:url.href,canonicalUrl,channel,videos:[],official:result.entries,total:Number(result.total||0),page:requestedPage,limit,q:requestedQuery,sort:requestedSort})}else{const offset=(requestedPage-1)*limit;const videos=await listVideos(db,{category:channel.category,q:requestedQuery,offset,limit,sort:requestedSort});const total=await countChannelVideosV4(db,channel,requestedQuery);markup=channelPageV4({base,url:url.href,canonicalUrl,channel,videos,official:[],total,page:requestedPage,limit,q:requestedQuery,sort:requestedSort})}}else markup=notFound({base,url:url.href})}
-  else if(path.startsWith('/category/')){const c=categories.find(c=>slugify(c)===path.split('/')[2]);if(c){const videos=await listVideos(db,{category:c,limit:40});const official=videos.length?[]:await officialForCategory(db,c,localFeed);const shallow=videos.length+official.length<4;markup=listPage({base,url:url.href,videos,official,title:c,subtitle:`Explore ${c.toLowerCase()} from authorized sources.`,category:c,robots:shallow?'noindex,follow':''})}else markup=notFound({base,url:url.href})}
+  else if(path.startsWith('/channels/')||path.startsWith('/channel/')){
+    const prefix=path.startsWith('/channels/')?'/channels/':'/channel/';
+    const slug=path.slice(prefix.length).split('/')[0];
+    const channel=channelsV2.find(c=>c.slug===slug);
+    if(channel){
+      const requestedPage=Math.max(1,Math.min(1000,Number(url.searchParams.get('page')||1)));
+      const requestedQuery=safeText(url.searchParams.get('q')||'',80);
+      const requestedSort=['recent','popular','rating'].includes(url.searchParams.get('sort')||'recent')?(url.searchParams.get('sort')||'recent'):'recent';
+      const limit=20,canonicalUrl=`${base}/channels/${encodeURIComponent(channel.slug)}`;
+      if(channel.category==='Official embeds'){
+        const result=await officialCatalog(db,{page:requestedPage,limit,q:requestedQuery,localEntries:localFeed});
+        markup=channelPageV4({base,url:url.href,canonicalUrl,channel,videos:[],official:result.entries,total:Number(result.total||0),page:requestedPage,limit,q:requestedQuery,sort:requestedSort});
+      }else{
+        const offset=(requestedPage-1)*limit;
+        const videos=await listVideos(db,{category:channel.category,q:requestedQuery,offset,limit,sort:requestedSort});
+        const total=await countChannelVideosV4(db,channel,requestedQuery);
+        markup=channelPageV4({base,url:url.href,canonicalUrl,channel,videos,official:[],total,page:requestedPage,limit,q:requestedQuery,sort:requestedSort});
+      }
+    }else{
+      const dynamicChannel=(await channelDirectory(taxonomyReady?db:null,500)).find(item=>item.slug===slug);
+      if(dynamicChannel){
+        const requestedQuery=safeText(url.searchParams.get('q')||'',80);
+        const requestedSort=url.searchParams.get('sort')==='popular'?'popular':'recent';
+        const total=await countTaxonomyChannelVideos(db,slug,requestedQuery);
+        const videos=await taxonomyChannelVideos(db,slug,{limit:40,q:requestedQuery,sort:requestedSort});
+        markup=taxonomyChannelPage({base,url,channel:dynamicChannel,videos,total,q:requestedQuery,sort:requestedSort});
+      }else markup=notFound({base,url:url.href});
+    }
+  }
+  else if(path.startsWith('/category/')){const slug=path.split('/')[2];const legacy={'featured':'/featured','trending':'/trending','new-releases':'/new-releases','most-viewed':'/most-viewed','originals':'/featured','collections':'/categories','interviews':'/channels','wellness':'/categories','brazzers':'/channels/brazzers','official-embeds':'/official-videos'};if(legacy[slug])return Response.redirect(base+legacy[slug],301);const c=taxonomy.categoryBySlug[slug];if(c){const filters=taxonomyFilters(url,taxonomy);const total=await countTaxonomyCategoryVideos(taxonomyReady?db:null,c,filters);const videos=await taxonomyCategoryVideos(taxonomyReady?db:null,c,{filters,limit:40});markup=taxonomyCategoryPage({base,url:url.href,category:c,videos,total,taxonomy,filters})}else markup=notFound({base,url:url.href})}
   else if(path.startsWith('/watch/')){const slug=path.slice(7);const v=await getVideo(db,slug);if(!v){const official=await officialById(db,slug,localFeed);if(official)return Response.redirect(`${base}/official-watch/${encodeURIComponent(slug)}`,301)}const related=v?rotateRelated(await listVideos(db,{category:v.category,limit:30,sort:'popular'}),slug,30):[];markup=v?watchPage({url:url.href,base,v,related,env}):notFound({base,url:url.href})}
- else if(path==='/history')markup=shell({base,url:url.href,title:'Watch history | Noxvellox',description:'View your recent videos. Your viewing history is saved only in this browser.',body:`<section class="wrap page-head"><div class="section-kicker">Your library</div><h1>Watch history</h1><p>Recent videos are saved in this browser and shown only here.</p></section><section class="wrap" data-history-root></section>`});
+ else if(COLLECTIONS.includes(path.slice(1))){const key=path.slice(1);const videos=await collectionVideos(taxonomyReady?db:null,key,40);const total=await collectionCounts(taxonomyReady?db:null,key);markup=collectionPage({base,url:url.href,collection:key,videos,total})}
+  else if(path==='/history')markup=shell({base,url:url.href,title:'Watch history | Noxvellox',description:'View your recent videos. Your viewing history is saved only in this browser.',body:`<section class="wrap page-head"><div class="section-kicker">Your library</div><h1>Watch history</h1><p>Recent videos are saved in this browser and shown only here.</p></section><section class="wrap" data-history-root></section>`});
  else if(path==='/admin')markup=await adminPage({db,env,url:url.href,req,base});
  else markup=staticPage({name:path.slice(1),base,url:url.href,contact:env.CONTACT_EMAIL||'contato@noxvellox.site'});
  if(!markup)markup=notFound({base,url:url.href});
-  const knownStatic=['/','/videos','/official-videos','/search','/categories','/channels','/admin','/about','/privacy','/terms','/copyright','/contact','/history'];
-  const missing=(!knownStatic.includes(path)&&!path.startsWith('/watch/')&&!path.startsWith('/official-watch/')&&!path.startsWith('/category/')&&!path.startsWith('/channel/')&&!path.startsWith('/channels/'))||(path.startsWith('/watch/')&&!(await getVideo(db,path.slice(7))))||(path.startsWith('/official-watch/')&&!(await officialById(db,path.slice('/official-watch/'.length),localFeed)))||(path.startsWith('/category/')&&!categories.some(c=>slugify(c)===path.split('/')[2]))||((path.startsWith('/channel/')||path.startsWith('/channels/'))&&!channelsV2.some(c=>c.slug===path.split('/')[2]));
+  const knownStatic=['/','/videos','/official-videos','/search','/categories','/channels','/featured','/trending','/new-releases','/most-viewed','/admin','/about','/privacy','/terms','/copyright','/contact','/history'];
+  const missing=(!knownStatic.includes(path)&&!path.startsWith('/watch/')&&!path.startsWith('/official-watch/')&&!path.startsWith('/category/')&&!path.startsWith('/channel/')&&!path.startsWith('/channels/'))||(path.startsWith('/watch/')&&!(await getVideo(db,path.slice(7))))||(path.startsWith('/official-watch/')&&!(await officialById(db,path.slice('/official-watch/'.length),localFeed)))||(path.startsWith('/category/')&&!taxonomy.categoryBySlug[path.split('/')[2]]&&!['featured','trending','new-releases','most-viewed','originals','collections','interviews','wellness','brazzers','official-embeds'].includes(path.split('/')[2]))||((path.startsWith('/channel/')||path.startsWith('/channels/'))&&!channelsV2.some(c=>c.slug===path.split('/')[2]));
  return html(markup,missing?404:200,path==='/admin'?{'cache-control':'no-store'}:{});
 }
 export default {
- async fetch(req,env){try{const requestUrl=new URL(req.url);if(requestUrl.hostname==='noxvellox.pages.dev'||requestUrl.hostname.endsWith('.noxvellox.pages.dev'))return Response.redirect(`https://noxvellox.site${requestUrl.pathname}${requestUrl.search}`,301);return await route(req,env)}catch(e){console.error('Noxvellox request error',e);return html('<!doctype html><title>Temporarily unavailable</title><h1>Service temporarily unavailable</h1><p>Please try again.</p>',503)}}
+ async fetch(req,env){try{const requestUrl=new URL(req.url);if(requestUrl.hostname==='noxvellox.pages.dev')return Response.redirect(`https://noxvellox.site${requestUrl.pathname}${requestUrl.search}`,301);return await route(req,env)}catch(e){console.error('Noxvellox request error',e);return html('<!doctype html><title>Temporarily unavailable</title><h1>Service temporarily unavailable</h1><p>Please try again.</p>',503)}}
 };
 
