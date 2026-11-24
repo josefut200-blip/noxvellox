@@ -290,17 +290,6 @@
       });
     });
   };
-  const setupClickToPlay=()=>{
-    document.querySelectorAll('[data-click-play-overlay]').forEach(overlay=>{
-      const player=overlay.closest('[data-player]'),button=overlay.querySelector('[data-click-play]');
-      if(!player||!button||button.dataset.clickPlayBound==='yes')return;
-      button.dataset.clickPlayBound='yes';
-      button.addEventListener('click',event=>{
-        event.preventDefault();
-        releaseClickPlay(button);
-      },{once:true});
-    });
-  };
   // Delegate the action as a safety net for cached/late-rendered player markup.
   // This keeps the first click deterministic even when the ad network mutates the slot.
   document.addEventListener('click',event=>{
