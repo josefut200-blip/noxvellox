@@ -836,18 +836,30 @@ async function runImport(env,db){
  await db.prepare('INSERT INTO import_runs(status,received,added,rejected,message) VALUES (?,?,?,?,?)').bind('completed',Math.min(items.length,40),added,rejected,autoPublished?'Verified candidates auto-published after provider health and player checks; others remain pending.':'Candidates remain pending because the feed did not provide both required rights confirmations.').run();
  return {received:Math.min(items.length,40),added,rejected,autoPublished,pendingApproval:autoPublished<added,autoPublishMode:'verified-only'};
 }
-async function fetchVastXml(url,depth=0){
+async function fetchVastXml(url,depth=0,attempt=0){
  if(depth>3)throw new Error('VAST wrapper limit reached');
- const response=await fetch(url,{method:'GET',headers:{accept:'application/xml,text/xml,*/*'},signal:AbortSignal.timeout(7000)});
- if(!response.ok)throw new Error('VAST upstream returned '+response.status);
- const xml=await response.text();
- // ExoClick can return a VAST Wrapper whose next URL is cross-origin.
- // Resolve wrappers inside the Worker so the browser only requests our same-origin endpoint.
- if(/<MediaFile\b/i.test(xml))return xml;
- const match=xml.match(/<VASTAdTagURI\b[^>]*>\s*([\s\S]*?)\s*<\/VASTAdTagURI>/i);
- const next=match?.[1]?.replace(/^<!\[CDATA\[|\]\]>$/g,'').trim()||'';
- if(!/^https:\/\//i.test(next))return xml;
- return fetchVastXml(next,depth+1);
+ try{
+  let requestUrl=url;
+  if(depth===0){
+   try{const parsed=new URL(url);parsed.searchParams.set('cb',Date.now().toString());requestUrl=parsed.toString()}catch{}
+  }
+  const response=await fetch(requestUrl,{method:'GET',cache:'no-store',headers:{accept:'application/xml,text/xml,*/*'},signal:AbortSignal.timeout(8000)});
+  if(!response.ok)throw new Error('VAST upstream returned '+response.status);
+  const xml=await response.text();
+  // ExoClick can return a VAST Wrapper whose next URL is cross-origin.
+  // Resolve wrappers inside the Worker so the browser only requests our same-origin endpoint.
+  if(/<MediaFile\b/i.test(xml))return xml;
+  const match=xml.match(/<VASTAdTagURI\b[^>]*>\s*([\s\S]*?)\s*<\/VASTAdTagURI>/i);
+  const next=match?.[1]?.replace(/^<!\[CDATA\[|\]\]>$/g,'').trim()||'';
+  if(!/^https:\/\//i.test(next))return xml;
+  return fetchVastXml(next,depth+1,0);
+ }catch(error){
+  if(attempt<1){
+   await new Promise(resolve=>setTimeout(resolve,250));
+   return fetchVastXml(url,depth,attempt+1);
+  }
+  throw error;
+ }
 }
 const extractVastMedia=xml=>{
  const media=String(xml||'').match(/<MediaFile\b[^>]*>[\s\S]*?(?:<!\[CDATA\[)?\s*(https:\/\/[^<\]\s]+)\s*(?:\]\]>)?[\s\S]*?<\/MediaFile>/i);
