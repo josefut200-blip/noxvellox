@@ -587,7 +587,7 @@ async function ensureTaxonomySchema(db,taxonomy){
 async function categoryDirectory(db,taxonomy,limit=30){
  if(!db)return [];
  const result=await db.prepare("SELECT tc.slug,tc.name,tc.group_slug,tc.group_name,tc.intro_en,COUNT(DISTINCT v.id) AS count FROM taxonomy_categories tc JOIN video_categories vc ON vc.category_slug=tc.slug JOIN videos v ON v.id=vc.video_id WHERE v.status='published' AND v.rights_confirmed=1 AND v.adults_verified=1 AND v.duration_seconds>=? AND v.poster_url<>'' AND v.embed_url<>'' GROUP BY tc.slug,tc.name,tc.group_slug,tc.group_name,tc.intro_en ORDER BY count DESC,tc.name COLLATE NOCASE ASC LIMIT ?")
-  .bind(MIN_VIDEO_DURATION_SECONDS,Math.max(1,Math.min(30,limit))).all();
+  .bind(MIN_VIDEO_DURATION_SECONDS,Math.max(1,Math.min(500,limit))).all();
  return (result.results||[]).map(row=>({...row,count:Number(row.count||0),seo_indexable:indexableCategory(row,row.count,taxonomy)}));
 }
 async function taxonomyCategoryVideos(db,category,{filters={},limit=40,offset=0}={}){
@@ -760,7 +760,8 @@ function watchPage({url,base,v,related,relatedCard=card,env}){
   const desc=v.description?`<p>${esc(v.description)}</p>`:'<p>Video details and original-source information.</p>';
   const body=`<section class="wrap page-head" style="padding-bottom:10px"><div class="section-kicker">Noxvellox / ${esc(v.category)}</div></section><section class="wrap watch-layout"><div>${player}<div class="watch-head"><h1>${esc(v.title)}</h1><div class="detail-row">${esc(v.category)}${v.duration_seconds?`  ·  ${duration(v.duration_seconds)}`:''}  ·  Provider: ${esc(v.provider)}</div>${desc}<div class="notice player-help"><strong>Playback not working?</strong> ${v.embed_blocked?'The original provider limits this video to playback on its own site. Use the button in the player to open it there.':v.provider==='cloudflare-stream'?'This video uses a separately hosted Cloudflare Stream player. If unavailable, check encoding readiness, delivery permissions and billing in your Stream dashboard.':'This video is hosted by an independent provider. If it says "Video unavailable", playback cannot be fixed here. Report the broken listing to the publisher; do not click suspicious third-party ads.'}</div><p class="mini">Source: <a href="${esc(v.source_url)}" target="_blank" rel="noopener noreferrer">Original provider ?</a></p></div>${adSlot()}</div><aside><div class="section-head"><div><div class="section-kicker">Keep exploring</div><h2 style="font-size:24px">Related videos</h2></div></div><div class="video-grid" data-related-grid style="grid-template-columns:1fr">${related.length?related.map((item,index)=>`<div data-related-candidate${index>=4?' hidden':''}>${card(item)}</div>`).join(''):emptyMarkup}</div></aside></section>`;
   const canMark=Boolean(embed&&v.published_at&&isHttpsUrl(v.poster_url)&&Number(v.duration_seconds)>0);
-  return shell({title:`${v.title} | Noxvellox`,description:(v.official?`Official video listing: ${v.title}. Check the original provider for playback availability.`:(v.description||`${v.title}. Watch authorized content with source attribution on Noxvellox.`)).slice(0,160),base,url,body,preview:poster,structured:canMark?publishedArticle(v,base):undefined,ogType:'video.other'});
+  const viewTracker=v.official?'':'<script>document.addEventListener("DOMContentLoaded",function(){const slug='+JSON.stringify(String(v.slug||''))+';const key="noxvellox-view:"+slug;const record=function(){try{if(sessionStorage.getItem(key))return;sessionStorage.setItem(key,"yes")}catch{}fetch("/api/record-view",{method:"POST",credentials:"same-origin",headers:{"content-type":"application/json"},body:JSON.stringify({slug:slug}),keepalive:true}).catch(function(){})};const gate=document.querySelector("[data-age-gate]");if(gate){gate.querySelector("[data-age-confirm]")?.addEventListener("click",record,{once:true})}else record()},{once:true})</script>';
+  return shell({title:`${v.title} | Noxvellox`,description:(v.official?`Official video listing: ${v.title}. Check the original provider for playback availability.`:(v.description||`${v.title}. Watch authorized content with source attribution on Noxvellox.`)).slice(0,160),base,url,body:body+viewTracker,preview:poster,structured:canMark?publishedArticle(v,base):undefined,ogType:'video.other'});
 }
 function staticPage({name,url,base,contact}){
   let title='',content='',cta='/videos',ctaLabel='Explore videos';
@@ -1167,6 +1168,17 @@ async function api(req,env,url,db){
    try{return json(await runImport(env,db))}catch(e){return json({error:String(e.message||e)},422)}
  }
  if(!sameOrigin(req))return json({error:'Invalid origin'},403);
+ if(path==='/api/record-view'&&req.method==='POST'){
+  if(!db)return json({error:'D1 not configured'},503);
+  try{
+   const body=await req.json(),slug=String(body?.slug||'').trim();
+   if(!/^[a-z0-9][a-z0-9-]{1,100}$/i.test(slug))return json({error:'Invalid video slug'},400);
+   const video=await db.prepare("SELECT id FROM videos WHERE slug=? AND status='published' AND rights_confirmed=1 AND adults_verified=1 AND duration_seconds>=? LIMIT 1").bind(slug,MIN_VIDEO_DURATION_SECONDS).first();
+   if(!video)return json({error:'Video not available'},404);
+   await db.prepare("INSERT INTO video_views (video_id) VALUES (?)").bind(Number(video.id)).run();
+   return json({ok:true},201);
+  }catch{return json({error:'View could not be recorded'},422)}
+ }
  if(path==='/api/admin/login'&&req.method==='POST'){
    if(!adminSecretsReady(env))return json({error:'Admin secrets not configured'},503);
    const form=await req.formData();const password=form.get('password');
