@@ -28,6 +28,7 @@ const prerollVastUrl=env=>{
 let categories=[];
 let VISIBLE_NAV_CATEGORIES=[];
 let taxonomyLoadPromise=null;
+let taxonomyConfig=null;
 let taxonomySchemaPromise=null;
 const COLLECTIONS=['featured','trending','new-releases','most-viewed'];
 const MIN_INDEXABLE_CATEGORY_VIDEOS=20;
@@ -474,6 +475,7 @@ async function loadTaxonomy(env,req){
   if(data?.version!==1||!Array.isArray(data.groups))throw new Error('Taxonomy configuration is invalid');
   data.categories=data.groups.flatMap(group=>(group.categories||[]).map(item=>({...item,group_slug:group.slug,group_name:group.name})));
   data.categoryBySlug=Object.fromEntries(data.categories.map(item=>[item.slug,item]));
+  taxonomyConfig=data;
   data.blockedSet=new Set((data.blockedTags||[]).map(normalizeTaxonomyToken));
   data.categoryAliases=buildAliasMap(data.categories);
   data.formatAliases=buildAliasMap(data.formats||[]);
@@ -902,51 +904,81 @@ function normalizeImportedTitle(raw){
  const shouldTitle=letters.length>8&&letters===letters.toUpperCase();
  return shouldTitle?cleaned.toLowerCase().replace(/(^|[\s-])([a-zà-ÿ])/g,(_,p,c)=>p+c.toUpperCase()):cleaned;
 }
-function inferImportedCategory(item,fallback='Featured'){
- const hay=String([item.title,item.description,item.channel,item.studio,item.language,item.locale].filter(Boolean).join(' ')).toLowerCase();
- return /\b(brazil|brazilian|brasileir|brasil|rio|s[aã]o paulo|\bsp\b|\bpt[-_]?br\b|portuguese)\b/.test(hay)?'Brazilian':fallback;
+function extractMetadataValue(item,keys){
+ for(const key of keys){const value=item?.[key];if(value!==undefined&&value!==null&&String(value).trim())return value}
+ return '';
 }
-
+async function persistVideoTaxonomy(db,videoId,item,taxonomy){
+ const raw=safeRawTags(item.raw_tags||item.tags||item.categories||item.keywords,taxonomy);
+ const categorySlugs=mapRawTags(raw,taxonomy.categoryAliases,taxonomy);
+ const formatValues=[...rawTagList(item.formats),...rawTagList(item.format),...raw];
+ const formatSlugs=[...new Set(mapRawTags(formatValues,taxonomy.formatAliases,taxonomy))];
+ const directLanguage=extractMetadataValue(item,['language','lang','audio_language','audioLanguage','locale']);
+ const language=normalizeLanguage(typeof directLanguage==='object'?(directLanguage.code||directLanguage.name||''):directLanguage,taxonomy);
+ const rawResolution=extractMetadataValue(item,['resolution','max_resolution','maxResolution','video_quality','quality']);
+ let resolution=normalizeResolution(rawResolution,taxonomy);
+ if(!resolution)for(const tag of raw){resolution=normalizeResolution(tag,taxonomy);if(resolution)break}
+ const rawFps=extractMetadataValue(item,['frame_rate','frameRate','fps']);
+ let frameRate=normalizeFrameRate(rawFps,taxonomy);
+ if(!frameRate)for(const tag of raw){const match=String(tag).match(/^(\d{2,3})\s*(?:fps|frames per second)$/i);if(match){frameRate=normalizeFrameRate(match[1],taxonomy);if(frameRate)break}}
+ const rawOrientation=extractMetadataValue(item,['orientation','sexual_orientation','sexualOrientation']);
+ let orientation=(taxonomy.orientationAliases||new Map()).get(normalizeTaxonomyToken(rawOrientation))||'';
+ if(!orientation)for(const tag of raw){orientation=(taxonomy.orientationAliases||new Map()).get(normalizeTaxonomyToken(tag))||'';if(orientation)break}
+ const studioValue=item.studio&&typeof item.studio==='object'?(item.studio.slug||item.studio.name||''):item.studio;
+ const channelId=normalizeTaxonomyToken(extractMetadataValue(item,['channel_id','channelId','channel_slug','channelSlug'])||studioValue).replace(/\s+/g,'-').slice(0,80);
+ const studio=normalizeTaxonomyToken(studioValue).replace(/\s+/g,'-').slice(0,80);
+ const featured=item.featured===true||item.featured==='true'||item.featured==='yes'||item.featured==='on';
+ await db.prepare("INSERT INTO video_metadata (video_id,channel_id,studio,resolution,frame_rate,language,orientation,raw_tags_json,featured) VALUES (?,?,?,?,?,?,?,?,?) ON CONFLICT(video_id) DO UPDATE SET channel_id=excluded.channel_id,studio=excluded.studio,resolution=excluded.resolution,frame_rate=excluded.frame_rate,language=excluded.language,orientation=excluded.orientation,raw_tags_json=excluded.raw_tags_json,featured=excluded.featured")
+  .bind(videoId,channelId,studio,resolution,frameRate,language,orientation,JSON.stringify(raw),featured?1:0).run();
+ for(const categorySlug of categorySlugs)await db.prepare("INSERT OR IGNORE INTO video_categories (video_id,category_slug) VALUES (?,?)").bind(videoId,categorySlug).run();
+ for(const formatSlug of formatSlugs)await db.prepare("INSERT OR IGNORE INTO video_formats (video_id,format_slug) VALUES (?,?)").bind(videoId,formatSlug).run();
+ return {categorySlugs,formatSlugs,rawTags:raw};
+}
 async function addVideo(db,item,{fromFeed=false}={}){
- const title=normalizeImportedTitle(item.title),description=safeText(item.description,1600)||`${title}. Authorized metadata from ${safeText(item.provider||'the original publisher',80)}.`;
+ const title=normalizeImportedTitle(item.title),description=safeText(item.description,1600)||(title+'. Authorized metadata from '+safeText(item.provider||'the original publisher',80)+'.');
  const uid=streamUid(item.stream_uid||item.streamUid);
  if((item.stream_uid||item.streamUid)&&!uid)throw Error('Cloudflare Stream UID must be exactly 32 hexadecimal characters, from a ready licensed video.');
  if(uid&&(item.embed_url||item.embedUrl))throw Error('Choose one player method: Stream UID or licensed embed URL, not both.');
  const embed_url=uid?streamEmbed(uid):String(item.embed_url||item.embedUrl||'');
  const source_url=String(item.source_url||item.sourceUrl||'')|| (uid?embed_url:'');
- const poster_url=String(item.poster_url||item.posterUrl||'')|| (uid?`https://videodelivery.net/${uid}/thumbnails/thumbnail.jpg?time=1s`:'');
+ const poster_url=String(item.poster_url||item.posterUrl||'')|| (uid?'https://videodelivery.net/'+uid+'/thumbnails/thumbnail.jpg?time=1s':'');
  if(title.length<3||!isHttpsUrl(source_url)||!isHttpsUrl(embed_url)||poster_url&&!isHttpsUrl(poster_url))throw Error('Required: title and a valid HTTPS original source and licensed embed (or Stream UID).');
  if(uid&&!validStreamEmbed(embed_url))throw Error('Invalid Cloudflare Stream player URL.');
+ const taxonomy=taxonomyConfig;
+ const raw=safeRawTags(item.raw_tags||item.tags||item.categories||item.keywords,taxonomy);
+ const categorySlugs=mapRawTags(raw,taxonomy?.categoryAliases||new Map(),taxonomy);
+ const legacyCategory=categorySlugs.length?taxonomy.categoryBySlug[categorySlugs[0]].name:'Uncategorized';
  const rights=item.rights_confirmed===true||item.rights_confirmed==='yes'||item.rightsConfirmed===true;
  const adults=item.adults_verified===true||item.adults_verified==='yes'||item.adultsVerified===true;
  const provider=uid?'cloudflare-stream':safeText(item.provider|| (fromFeed?'authorized-feed':'manual'),50);
  const source_id=uid||safeText(item.source_id||item.sourceId||'',100);
  if(source_id){const duplicate=await db.prepare('SELECT id FROM videos WHERE provider=? AND source_id=? LIMIT 1').bind(provider,source_id).first();if(duplicate)return false;}
  const slug=slugify(item.slug||title)+(uid?'-'+uid.slice(0,12):(fromFeed&&source_id?'-'+slugify(source_id).slice(0,20):''));
-  const duration=Math.max(0,Math.min(100000,parseInt(item.duration_seconds||item.durationSeconds||0,10)||0));
- const record=[slug,title,description,inferImportedCategory(item,safeText(item.category||'Featured',40)),poster_url,embed_url,source_url,source_id,provider,duration,rights?1:0,adults?1:0];
- const result=await db.prepare('INSERT OR IGNORE INTO videos (slug,title,description,category,poster_url,embed_url,source_url,source_id,provider,duration_seconds,rights_confirmed,adults_verified,status) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,\'pending\')').bind(...record).run();
- return (result.meta?.changes||0)>0;
+ const duration=Math.max(0,Math.min(100000,parseInt(item.duration_seconds||item.durationSeconds||0,10)||0));
+ const record=[slug,title,description,legacyCategory,poster_url,embed_url,source_url,source_id,provider,duration,rights?1:0,adults?1:0];
+ const result=await db.prepare("INSERT OR IGNORE INTO videos (slug,title,description,category,poster_url,embed_url,source_url,source_id,provider,duration_seconds,rights_confirmed,adults_verified,status) VALUES (?,?,?,?,?,?,?,?,?,?,?,?, 'pending')").bind(...record).run();
+ if(!(result.meta?.changes||0))return false;
+ const row=await db.prepare('SELECT id FROM videos WHERE slug=? LIMIT 1').bind(slug).first();
+ if(row?.id!==undefined)await persistVideoTaxonomy(db,Number(row.id),item,taxonomy);
+ return true;
 }
 function normalizeAdultEmbed(v){
  if(!v||!Number.isSafeInteger(Number(v.id))||Number(v.id)<=0)return null;
- // NOXVELLOX: this import route stages Brazzers-studio METADATA only.
- // Studio attribution and source uptime never establish video licensing.
  const studioSlug=String(typeof v.studio==='object'?(v.studio?.slug||''):(v.studio||'')).trim().toLowerCase();
  if(studioSlug!=='brazzers')return null;
- // A stable player URL owned by AdultEmbed is documented for all API v1 records.
- // Do not silently trust a third-party mirror host supplied in embed.url.
- const embedUrl=`https://adultembed.com/player/embed/${Number(v.id)}/`;
+ const embedUrl='https://adultembed.com/player/embed/'+Number(v.id)+'/';
  const durationValue=Number(v.duration_seconds||0);
  const durationSeconds=Number.isFinite(durationValue)&&durationValue>0?Math.floor(durationValue):0;
  const rightsConfirmed=v.rightsConfirmed===true||v.rights_confirmed===true;
  const adultsVerified=v.adultsVerified===true||v.adults_verified===true;
+ const rawTags=v.tags||v.raw_tags||v.categories||v.keywords||[];
  return {
   sourceId:String(v.id),provider:'adultembed',title:String(v.title||''),
-  description:String(v.description||''),category:'Brazzers',
+  description:String(v.description||''),category:'Brazzers',channel_id:'brazzers',studio:'brazzers',
+  raw_tags:rawTags,language:v.language||v.lang||v.locale||'',formats:v.formats||[],
+  resolution:v.resolution||v.max_resolution||v.quality||'',frame_rate:v.frame_rate||v.fps||null,
+  orientation:v.orientation||'',
   sourceUrl:embedUrl,embedUrl,posterUrl:String(v.poster||v.thumbnail||v.thumb||''),durationSeconds,
-  // Provider metadata never counts as proof. These flags are accepted only when
-  // the configured feed explicitly supplies both documented confirmations.
   rightsConfirmed,adultsVerified
  };
 }
