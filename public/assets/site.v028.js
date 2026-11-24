@@ -101,6 +101,14 @@
   };
   async function resolveVast(endpoint,depth=0){
     if(depth>2)throw new Error('VAST wrapper limit reached');
+    if(depth===0){
+      const jsonEndpoint=endpoint+(endpoint.includes('?')?'&':'?')+'format=json';
+      const response=await fetch(jsonEndpoint,{credentials:'same-origin',cache:'no-store',headers:{accept:'application/json'}});
+      if(response.ok){
+        const ad=await response.json();
+        if(ad?.mediaUrl)return ad;
+      }
+    }
     const parsed=parseVast(await vastText(endpoint));
     if(!parsed)throw new Error('No playable MediaFile in VAST response');
     if(parsed.mediaUrl)return parsed;
