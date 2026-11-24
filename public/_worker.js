@@ -527,8 +527,9 @@ function normalizeLanguage(value,taxonomy){
 }
 function normalizeResolution(value,taxonomy){
  const normalized=normalizeTaxonomyToken(value).replace(/\s+/g,'');
+ const canonical=normalized==='2160p'?'4k':normalized;
  const allowed=new Set(taxonomy?.technical?.resolutions||[]);
- return allowed.has(normalized)?normalized:'';
+ return allowed.has(canonical)?canonical:'';
 }
 function normalizeFrameRate(value,taxonomy){
  const n=Number(String(value??'').match(/\d{2,3}/)?.[0]);
@@ -695,13 +696,12 @@ function taxonomyFilters(url,taxonomy){
  return filters;
 }
 function taxonomyFilterForm(taxonomy,filters){
- const select=(name,label,items,key)=>'<label>'+label+'<select name="'+name+'"><option value="">All</option>'+items.map(item=>'<option value="'+esc(item[key])+'"'+(filters[key]===item[key]?' selected':'')+'>'+esc(item.name)+'</option>').join('')+'</select></label>';
+ const select=(name,label,items,selected)=>'<label>'+label+'<select name="'+name+'"><option value="">All</option>'+items.map(item=>{const value=item.slug||item.value;return '<option value="'+esc(value)+'"'+(String(selected||'')===String(value)?' selected':'')+'>'+esc(item.name)+'</option>'}).join('')+'</select></label>';
  const resolutions=(taxonomy.technical?.resolutions||[]).map(value=>({value,name:value.toUpperCase()}));
  const frameRates=(taxonomy.technical?.frameRates||[]).map(value=>({value:String(value),name:String(value)+' FPS'}));
- const filterValues={...filters,frame_rate:filters.frame_rate?String(filters.frame_rate):''};
  return '<form class="taxonomy-filters" method="get" action=""><label>Language<select name="lang"><option value="">All</option>'+(taxonomy.languages||[]).map(item=>'<option value="'+esc(item.slug)+'"'+(filters.language===item.slug?' selected':'')+'>'+esc(item.name)+'</option>').join('')+'</select></label>'+
-  select('res','Resolution',resolutions,'value')+
-  select('fps','Frame rate',frameRates,'value')+
+  select('res','Resolution',resolutions,filters.resolution)+
+  select('fps','Frame rate',frameRates,filters.frame_rate)+
   '<label>Format<select name="format"><option value="">All</option>'+(taxonomy.formats||[]).map(item=>'<option value="'+esc(item.slug)+'"'+(filters.format===item.slug?' selected':'')+'>'+esc(item.name)+'</option>').join('')+'</select></label>'+
   '<label>Orientation<select name="orientation"><option value="">All</option>'+(taxonomy.orientations||[]).map(item=>'<option value="'+esc(item.slug)+'"'+(filters.orientation===item.slug?' selected':'')+'>'+esc(item.name)+'</option>').join('')+'</select></label>'+
   '<button class="button" type="submit">Apply filters</button></form>';
