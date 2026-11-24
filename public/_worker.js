@@ -643,8 +643,8 @@ function channelDisplayName(value){
 }
 async function channelDirectory(db,limit=100){
  if(!db)return [];
- const result=await db.prepare("SELECT COALESCE(NULLIF(vm.channel_id,''),NULLIF(vm.studio,'')) AS slug,MAX(NULLIF(vm.studio,'')) AS studio,COUNT(DISTINCT v.id) AS count FROM video_metadata vm JOIN videos v ON v.id=vm.video_id WHERE COALESCE(NULLIF(vm.channel_id,''),NULLIF(vm.studio,''))<>'' AND v.status='published' AND v.rights_confirmed=1 AND v.adults_verified=1 AND v.duration_seconds>=? AND v.poster_url<>'' AND v.embed_url<>'' GROUP BY COALESCE(NULLIF(vm.channel_id,''),NULLIF(vm.studio,'')) ORDER BY count DESC,slug ASC LIMIT ?")
-  .bind(MIN_VIDEO_DURATION_SECONDS,Math.max(1,Math.min(500,limit))).all();
+ const result=await db.prepare("SELECT source.slug,MAX(source.studio) AS studio,COUNT(DISTINCT source.video_id) AS count FROM (SELECT vm.channel_id AS slug,vm.studio AS studio,v.id AS video_id FROM video_metadata vm JOIN videos v ON v.id=vm.video_id WHERE vm.channel_id<>'' AND v.status='published' AND v.rights_confirmed=1 AND v.adults_verified=1 AND v.duration_seconds>=? AND v.poster_url<>'' AND v.embed_url<>'' UNION ALL SELECT vm.studio AS slug,vm.studio AS studio,v.id AS video_id FROM video_metadata vm JOIN videos v ON v.id=vm.video_id WHERE vm.studio<>'' AND vm.studio<>vm.channel_id AND v.status='published' AND v.rights_confirmed=1 AND v.adults_verified=1 AND v.duration_seconds>=? AND v.poster_url<>'' AND v.embed_url<>'') source GROUP BY source.slug ORDER BY count DESC,source.slug ASC LIMIT ?")
+  .bind(MIN_VIDEO_DURATION_SECONDS,MIN_VIDEO_DURATION_SECONDS,Math.max(1,Math.min(500,limit))).all();
  return (result.results||[]).map(row=>({slug:String(row.slug||''),name:channelDisplayName(row.studio||row.slug),count:Number(row.count||0)})).filter(row=>row.slug);
 }
 async function taxonomyChannelVideos(db,slug,{limit=40,offset=0,q='',sort='recent'}={}){
@@ -655,7 +655,7 @@ async function taxonomyChannelVideos(db,slug,{limit=40,offset=0,q='',sort='recen
  let order="v.published_at DESC,v.id DESC";
  if(sort==='popular')order="(SELECT COUNT(*) FROM video_views vv WHERE vv.video_id=v.id) DESC,v.published_at DESC,v.id DESC";
  params.push(limit,offset);
- const result=await db.prepare("SELECT DISTINCT v.id,v.slug,v.title,v.description,v.category,v.poster_url,v.embed_url,v.source_url,v.provider,v.duration_seconds,v.status,v.published_at FROM videos v JOIN video_metadata vm ON vm.video_id=v.id WHERE "+where+" ORDER BY "+order+" LIMIT ? OFFSET ?").bind(...params).all();
+ const result=await db.prepare("SELECT v.id,v.slug,v.title,v.description,v.category,v.poster_url,v.embed_url,v.source_url,v.provider,v.duration_seconds,v.status,v.published_at FROM videos v JOIN video_metadata vm ON vm.video_id=v.id WHERE "+where+" ORDER BY "+order+" LIMIT ? OFFSET ?").bind(...params).all();
  return result.results||[];
 }
 async function countTaxonomyChannelVideos(db,slug,q=''){
