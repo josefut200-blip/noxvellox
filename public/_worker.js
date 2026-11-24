@@ -639,7 +639,7 @@ async function collectionCounts(db,collection){
 }
 
 function channelDisplayName(value){
- return String(value||'').split(/[-_\\s]+/).filter(Boolean).map(part=>part.length<=3?part.toUpperCase():part[0].toUpperCase()+part.slice(1)).join(' ')||'Publisher channel';
+ return String(value||'').split(/[-_\s]+/).filter(Boolean).map(part=>part.length<=3?part.toUpperCase():part[0].toUpperCase()+part.slice(1)).join(' ')||'Publisher channel';
 }
 async function channelDirectory(db,limit=100){
  if(!db)return [];
