@@ -257,7 +257,7 @@ function normalizeEntry(item) {
   }
 
   const seconds = durationSeconds(valueFrom(item, ['duration_seconds', 'durationSeconds', 'duration']));
-  const rawTags = safeTags(valueFrom(item, ['tags', 'raw_tags', 'categories', 'category', 'keywords']));
+  const rawTags = safeTags(['tags', 'raw_tags', 'categories', 'category', 'keywords', 'tag'].flatMap(key => tagValues(valueFrom(item, [key]))));
   const formats = safeTags(valueFrom(item, ['formats', 'format']));
   const language = normalizeSourceLanguage(valueFrom(item, ['language', 'lang', 'audio_language', 'locale']));
   const resolution = text(valueFrom(item, ['resolution', 'max_resolution', 'quality']), 16).toLowerCase();
