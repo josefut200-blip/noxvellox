@@ -107,6 +107,7 @@
       if(response.ok){
         const ad=await response.json();
         if(ad?.mediaUrl)return ad;
+        if(ad?.ok===false)throw new Error('VAST provider returned no fill');
       }
     }
     const parsed=parseVast(await vastText(endpoint));
