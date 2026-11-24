@@ -879,7 +879,10 @@ async function api(req,env,url,db){
     return json({ok:true,...ad});
    }
    return new Response(xml,{status:200,headers:{'content-type':'application/xml; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff'}});
-  }catch{return new Response('Video ad provider unavailable.',{status:502,headers:{'content-type':'text/plain; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff'}})}
+  }catch{
+   if(url.searchParams.get('format')==='json')return json({ok:false,reason:'no_fill'});
+   return new Response('Video ad provider unavailable.',{status:502,headers:{'content-type':'text/plain; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff'}})
+  }
  }
  if(path==='/api/ad-health'&&req.method==='GET'){
   const started=Date.now();
