@@ -75,7 +75,8 @@
           "name": "Asian",
           "aliases": [
             "asian",
-            "japanese"
+            "japanese",
+            "japan"
           ],
           "intro_en": "Browse publisher-tagged Asian adult listings in a single category. The source tag can represent varied backgrounds across a broad region, so Noxvellox does not infer a more specific identity from titles or images. Use the available listings to explore the approved catalog and check their publisher attribution. Language, studio, and video format remain separate details when the feed supplies them. Listings require a matching publisher tag and must pass rights, adult-participation, and playback checks. Counts use approved records; filtered URLs stay out of search indexing. Availability changes as approved records evolve."
         },
