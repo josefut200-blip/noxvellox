@@ -49,6 +49,24 @@
   const APPROVED_BANNER_300_SRC='https://biomanos.org/22/503779984753b653167ed59860f05642';
   const APPROVED_SOCIAL_BAR_SRC='';
   const APPROVED_POPUNDER_SRC='';
+  const EXOCLICK_BANNER_ZONE_ID='6104372';
+  const EXOCLICK_BANNER_SRC='https://a.magsrv.com/ad-provider.js';
+  const loadExoClick=()=>{
+    if(window.__noxvelloxExoClickPromise)return window.__noxvelloxExoClickPromise;
+    const existing=document.getElementById('noxvellox-exoclick-provider');
+    window.__noxvelloxExoClickPromise=new Promise((resolve,reject)=>{
+      if(existing){existing.addEventListener('load',resolve,{once:true});existing.addEventListener('error',reject,{once:true});return;}
+      const script=document.createElement('script');
+      script.id='noxvellox-exoclick-provider';
+      script.async=true;
+      script.type='application/javascript';
+      script.src=EXOCLICK_BANNER_SRC;
+      script.addEventListener('load',resolve,{once:true});
+      script.addEventListener('error',reject,{once:true});
+      document.head.appendChild(script);
+    });
+    return window.__noxvelloxExoClickPromise;
+  };
   const loadConsentUnit=(id,src,target=document.head)=>{if(!src||document.getElementById(id))return;const script=document.createElement('script');script.id=id;script.async=true;script.setAttribute('data-cfasync','false');script.src=src;(target||document.body||document.head).append(script)};
   const createInlineBannerSlot=size=>{
     const dimensions=size==='160'?{width:160,height:300}:size==='320'?{width:320,height:50}:size==='300'?{width:300,height:250}:null;
@@ -330,6 +348,19 @@
       },{once:true});
       const container=slot.querySelector('[data-banner-container]')||slot;
       container.before(options,script);
+    });
+    const exoSlots=[...document.querySelectorAll('[data-exoclick-banner]')];
+    exoSlots.forEach(slot=>{
+      if(c==='denied'){slot.hidden=true;slot.dataset.adState='disabled';return;}
+      if(c!=='granted'||slot.dataset.loaded==='yes')return;
+      slot.hidden=false;
+      slot.dataset.loaded='yes';
+      slot.dataset.adState='loading';
+      loadExoClick().then(()=>{
+        window.AdProvider=window.AdProvider||[];
+        window.AdProvider.push({serve:{}});
+        slot.dataset.adState='loaded';
+      }).catch(()=>{slot.dataset.adState='error';});
     });
     if(c==='granted')fetch('/api/ad-health',{credentials:'same-origin',cache:'no-store'}).then(r=>r.json()).then(data=>{adHealth.server=data;adHealth.lastChecked=new Date().toISOString()}).catch(()=>{adHealth.server={ok:false,note:'Banner health endpoint unavailable'}});
     releaseEmbeds();
