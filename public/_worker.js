@@ -1145,14 +1145,14 @@ async function route(req,env){
  if(path==='/sitemap.xml'){
      // Generate canonical URLs at request time. Search, filters, and shallow
      // category pages are intentionally excluded from this XML document.
-     const dateOnly=value=>{const date=String(value||'').slice(0,10);return /^\\d{4}-\\d{2}-\\d{2}$/.test(date)?date:''};
+     const dateOnly=value=>{const date=String(value||'').slice(0,10);return /^\d{4}-\d{2}-\d{2}$/.test(date)?date:''};
      const cleanVideoTitle=value=>normalizeImportedTitle(String(value||'')).slice(0,200)||'Official video';
-     const cleanVideoDescription=(title,value)=>String(value||'').replace(/\\s+/g,' ').trim().slice(0,2048)||`${title}. Video hosted and streamed by the original platform.`;
+     const cleanVideoDescription=(title,value)=>String(value||'').replace(/\s+/g,' ').trim().slice(0,2048)||`${title}. Video hosted and streamed by the original platform.`;
      const sitemapVideo=(item,title,description,player,durationSeconds)=>({thumbnail:String(item||''),title,description,player,duration:Number(durationSeconds)||0});
      const entries=['/','/videos','/official-videos','/categories','/channels',...channelsV2.map(c=>`/channels/${c.slug}`),'/about','/privacy','/terms','/copyright','/contact'].map(pathname=>({pathname,lastmod:''}));
      try{
        if(db){
-         const published=await db.prepare("SELECT slug,title,description,poster_url,embed_url,duration_seconds,published_at FROM videos WHERE status='published' AND slug IS NOT NULL AND slug<>'' AND poster_url<>'' AND embed_url<>'' ORDER BY published_at DESC,id DESC LIMIT 5000").all();
+         const published=await db.prepare("SELECT slug,title,description,category,poster_url,embed_url,duration_seconds,published_at FROM videos WHERE status='published' AND slug IS NOT NULL AND slug<>'' AND poster_url<>'' AND embed_url<>'' ORDER BY published_at DESC,id DESC LIMIT 5000").all();
          const official=await db.prepare("SELECT id,title,poster_url,duration_seconds,last_seen_at FROM official_embeds WHERE visibility='active' AND id IS NOT NULL AND id<>'' AND poster_url<>'' ORDER BY last_seen_at DESC,id DESC LIMIT 5000").all();
          const categoryCounts=new Map();
          for(const row of (published.results||[])){const key=String(row.category||'').trim();if(key)categoryCounts.set(key,(categoryCounts.get(key)||0)+1)}
@@ -1181,7 +1181,7 @@ async function route(req,env){
      entries.push(...partners.map(partner => ({pathname:partnerPath(partner),lastmod:''})));
      const uniqueEntries=[...new Map(entries.map(entry=>[entry.pathname,entry])).values()];
      const videoXml=entry=>entry.video?`<video:video><video:thumbnail_loc>${esc(entry.video.thumbnail)}</video:thumbnail_loc><video:title>${esc(entry.video.title)}</video:title><video:description>${esc(entry.video.description)}</video:description><video:player_loc allow_embed="yes">${esc(entry.video.player)}</video:player_loc>${entry.video.duration>0?`<video:duration>${Math.floor(entry.video.duration)}</video:duration>`:''}<video:family_friendly>no</video:family_friendly></video:video>`:'';
-    return xml(`<?xml version="1.0" encoding="UTF-8"?>\\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:video="http://www.google.com/schemas/sitemap-video/1.1">\\n${uniqueEntries.map(entry=>`<url><loc>${esc(base+entry.pathname)}</loc>${entry.lastmod?`<lastmod>${entry.lastmod}</lastmod>`:''}${videoXml(entry)}</url>`).join('\\n')}\\n</urlset>`)
+    return xml(`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:video="http://www.google.com/schemas/sitemap-video/1.1">\n${uniqueEntries.map(entry=>`<url><loc>${esc(base+entry.pathname)}</loc>${entry.lastmod?`<lastmod>${entry.lastmod}</lastmod>`:''}${videoXml(entry)}</url>`).join('\n')}\n</urlset>`)
  }
  if(req.method!=='GET'&&req.method!=='HEAD')return new Response('Method not allowed',{status:405});
  if (path.startsWith('/channels/partners/')) {
