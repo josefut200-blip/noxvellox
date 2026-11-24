@@ -169,3 +169,91 @@
 .video-art.cover-loaded .cover-art-safe{display:none!important}
 
 .home-video-art.cover-loaded .cover-art-safe{display:none!important}
+
+/* v0.4.9 — contained, centered responsive ad bands */
+.ad-slot.native-ad-slot,
+.home-dashboard .ad-slot.native-ad-slot{
+  box-sizing:border-box;
+  position:relative !important;
+  inset:auto !important;
+  top:auto !important;
+  right:auto !important;
+  bottom:auto !important;
+  left:auto !important;
+  transform:none !important;
+  overflow:hidden !important;
+  height:auto !important;
+  min-height:282px !important;
+  margin:24px 0 !important;
+  padding:16px !important;
+  display:flex !important;
+  flex-wrap:wrap;
+  justify-content:center;
+  align-items:center;
+  align-content:center;
+  gap:20px;
+  clear:both;
+}
+.ad-slot.native-ad-slot > .ad-label,
+.home-dashboard .ad-slot.native-ad-slot > .ad-label{
+  flex:0 0 100%;
+  width:100%;
+  order:0;
+  margin:0;
+  padding:0;
+  text-align:center;
+  align-self:flex-start;
+}
+.ad-slot.native-ad-slot > .native-banner-container,
+.home-dashboard .ad-slot.native-ad-slot > .native-banner-container{
+  box-sizing:border-box;
+  position:static !important;
+  flex:0 1 300px;
+  width:min(300px,100%);
+  max-width:300px;
+  min-width:0;
+  min-height:250px;
+  height:auto;
+  margin:0;
+  overflow:hidden;
+  display:grid;
+  place-items:center;
+  order:1;
+}
+.ad-slot.native-ad-slot .native-banner-container > iframe,
+.ad-slot.native-ad-slot .native-banner-container > img,
+.ad-slot.native-ad-slot .native-banner-container > ins,
+.home-dashboard .ad-slot.native-ad-slot .native-banner-container > iframe,
+.home-dashboard .ad-slot.native-ad-slot .native-banner-container > img,
+.home-dashboard .ad-slot.native-ad-slot .native-banner-container > ins{
+  display:block;
+  box-sizing:border-box;
+  width:100%;
+  max-width:300px;
+  height:auto;
+  max-height:250px;
+  margin:0 auto;
+}
+.ad-slot.native-ad-slot .ad-consent,
+.ad-slot.native-ad-slot .ad-message{
+  flex:0 0 100%;
+  width:100%;
+  text-align:center;
+  order:2;
+}
+.home-dashboard .ad-slot-feed{
+  grid-column:1 / -1;
+}
+@media(max-width:700px){
+  .ad-slot.native-ad-slot,
+  .home-dashboard .ad-slot.native-ad-slot{
+    min-height:282px !important;
+    padding:16px !important;
+    gap:16px;
+  }
+  .ad-slot.native-ad-slot > .native-banner-container,
+  .home-dashboard .ad-slot.native-ad-slot > .native-banner-container{
+    flex:0 1 100%;
+    width:min(300px,100%);
+  }
+}
