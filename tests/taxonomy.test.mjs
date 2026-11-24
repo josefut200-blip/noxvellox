@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const taxonomy = JSON.parse(readFileSync(resolve(root, 'public/data/taxonomy.json'), 'utf8'));
+const categories = taxonomy.groups.flatMap(group => group.categories);
 const worker = readFileSync(resolve(root, 'public/_worker.js'), 'utf8');
 const helperStart = worker.indexOf('function introWordCount(value)');
 assert.notEqual(helperStart, -1, 'Worker must define category indexing helpers');
@@ -26,7 +27,6 @@ const pageSource = worker.slice(pageStart, pageEnd < 0 ? worker.length : pageEnd
 const renderCategory = new Function('shell','esc','card','officialCard','adSlot','taxonomyFilterForm','introWordCount','indexableCategory',
   pageSource + '; return taxonomyCategoryPage;'
 ) (options => options, value => String(value), video => '<article>' + video.title + '</article>', video => '<official-card>' + video.title + '</official-card>', () => '', () => '<form></form>', introWordCount, indexableCategory);
-const categories = taxonomy.groups.flatMap(group => group.categories);
 const brazilian = categories.find(category => category.slug === 'brazilian');
 test('taxonomy has unique category slugs and 80-120 word English intros', () => {
   assert.equal(categories.length, 56);
