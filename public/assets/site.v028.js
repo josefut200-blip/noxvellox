@@ -245,48 +245,78 @@
       if(overlay.dataset.vastBound==='yes')return;
       const video=overlay.querySelector('[data-vast-video]');
       const status=overlay.querySelector('[data-vast-status]');
-      const start=overlay.querySelector('[data-vast-start]');
-      const continueButton=overlay.querySelector('[data-click-play]');
+      const skip=overlay.querySelector('[data-vast-skip]');
+      const mute=overlay.querySelector('[data-vast-mute]');
+      const cta=overlay.querySelector('[data-vast-cta]');
+      const domain=overlay.querySelector('[data-vast-domain]');
+      const progress=overlay.querySelector('[data-vast-progress-bar]');
       const endpoint=overlay.dataset.vastEndpoint||'';
-      if(!video||!continueButton)return;
+      const skipAfter=Math.max(3,Number(overlay.dataset.vastSkipSeconds||5));
+      if(!video||!skip)return;
       overlay.dataset.vastBound='yes';
-      const unlock=message=>{
-        continueButton.disabled=false;
-        continueButton.textContent='Continue to video';
-        if(status&&message)status.textContent=message;
-      };
-      const startAd=()=>{
-        video.play().then(()=>{
-          if(start)start.hidden=true;
-          if(status)status.textContent='Sponsored video is playing...';
-        }).catch(()=>{
-          if(start)start.hidden=false;
-          if(status)status.textContent='Press Play advertisement to start the sponsored video.';
-        });
-      };
-      const finishAd=()=>{
+      let countdownTimer=0;
+      const release=()=>{
         if(overlay.dataset.vastFinished==='yes')return;
         overlay.dataset.vastFinished='yes';
-        if(start)start.hidden=true;
-        unlock('The sponsored video has finished.');
+        if(countdownTimer)window.clearInterval(countdownTimer);
+        video.pause();
+        skip.disabled=true;
+        skip.hidden=true;
+        if(progress)progress.style.width='100%';
+        releaseClickPlay(skip);
       };
-      start?.addEventListener('click',startAd);
-      video.addEventListener('ended',finishAd,{once:true});
-      video.addEventListener('error',()=>unlock('Video ad temporarily unavailable. You can continue to the video.'),{once:true});
-      if(!endpoint){
-        unlock('No VAST tag is configured yet. You can continue to the video.');
-        return;
-      }
+      const tick=()=>{
+        const elapsed=Math.max(0,Number(video.currentTime||0));
+        const duration=Number(video.duration||0);
+        if(progress&&duration>0)progress.style.width=Math.min(100,(elapsed/duration)*100)+'%';
+        const remaining=Math.ceil(skipAfter-elapsed);
+        if(remaining<=0){
+          skip.disabled=false;
+          skip.textContent='Skip ad';
+          skip.style.cursor='pointer';
+          skip.style.background='#050505e6';
+        }else{
+          skip.textContent='Skip in '+remaining;
+        }
+      };
+      skip.addEventListener('click',event=>{
+        event.preventDefault();
+        if(!skip.disabled)release();
+      });
+      mute?.addEventListener('click',event=>{
+        event.preventDefault();
+        event.stopPropagation();
+        video.muted=!video.muted;
+        mute.textContent=video.muted?'🔇':'🔊';
+        mute.setAttribute('aria-label',video.muted?'Unmute advertisement':'Mute advertisement');
+      });
+      video.addEventListener('timeupdate',tick);
+      video.addEventListener('loadedmetadata',tick);
+      video.addEventListener('ended',release,{once:true});
+      video.addEventListener('error',release,{once:true});
+      if(!endpoint){release();return}
       resolveVast(endpoint).then(ad=>{
         if(!ad?.mediaUrl)throw new Error('No playable VAST media');
         video.src=ad.mediaUrl;
         video.muted=true;
         video.playsInline=true;
         video.autoplay=true;
-        if(ad.clickUrl)video.addEventListener('click',()=>window.open(ad.clickUrl,'_blank','noopener,noreferrer'),{once:true});
-        startAd();
+        if(ad.clickUrl){
+          cta.href=ad.clickUrl;
+          cta.hidden=false;
+          try{if(domain)domain.textContent=new URL(ad.clickUrl).hostname.replace(/^www\./,'')}catch{}
+        }
+        tick();
+        countdownTimer=window.setInterval(tick,250);
+        video.play().catch(()=>{
+          skip.disabled=false;
+          skip.textContent='Play ad';
+          skip.style.cursor='pointer';
+          if(status)status.textContent='Sponsored video';
+        });
+        if(status)status.textContent='Sponsored video';
       }).catch(()=>{
-        unlock('Video ad temporarily unavailable. You can continue to the video.');
+        release();
       });
     });
   };
