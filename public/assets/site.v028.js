@@ -232,6 +232,56 @@
     hideOverlay(overlay);
     releaseEmbeds();
   };
+  const setupVastClickOverlay=()=>{
+    document.querySelectorAll('[data-vast-play-overlay]').forEach(overlay=>{
+      if(overlay.dataset.vastBound==='yes')return;
+      const video=overlay.querySelector('[data-vast-video]');
+      const status=overlay.querySelector('[data-vast-status]');
+      const start=overlay.querySelector('[data-vast-start]');
+      const continueButton=overlay.querySelector('[data-click-play]');
+      const endpoint=overlay.dataset.vastEndpoint||'';
+      if(!video||!continueButton)return;
+      overlay.dataset.vastBound='yes';
+      const unlock=message=>{
+        continueButton.disabled=false;
+        continueButton.textContent='Continue to video';
+        if(status&&message)status.textContent=message;
+      };
+      const startAd=()=>{
+        video.play().then(()=>{
+          if(start)start.hidden=true;
+          if(status)status.textContent='Sponsored video is playing...';
+        }).catch(()=>{
+          if(start)start.hidden=false;
+          if(status)status.textContent='Press Play advertisement to start the sponsored video.';
+        });
+      };
+      const finishAd=()=>{
+        if(overlay.dataset.vastFinished==='yes')return;
+        overlay.dataset.vastFinished='yes';
+        if(start)start.hidden=true;
+        unlock('The sponsored video has finished.');
+      };
+      start?.addEventListener('click',startAd);
+      video.addEventListener('ended',finishAd,{once:true});
+      video.addEventListener('error',()=>unlock('Video ad temporarily unavailable. You can continue to the video.'),{once:true});
+      if(!endpoint){
+        unlock('No VAST tag is configured yet. You can continue to the video.');
+        return;
+      }
+      resolveVast(endpoint).then(ad=>{
+        if(!ad?.mediaUrl)throw new Error('No playable VAST media');
+        video.src=ad.mediaUrl;
+        video.muted=true;
+        video.playsInline=true;
+        video.autoplay=true;
+        if(ad.clickUrl)video.addEventListener('click',()=>window.open(ad.clickUrl,'_blank','noopener,noreferrer'),{once:true});
+        startAd();
+      }).catch(()=>{
+        unlock('Video ad temporarily unavailable. You can continue to the video.');
+      });
+    });
+  };
   const setupClickToPlay=()=>{
     document.querySelectorAll('[data-click-play-overlay]').forEach(overlay=>{
       const player=overlay.closest('[data-player]'),button=overlay.querySelector('[data-click-play]');
@@ -253,7 +303,8 @@
     releaseClickPlay(button);
   },true);
   setupClickToPlay();
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',setupClickToPlay,{once:true});
+  setupVastClickOverlay();
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>{setupClickToPlay();setupVastClickOverlay()},{once:true});
   const setupCoverImages=(root=document)=>root.querySelectorAll('[data-cover-image]').forEach(media=>{
     if(media.dataset.coverImageReady==='yes')return;
     media.dataset.coverImageReady='yes';
