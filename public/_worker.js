@@ -1143,28 +1143,45 @@ async function route(req,env){
  }
  if(path==='/sitemap')return Response.redirect(`${base}/sitemap.xml`,301);
  if(path==='/sitemap.xml'){
-     // D1 changes after deployment, so generate this at request time. Only
-     // clean canonical paths are emitted; pagination/search queries are excluded.
-     const dateOnly=value=>{const date=String(value||'').slice(0,10);return /^\d{4}-\d{2}-\d{2}$/.test(date)?date:''};
+     // Generate canonical URLs at request time. Search, filters, and shallow
+     // category pages are intentionally excluded from this XML document.
+     const dateOnly=value=>{const date=String(value||'').slice(0,10);return /^\\d{4}-\\d{2}-\\d{2}$/.test(date)?date:''};
+     const cleanVideoTitle=value=>normalizeImportedTitle(String(value||'')).slice(0,200)||'Official video';
+     const cleanVideoDescription=(title,value)=>String(value||'').replace(/\\s+/g,' ').trim().slice(0,2048)||`${title}. Video hosted and streamed by the original platform.`;
+     const sitemapVideo=(item,title,description,player,durationSeconds)=>({thumbnail:String(item||''),title,description,player,duration:Number(durationSeconds)||0});
      const entries=['/','/videos','/official-videos','/categories','/channels',...channelsV2.map(c=>`/channels/${c.slug}`),'/about','/privacy','/terms','/copyright','/contact'].map(pathname=>({pathname,lastmod:''}));
      try{
        if(db){
-         const published=await db.prepare("SELECT slug,published_at,category FROM videos WHERE status='published' AND slug IS NOT NULL AND slug<>'' ORDER BY published_at DESC,id DESC LIMIT 5000").all();
-         const official=await db.prepare("SELECT id,last_seen_at FROM official_embeds WHERE visibility='active' AND id IS NOT NULL AND id<>'' ORDER BY last_seen_at DESC,id DESC LIMIT 5000").all();
+         const published=await db.prepare("SELECT slug,title,description,poster_url,embed_url,duration_seconds,published_at FROM videos WHERE status='published' AND slug IS NOT NULL AND slug<>'' AND poster_url<>'' AND embed_url<>'' ORDER BY published_at DESC,id DESC LIMIT 5000").all();
+         const official=await db.prepare("SELECT id,title,poster_url,duration_seconds,last_seen_at FROM official_embeds WHERE visibility='active' AND id IS NOT NULL AND id<>'' AND poster_url<>'' ORDER BY last_seen_at DESC,id DESC LIMIT 5000").all();
          const categoryCounts=new Map();
          for(const row of (published.results||[])){const key=String(row.category||'').trim();if(key)categoryCounts.set(key,(categoryCounts.get(key)||0)+1)}
          for(const category of VISIBLE_NAV_CATEGORIES){if((categoryCounts.get(category)||0)>=4)entries.push({pathname:`/category/${slugify(category)}`,lastmod:''})}
          if((official.results||[]).length>=4)entries.push({pathname:'/category/official-embeds',lastmod:''});
-         entries.push(...(published.results||[]).map(row=>({pathname:`/watch/${encodeURIComponent(row.slug)}`,lastmod:dateOnly(row.published_at)})));
-         entries.push(...(official.results||[]).map(row=>({pathname:`/official-watch/${encodeURIComponent(row.id)}`,lastmod:dateOnly(row.last_seen_at)})));
+         for(const row of (published.results||[])){
+           if(!isHttpsUrl(row.poster_url)||!isHttpsUrl(row.embed_url))continue;
+           const title=cleanVideoTitle(row.title);
+           entries.push({pathname:`/watch/${encodeURIComponent(row.slug)}`,lastmod:dateOnly(row.published_at),video:sitemapVideo(row.poster_url,title,cleanVideoDescription(title,row.description),row.embed_url,row.duration_seconds)});
+         }
+         for(const row of (official.results||[])){
+           if(!isHttpsUrl(row.poster_url))continue;
+           const title=cleanVideoTitle(row.title);
+           const player=`${OFFICIAL_ORIGIN}/embed/${encodeURIComponent(row.id)}`;
+           entries.push({pathname:`/official-watch/${encodeURIComponent(row.id)}`,lastmod:dateOnly(row.last_seen_at),video:sitemapVideo(row.poster_url,title,cleanVideoDescription(title,''),player,row.duration_seconds)});
+         }
        }
        const localFeed=await loadLocalOfficialFeed(env,req);
-       if(Array.isArray(localFeed))entries.push(...localFeed.map(row=>({pathname:`/official-watch/${encodeURIComponent(row.id)}`,lastmod:dateOnly(row.updated_at||row.published_at)})));
+       if(Array.isArray(localFeed))for(const row of localFeed){
+         if(!isHttpsUrl(row.poster_url)||!isHttpsUrl(row.embed_url))continue;
+         const title=cleanVideoTitle(row.title);
+         entries.push({pathname:`/official-watch/${encodeURIComponent(row.id)}`,lastmod:dateOnly(row.updated_at||row.published_at),video:sitemapVideo(row.poster_url,title,cleanVideoDescription(title,row.description),row.embed_url,row.duration_seconds)});
+       }
      }catch(e){console.warn('Sitemap video expansion unavailable',String(e.message||e).slice(0,120))}
      const partners = await readPartnerDirectory(env, req);
      entries.push(...partners.map(partner => ({pathname:partnerPath(partner),lastmod:''})));
      const uniqueEntries=[...new Map(entries.map(entry=>[entry.pathname,entry])).values()];
-    return xml(`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${uniqueEntries.map(entry=>`<url><loc>${esc(base+entry.pathname)}</loc>${entry.lastmod?`<lastmod>${entry.lastmod}</lastmod>`:''}</url>`).join('\n')}\n</urlset>`)
+     const videoXml=entry=>entry.video?`<video:video><video:thumbnail_loc>${esc(entry.video.thumbnail)}</video:thumbnail_loc><video:title>${esc(entry.video.title)}</video:title><video:description>${esc(entry.video.description)}</video:description><video:player_loc allow_embed="yes">${esc(entry.video.player)}</video:player_loc>${entry.video.duration>0?`<video:duration>${Math.floor(entry.video.duration)}</video:duration>`:''}<video:family_friendly>no</video:family_friendly></video:video>`:'';
+    return xml(`<?xml version="1.0" encoding="UTF-8"?>\\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:video="http://www.google.com/schemas/sitemap-video/1.1">\\n${uniqueEntries.map(entry=>`<url><loc>${esc(base+entry.pathname)}</loc>${entry.lastmod?`<lastmod>${entry.lastmod}</lastmod>`:''}${videoXml(entry)}</url>`).join('\\n')}\\n</urlset>`)
  }
  if(req.method!=='GET'&&req.method!=='HEAD')return new Response('Method not allowed',{status:405});
  if (path.startsWith('/channels/partners/')) {
