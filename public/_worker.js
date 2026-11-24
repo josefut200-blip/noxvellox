@@ -637,6 +637,43 @@ async function collectionCounts(db,collection){
   .bind(MIN_VIDEO_DURATION_SECONDS).first();
  return Number(row?.total||0);
 }
+
+function channelDisplayName(value){
+ return String(value||'').split(/[-_\\s]+/).filter(Boolean).map(part=>part.length<=3?part.toUpperCase():part[0].toUpperCase()+part.slice(1)).join(' ')||'Publisher channel';
+}
+async function channelDirectory(db,limit=100){
+ if(!db)return [];
+ const result=await db.prepare("SELECT COALESCE(NULLIF(vm.channel_id,''),NULLIF(vm.studio,'')) AS slug,MAX(NULLIF(vm.studio,'')) AS studio,COUNT(DISTINCT v.id) AS count FROM video_metadata vm JOIN videos v ON v.id=vm.video_id WHERE COALESCE(NULLIF(vm.channel_id,''),NULLIF(vm.studio,''))<>'' AND v.status='published' AND v.rights_confirmed=1 AND v.adults_verified=1 AND v.duration_seconds>=? AND v.poster_url<>'' AND v.embed_url<>'' GROUP BY COALESCE(NULLIF(vm.channel_id,''),NULLIF(vm.studio,'')) ORDER BY count DESC,slug ASC LIMIT ?")
+  .bind(MIN_VIDEO_DURATION_SECONDS,Math.max(1,Math.min(500,limit))).all();
+ return (result.results||[]).map(row=>({slug:String(row.slug||''),name:channelDisplayName(row.studio||row.slug),count:Number(row.count||0)})).filter(row=>row.slug);
+}
+async function taxonomyChannelVideos(db,slug,{limit=40,offset=0,q='',sort='recent'}={}){
+ if(!db||!slug)return [];
+ const params=[slug,slug,'published',1,1,MIN_VIDEO_DURATION_SECONDS];
+ let where="(vm.channel_id=? OR vm.studio=?) AND v.status=? AND v.rights_confirmed=? AND v.adults_verified=? AND v.duration_seconds>=? AND v.poster_url<>'' AND v.embed_url<>''";
+ if(q){where+=" AND (v.title LIKE ? OR v.description LIKE ?)";const match=`%${q}%`;params.push(match,match)}
+ let order="v.published_at DESC,v.id DESC";
+ if(sort==='popular')order="(SELECT COUNT(*) FROM video_views vv WHERE vv.video_id=v.id) DESC,v.published_at DESC,v.id DESC";
+ params.push(limit,offset);
+ const result=await db.prepare("SELECT DISTINCT v.id,v.slug,v.title,v.description,v.category,v.poster_url,v.embed_url,v.source_url,v.provider,v.duration_seconds,v.status,v.published_at FROM videos v JOIN video_metadata vm ON vm.video_id=v.id WHERE "+where+" ORDER BY "+order+" LIMIT ? OFFSET ?").bind(...params).all();
+ return result.results||[];
+}
+async function countTaxonomyChannelVideos(db,slug,q=''){
+ if(!db||!slug)return 0;
+ const params=[slug,slug,'published',1,1,MIN_VIDEO_DURATION_SECONDS];
+ let where="(vm.channel_id=? OR vm.studio=?) AND v.status=? AND v.rights_confirmed=? AND v.adults_verified=? AND v.duration_seconds>=? AND v.poster_url<>'' AND v.embed_url<>''";
+ if(q){where+=" AND (v.title LIKE ? OR v.description LIKE ?)";const match=`%${q}%`;params.push(match,match)}
+ const row=await db.prepare("SELECT COUNT(DISTINCT v.id) AS total FROM videos v JOIN video_metadata vm ON vm.video_id=v.id WHERE "+where).bind(...params).first();
+ return Number(row?.total||0);
+}
+function taxonomyChannelPage({base,url,channel,videos,total,q='',sort='recent'}){
+ const canonical=base+'/channels/'+encodeURIComponent(channel.slug);
+ const filtered=url.searchParams.toString().length>0;
+ const canIndex=Number(total)>=MIN_INDEXABLE_CATEGORY_VIDEOS&&!filtered;
+ const cards=videos.length?videos.map(card).join(''):'<div class="empty"><strong>No approved videos for this channel yet</strong><p>Only published videos with approved rights and verified adult participation appear here.</p></div>';
+ const body='<section class="wrap page-head"><div class="section-kicker"><a href="/channels">Channels</a></div><h1>'+esc(channel.name)+' Videos</h1><p>Approved publisher listings from '+esc(channel.name)+' on Noxvellox.</p><p>'+Number(total).toLocaleString('en-US')+' approved videos</p></section><section class="wrap"><form class="taxonomy-filters" method="get" action=""><label>Search this channel<input name="q" value="'+esc(q)+'" maxlength="80" placeholder="Search titles"></label><label>Sort<select name="sort"><option value="recent"'+(sort==='recent'?' selected':'')+'>Most recent</option><option value="popular"'+(sort==='popular'?' selected':'')+'>Most viewed</option></select></label><button class="button" type="submit">Apply</button></form><div class="video-grid">'+cards+'</div>'+adSlot()+'</section>';
+ return shell({base,url:url.href,title:channel.name+' Videos | Noxvellox',description:'Browse approved videos from '+channel.name+' on Noxvellox.',canonical,robots:canIndex?'index,follow':'noindex,follow',body});
+}
 function publishedArticle(v,base){const url=v.official?`${base}/official-watch/${encodeURIComponent(v.slug)}`:`${base}/watch/${encodeURIComponent(v.slug)}`;return { '@context':'https://schema.org','@type':'VideoObject',name:v.title,description:v.description||v.title,thumbnailUrl:isHttpsUrl(v.poster_url)?v.poster_url:undefined,embedUrl:isHttpsUrl(v.embed_url)?v.embed_url:undefined,uploadDate:v.published_at?`${v.published_at.replace(' ','T')}Z`:undefined,duration:v.duration_seconds?`PT${Math.floor(v.duration_seconds/60)}M${v.duration_seconds%60}S`:undefined,isFamilyFriendly:false,isAccessibleForFree:true,url};}
 function homePage({base,url,videos,official=[]}){
   const hero=`<section class="wrap hero"><div class="hero-copy"><div class="eyebrow">A new world after dark</div><h1>Stay curious.<br><em>Explore more.</em></h1><p>Discover a thoughtfully organized adults-only video catalog featuring authorized content, fresh collections, and effortless navigation.</p><div class="actions"><a class="button" href="/videos">Explore videos </a><a class="button ghost" href="/categories">Browse categories</a></div><div class="meta-strip"><span>Adults only</span><span>Curated collections</span><span>Independent catalog</span></div></div><div class="hero-art" aria-hidden="true"><div class="hero-mark">N<small>18+</small></div></div></section>`;
@@ -1485,6 +1522,7 @@ async function route(req,env){
          const official=await db.prepare("SELECT id,title,poster_url,duration_seconds,last_seen_at FROM official_embeds WHERE visibility='active' AND id IS NOT NULL AND id<>'' AND id NOT IN ('696c7c920140e','6937cf5fea785') AND poster_url<>'' AND duration_seconds >= ${MIN_OFFICIAL_DURATION_SECONDS} ORDER BY last_seen_at DESC,id DESC LIMIT 5000").all();
          const categoryPages=await categoryDirectory(db,taxonomy,500);
          for(const category of categoryPages)if(category.seo_indexable)entries.push({pathname:'/category/'+encodeURIComponent(category.slug),lastmod:''});
+         for(const channel of await channelDirectory(db,500))if(channel.count>=MIN_INDEXABLE_CATEGORY_VIDEOS)entries.push({pathname:'/channels/'+encodeURIComponent(channel.slug),lastmod:''});
          for(const row of (published.results||[])){
            if(!isHttpsUrl(row.poster_url)||!isHttpsUrl(row.embed_url))continue;
            const title=cleanVideoTitle(row.title);
@@ -1546,12 +1584,43 @@ if(path==='/'){const videos=await listVideos(db,{limit:8});const official=(await
  else if(path==='/search'){const q=safeText(url.searchParams.get('q')||'',80);const videos=q?await listVideos(db,{q,limit:40}):[];const official=q?(await officialCatalog(db,{page:1,limit:40,q,localEntries:localFeed})).entries:[];const taxonomy=searchTaxonomy(q);markup=searchPage({base,url:url.href,q,videos,official,channels:taxonomy.channels,matchedCategories:taxonomy.categories})}
   else if(path==='/categories'){const directory=await categoryDirectory(taxonomyReady?db:null,taxonomy,30);markup=shell({base,url:url.href,title:'Browse Video Categories | Noxvellox',description:'Explore approved video categories by performer, body type, act, style and theme.',body:'<section class="wrap page-head"><div class="section-kicker">Discover by interest</div><h1>Categories</h1><p>Browse approved videos by topic. Channels identify the publisher; categories describe the source-provided subject.</p></section><div class="wrap">'+categoryCardsV2(directory)+adSlot()+'</div>'});}
   else if(path==='/channels'){
-    const partners = await partnersWithArt(env,req);
-    markup=shell({base,url:url.href,title:'Channels | Noxvellox',description:'Browse publisher channels and their videos on Noxvellox.',
+    const partners=await partnersWithArt(env,req);
+    const metadataChannels=await channelDirectory(taxonomyReady?db:null,100);
+    const dynamicChannels=metadataChannels.filter(channel=>!channelsV2.some(item=>item.slug===channel.slug));
+    const dynamicGrid=dynamicChannels.length?'<section class="wrap"><h2>Publisher channels</h2><div class="nv-channel-grid">'+dynamicChannels.map(channel=>'<a class="nv-channel" href="/channels/'+encodeURIComponent(channel.slug)+'"><b aria-hidden="true">'+esc(channel.name.slice(0,2))+'</b><strong>'+esc(channel.name)+'</strong><small>'+channel.count.toLocaleString('en-US')+' approved videos</small><span aria-hidden="true">›</span></a>').join('')+'</div></section>':'';
+    markup=shell({base,url:url.href,title:'Channels | Noxvellox',description:'Browse publisher channels and their approved videos on Noxvellox.',
       body:'<div class="wrap nv-directory" id="partners"><h1>Channels</h1>'+partnerCarousel(partners)+
-        '<div class="nv-channel-grid">'+partners.map(partnerTile).join('')+'</div>'+adSlot()+'</div>'});
+        '<div class="nv-channel-grid">'+partners.map(partnerTile).join('')+'</div></div>'+dynamicGrid+adSlot()});
   }
-else if(path.startsWith('/channels/')||path.startsWith('/channel/')){const prefix=path.startsWith('/channels/')?'/channels/':'/channel/';const slug=path.slice(prefix.length).split('/')[0];const channel=channelsV2.find(c=>c.slug===slug);if(channel){const requestedPage=Math.max(1,Math.min(1000,Number(url.searchParams.get('page')||1)));const requestedQuery=safeText(url.searchParams.get('q')||'',80);const requestedSort=['recent','popular','rating'].includes(url.searchParams.get('sort')||'recent')?(url.searchParams.get('sort')||'recent'):'recent';const limit=20;const canonicalUrl=`${base}/channels/${encodeURIComponent(channel.slug)}`;if(channel.category==='Official embeds'){const result=await officialCatalog(db,{page:requestedPage,limit,q:requestedQuery,localEntries:localFeed});markup=channelPageV4({base,url:url.href,canonicalUrl,channel,videos:[],official:result.entries,total:Number(result.total||0),page:requestedPage,limit,q:requestedQuery,sort:requestedSort})}else{const offset=(requestedPage-1)*limit;const videos=await listVideos(db,{category:channel.category,q:requestedQuery,offset,limit,sort:requestedSort});const total=await countChannelVideosV4(db,channel,requestedQuery);markup=channelPageV4({base,url:url.href,canonicalUrl,channel,videos,official:[],total,page:requestedPage,limit,q:requestedQuery,sort:requestedSort})}}else markup=notFound({base,url:url.href})}
+  else if(path.startsWith('/channels/')||path.startsWith('/channel/')){
+    const prefix=path.startsWith('/channels/')?'/channels/':'/channel/';
+    const slug=path.slice(prefix.length).split('/')[0];
+    const channel=channelsV2.find(c=>c.slug===slug);
+    if(channel){
+      const requestedPage=Math.max(1,Math.min(1000,Number(url.searchParams.get('page')||1)));
+      const requestedQuery=safeText(url.searchParams.get('q')||'',80);
+      const requestedSort=['recent','popular','rating'].includes(url.searchParams.get('sort')||'recent')?(url.searchParams.get('sort')||'recent'):'recent';
+      const limit=20,canonicalUrl=`${base}/channels/${encodeURIComponent(channel.slug)}`;
+      if(channel.category==='Official embeds'){
+        const result=await officialCatalog(db,{page:requestedPage,limit,q:requestedQuery,localEntries:localFeed});
+        markup=channelPageV4({base,url:url.href,canonicalUrl,channel,videos:[],official:result.entries,total:Number(result.total||0),page:requestedPage,limit,q:requestedQuery,sort:requestedSort});
+      }else{
+        const offset=(requestedPage-1)*limit;
+        const videos=await listVideos(db,{category:channel.category,q:requestedQuery,offset,limit,sort:requestedSort});
+        const total=await countChannelVideosV4(db,channel,requestedQuery);
+        markup=channelPageV4({base,url:url.href,canonicalUrl,channel,videos,official:[],total,page:requestedPage,limit,q:requestedQuery,sort:requestedSort});
+      }
+    }else{
+      const dynamicChannel=(await channelDirectory(taxonomyReady?db:null,500)).find(item=>item.slug===slug);
+      if(dynamicChannel){
+        const requestedQuery=safeText(url.searchParams.get('q')||'',80);
+        const requestedSort=url.searchParams.get('sort')==='popular'?'popular':'recent';
+        const total=await countTaxonomyChannelVideos(db,slug,requestedQuery);
+        const videos=await taxonomyChannelVideos(db,slug,{limit:40,q:requestedQuery,sort:requestedSort});
+        markup=taxonomyChannelPage({base,url,channel:dynamicChannel,videos,total,q:requestedQuery,sort:requestedSort});
+      }else markup=notFound({base,url:url.href});
+    }
+  }
   else if(path.startsWith('/category/')){const slug=path.split('/')[2];const legacy={'featured':'/featured','trending':'/trending','new-releases':'/new-releases','most-viewed':'/most-viewed','originals':'/featured','collections':'/categories','interviews':'/channels','wellness':'/categories','brazzers':'/channels/brazzers','official-embeds':'/official-videos'};if(legacy[slug])return Response.redirect(base+legacy[slug],301);const c=taxonomy.categoryBySlug[slug];if(c){const filters=taxonomyFilters(url,taxonomy);const total=await countTaxonomyCategoryVideos(taxonomyReady?db:null,c,filters);const videos=await taxonomyCategoryVideos(taxonomyReady?db:null,c,{filters,limit:40});markup=taxonomyCategoryPage({base,url:url.href,category:c,videos,total,taxonomy,filters})}else markup=notFound({base,url:url.href})}
   else if(path.startsWith('/watch/')){const slug=path.slice(7);const v=await getVideo(db,slug);if(!v){const official=await officialById(db,slug,localFeed);if(official)return Response.redirect(`${base}/official-watch/${encodeURIComponent(slug)}`,301)}const related=v?rotateRelated(await listVideos(db,{category:v.category,limit:30,sort:'popular'}),slug,30):[];markup=v?watchPage({url:url.href,base,v,related,env}):notFound({base,url:url.href})}
  else if(COLLECTIONS.includes(path.slice(1))){const key=path.slice(1);const videos=await collectionVideos(taxonomyReady?db:null,key,40);const total=await collectionCounts(taxonomyReady?db:null,key);markup=collectionPage({base,url:url.href,collection:key,videos,total})}
