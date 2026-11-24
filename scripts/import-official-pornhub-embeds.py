@@ -15,6 +15,7 @@ import re
 import sys
 import tempfile
 import time
+import unicodedata
 import urllib.error
 import urllib.request
 import zipfile
@@ -28,6 +29,8 @@ BASE_FEED_PATH = DATA / "videos.json"
 ARTIFACT_PATH = ROOT / "artifacts" / "seo-video-batch.json"
 EXPORT_URL = "https://www.pornhub.com/files/pornhub.com-db.zip"
 RSS_URL = "https://www.pornhub.com/video/webmasterss"
+TAXONOMY_PATH = DATA / "taxonomy.json"
+_TAXONOMY_CACHE = None
 TARGET = min(10000, max(1, int(os.environ.get("VIDEO_BATCH_TARGET", "10000"))))
 MAX_EXPORT_BYTES = int(os.environ.get("PORNHUB_EXPORT_MAX_BYTES", str(5 * 1024**3)))
 MIN_DURATION = 60
@@ -44,6 +47,86 @@ def read_json(path, fallback):
         return json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
         return fallback
+
+
+
+def load_taxonomy():
+    global _TAXONOMY_CACHE
+    if _TAXONOMY_CACHE is None:
+        _TAXONOMY_CACHE = read_json(TAXONOMY_PATH, {})
+    return _TAXONOMY_CACHE if isinstance(_TAXONOMY_CACHE, dict) else {}
+
+
+def normalize_tag(value):
+    value = unicodedata.normalize("NFKD", str(value or ""))
+    value = value.encode("ascii", "ignore").decode("ascii").lower()
+    return re.sub(r"[^a-z0-9]+", " ", value).strip()
+
+
+def tag_values(value):
+    values = value if isinstance(value, list) else re.split(r"[;,|]", str(value or ""))
+    output = []
+    for item in values:
+        if isinstance(item, dict):
+            item = item.get("slug") or item.get("name") or item.get("label") or item.get("tag") or ""
+        item = re.sub(r"[\x00-\x1f]", " ", str(item or "")).strip()[:80]
+        if item and item not in output:
+            output.append(item)
+        if len(output) >= 80:
+            break
+    return output
+
+
+def contains_phrase(text, phrase):
+    phrase = normalize_tag(phrase)
+    return bool(phrase and f" {phrase} " in f" {text} ")
+
+
+def classify_taxonomy(title, raw_tags):
+    taxonomy = load_taxonomy()
+    categories = [
+        category
+        for group in taxonomy.get("groups", [])
+        for category in group.get("categories", [])
+        if isinstance(category, dict) and category.get("slug")
+    ]
+    formats = [item for item in taxonomy.get("formats", []) if isinstance(item, dict) and item.get("slug")]
+    blocked = {normalize_tag(value) for value in taxonomy.get("blockedTags", [])}
+    normalized_title = normalize_tag(title)
+    raw_tags = tag_values(raw_tags)
+    normalized_tags = [normalize_tag(value) for value in raw_tags]
+    ambiguous = any(
+        normalized == term or term in normalized.split()
+        for normalized in [normalized_title, *normalized_tags]
+        if normalized
+        for term in blocked
+    )
+    safe_tags = [
+        tag for tag, normalized in zip(raw_tags, normalized_tags)
+        if normalized and not any(term in normalized.split() or normalized == term for term in blocked)
+    ]
+    if ambiguous:
+        return safe_tags, [], []
+
+    def matches(item, value):
+        aliases = [item.get("slug", ""), item.get("name", ""), *(item.get("aliases") or [])]
+        for alias in aliases:
+            normalized = normalize_tag(alias)
+            if len(normalized.replace(" ", "")) < 4 and normalized != "pov":
+                continue
+            if normalized and (normalized == value or contains_phrase(value, normalized)):
+                return True
+        return False
+
+    category_slugs = [
+        item["slug"] for item in categories
+        if any(matches(item, tag) for tag in normalized_tags) or matches(item, normalized_title)
+    ]
+    format_slugs = [
+        item["slug"] for item in formats
+        if any(matches(item, tag) for tag in normalized_tags) or matches(item, normalized_title)
+    ]
+    return safe_tags, list(dict.fromkeys(category_slugs)), list(dict.fromkeys(format_slugs))
 
 
 def parse_duration(value):
@@ -89,6 +172,7 @@ def build_entry(video_id, title, duration, poster, tags="", publisher="Pornhub")
     title = english_title(title)
     category = english_category(title, str(tags or ""))
     poster = html.unescape(str(poster or "")).strip()
+    raw_tags, category_slugs, format_slugs = classify_taxonomy(title, tags)
     if not re.fullmatch(r"https://(?:[\w-]+\.)*phncdn\.com/.*", poster, re.IGNORECASE):
         poster = ""
     return {
@@ -100,6 +184,9 @@ def build_entry(video_id, title, duration, poster, tags="", publisher="Pornhub")
             "Explore more curated releases from verified channels in the Noxvellox catalog."
         ),
         "category": category,
+        "categories": category_slugs,
+        "formats": format_slugs,
+        "raw_tags": raw_tags,
         "publisher": publisher,
         "poster_url": poster,
         "embed_url": f"https://www.pornhub.com/embed/{video_id}",
@@ -185,13 +272,14 @@ def read_official_zip(zip_path, existing_ids, remaining):
             duration_col = find_column(headers, ["duration", "length", "seconds"])
             poster_col = find_column(headers, ["thumbnailurl", "thumburl", "thumbnail", "thumb", "poster"])
             tags_col = find_column(headers, ["tags", "tag"])
+            categories_col = find_column(headers, ["categories", "category"])
             video_col = find_column(headers, ["videourl", "url", "videolink", "link"])
             if embed_col is None or title_col is None:
                 # The official webmaster ZIP uses a pipe-delimited, headerless
                 # layout: embed|thumb|thumbs|title|tags|categories|pornstars|duration|...
                 rows = iter([first_row])
                 first_data = next(rows, [])
-                embed_col, poster_col, title_col, tags_col, duration_col, video_col = 0, 11, 3, 4, 7, None
+                embed_col, poster_col, title_col, tags_col, categories_col, duration_col, video_col = 0, 11, 3, 4, 5, 7, None
                 def all_rows():
                     yield first_data
                     yield from reader
@@ -202,7 +290,7 @@ def read_official_zip(zip_path, existing_ids, remaining):
                 scanned += 1
                 get = lambda index: row[index] if index is not None and index < len(row) else ""
                 title = html.unescape(get(title_col))
-                tags = html.unescape(get(tags_col))
+                tags = [html.unescape(get(tags_col)), html.unescape(get(categories_col))]
                 embed = html.unescape(get(embed_col))
                 video_url = html.unescape(get(video_col))
                 video_id = extract_id(embed, video_url)
@@ -247,7 +335,7 @@ def read_official_rss(existing_ids, remaining):
         embed_node = item.find("embed")
         embed = (embed_node.text or embed_node.tail or "") if embed_node is not None else ""
         video_id = extract_id(embed, video_url)
-        tags = " ".join((tag.text or "") for tag in item.findall("tag"))
+        tags = [node.text or "" for node in item.iter() if node.tag.split("}")[-1].lower() in {"tag", "category"}]
         if not video_id or not title or duration < MIN_DURATION or AGE_AMBIGUOUS.search(title + " " + tags):
             continue
         if video_id in existing_ids:
