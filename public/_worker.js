@@ -1079,23 +1079,23 @@ async function adminPage({db,env,url,req,base}){
 }
 function normalizeImportedTitle(raw){
  const original=safeText(raw,200)
-  .replace(/[\\p{Extended_Pictographic}\\p{Emoji_Modifier}\\p{Regional_Indicator}\\u{FE0F}\\u{200D}\\u{20E3}]/gu,'')
-  .replace(/\\s+/g,' ').trim();
+  .replace(/[\p{Extended_Pictographic}\p{Emoji_Modifier}\p{Regional_Indicator}\u{FE0F}\u{200D}\u{20E3}]/gu,'')
+  .replace(/\s+/g,' ').trim();
  if(!original)return '';
- const promotional=/^(?:(?:full[\\s_-]+video|watch[\\s_-]+now|must[\\s_-]+watch|watch|download|free|hot|new|official|exclusive|full|now|video)\\b[\\s!|:_-]*)+/i;
+ const promotional=/^(?:(?:full[\s_-]+video|watch[\s_-]+now|must[\s_-]+watch|watch|download|free|hot|new|official|exclusive|full|now|video)\b[\s!|:_-]*)+/i;
  const cleaned=original
-  .replace(/^[\\s"'“”‘’()[\\]{}<>|:;,.!?*_~-]+/u,'')
+  .replace(/^[\s\p{P}\p{S}]+/u,'')
   .replace(promotional,'')
-  .replace(/([.,:;!?])\\1+/g,'$1')
+  .replace(/([.,:;!?])\1+/g,'$1')
   .replace(/[!?|*_~]+/g,' ')
-  .replace(/\\s+([,.;:])/g,'$1')
-  .replace(/\\s+/g,' ')
-  .replace(/[\\s"'“”‘’()[\\]{}<>|:;,.!?*_~-]+$/u,'')
+  .replace(/\s+([,.;:])/g,'$1')
+  .replace(/\s+/g,' ')
+  .replace(/[\s\p{P}\p{S}]+$/u,'')
   .trim();
  if(!cleaned)return '';
  const letters=cleaned.replace(/[^A-Za-zÀ-ÿ]/g,'');
  const shouldTitle=letters.length>8&&letters===letters.toUpperCase();
- return shouldTitle?cleaned.toLowerCase().replace(/(^|[\\s-])([a-zà-ÿ])/g,(_,p,c)=>p+c.toUpperCase()):cleaned;
+ return shouldTitle?cleaned.toLowerCase().replace(/(^|[\s-])([a-zà-ÿ])/g,(_,p,c)=>p+c.toUpperCase()):cleaned;
 }
 function displayVideoTitle(value){
  return normalizeImportedTitle(value)||'Untitled video';
