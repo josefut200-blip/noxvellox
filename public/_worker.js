@@ -257,17 +257,54 @@ async function officialFeed(){
 // When it is valid, public pages use it as the source of truth and never make
 // a live provider request from Cloudflare. A missing/invalid asset preserves
 // the legacy fallback for local tests and older deployments.
+//
+// CPU guard: the manual catalog is several megabytes and can contain thousands
+// of rows. Never parse it and hydrate posters on every request. Cache the
+// normalized snapshot for a short period and hydrate only small D1 result sets
+// inside officialCatalog/officialById.
+const LOCAL_OFFICIAL_FEED_CACHE_TTL=300;
+let localOfficialFeedMemory={expiresAt:0,entries:null};
 async function loadLocalOfficialFeed(env,req){
  try{
+  const now=Date.now();
+  if(localOfficialFeedMemory.entries&&localOfficialFeedMemory.expiresAt>now)return localOfficialFeedMemory.entries;
+  const cache=(typeof caches!=='undefined'&&caches.default)?caches.default:null;
+  const cacheKey=new Request(new URL('/__internal/local-official-feed-v2',req.url));
+  if(cache){
+   try{
+    const cached=await cache.match(cacheKey);
+    if(cached){
+     const cachedEntries=await cached.json();
+     if(Array.isArray(cachedEntries)){
+      localOfficialFeedMemory={expiresAt:now+LOCAL_OFFICIAL_FEED_CACHE_TTL*1000,entries:cachedEntries};
+      return cachedEntries;
+     }
+    }
+   }catch{/* Nonfatal cache miss */}
+  }
   if(!env?.ASSETS?.fetch)return null;
   const assetUrl=new URL('/data/videos.json',req.url);
-  const [response,manualResponse]=await Promise.all([env.ASSETS.fetch(new Request(assetUrl)),env.ASSETS.fetch(new Request(new URL('/data/manual-official-videos.json',req.url)))]);
+  const [response,manualResponse]=await Promise.all([
+   env.ASSETS.fetch(new Request(assetUrl)),
+   env.ASSETS.fetch(new Request(new URL('/data/manual-official-videos.json',req.url)))
+  ]);
   const payload=response.ok?await response.json():null;
   const manualPayload=manualResponse.ok?await manualResponse.json():null;
-  const entries=[...(Array.isArray(payload)?payload:(Array.isArray(payload?.entries)?payload.entries:[])),...(Array.isArray(manualPayload?.entries)?manualPayload.entries:[])];
-  const normalized=entries.filter(item=>item&&/^[a-z0-9]{8,24}$/i.test(String(item.id||''))&&String(item.title||'').trim()&&isHttpsUrl(item.source_url)&&isHttpsUrl(item.embed_url)).map(item=>({...item,source_url:String(item.source_url),embed_url:String(item.embed_url),poster_url:isHttpsUrl(item.poster_url)?String(item.poster_url):(isPreviewEmbedUrl(item.embed_url)?String(item.embed_url):'')}));
-  const eligible=normalized.filter(item=>Number.isInteger(Number(item.duration_seconds))&&Number(item.duration_seconds)>=MIN_OFFICIAL_DURATION_SECONDS);
-  return await hydrateOfficialPosters(eligible);
+  const entries=[
+   ...(Array.isArray(payload)?payload:(Array.isArray(payload?.entries)?payload.entries:[])),
+   ...(Array.isArray(manualPayload?.entries)?manualPayload.entries:[])
+  ];
+  const normalized=entries
+   .filter(item=>item&&/^[a-z0-9]{8,24}$/i.test(String(item.id||''))&&String(item.title||'').trim()&&isHttpsUrl(item.source_url)&&isHttpsUrl(item.embed_url))
+   .map(item=>({...item,source_url:String(item.source_url),embed_url:String(item.embed_url),poster_url:isHttpsUrl(item.poster_url)?String(item.poster_url):(isPreviewEmbedUrl(item.embed_url)?String(item.embed_url):'')}))
+   .filter(item=>Number.isInteger(Number(item.duration_seconds))&&Number(item.duration_seconds)>=MIN_OFFICIAL_DURATION_SECONDS);
+  localOfficialFeedMemory={expiresAt:now+LOCAL_OFFICIAL_FEED_CACHE_TTL*1000,entries:normalized};
+  if(cache){
+   try{
+    await cache.put(cacheKey,new Response(JSON.stringify(normalized),{headers:{'content-type':'application/json; charset=utf-8','cache-control':`public, max-age=${LOCAL_OFFICIAL_FEED_CACHE_TTL}`}}));
+   }catch{/* Nonfatal cache write failure */}
+  }
+  return normalized;
  }catch{return null}
 }
 const posterExpiry=value=>{
