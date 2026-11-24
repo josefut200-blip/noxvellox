@@ -837,15 +837,28 @@ async function runImport(env,db){
  await db.prepare('INSERT INTO import_runs(status,received,added,rejected,message) VALUES (?,?,?,?,?)').bind('completed',Math.min(items.length,40),added,rejected,autoPublished?'Verified candidates auto-published after provider health and player checks; others remain pending.':'Candidates remain pending because the feed did not provide both required rights confirmations.').run();
  return {received:Math.min(items.length,40),added,rejected,autoPublished,pendingApproval:autoPublished<added,autoPublishMode:'verified-only'};
 }
+async function fetchVastXml(url,depth=0){
+ if(depth>3)throw new Error('VAST wrapper limit reached');
+ const response=await fetch(url,{method:'GET',headers:{accept:'application/xml,text/xml,*/*'},signal:AbortSignal.timeout(7000)});
+ if(!response.ok)throw new Error('VAST upstream returned '+response.status);
+ const xml=await response.text();
+ // ExoClick can return a VAST Wrapper whose next URL is cross-origin.
+ // Resolve wrappers inside the Worker so the browser only requests our same-origin endpoint.
+ if(/<MediaFile\\b/i.test(xml))return xml;
+ const match=xml.match(/<VASTAdTagURI\\b[^>]*>\\s*([\\s\\S]*?)\\s*<\\/VASTAdTagURI>/i);
+ const next=match?.[1]?.replace(/^<!\\[CDATA\\[|\\]]>$/g,'').trim()||'';
+ if(!/^https:\\/\\//i.test(next))return xml;
+ return fetchVastXml(next,depth+1);
+}
 async function api(req,env,url,db){
  const path=url.pathname;
  if(path==='/api/pre-roll-vast'&&req.method==='GET'){
   const target=prerollVastUrl(env);
   if(!target)return new Response('Video pre-roll is not configured.',{status:404,headers:{'content-type':'text/plain; charset=utf-8','cache-control':'no-store'}});
   try{
-   const response=await fetch(target,{method:'GET',headers:{accept:'application/xml,text/xml,*/*'},signal:AbortSignal.timeout(7000)});
-   return new Response(response.body,{status:response.status,headers:{'content-type':response.headers.get('content-type')||'application/xml; charset=utf-8','cache-control':'no-store'}});
-  }catch{return new Response('Video ad provider unavailable.',{status:502,headers:{'content-type':'text/plain; charset=utf-8','cache-control':'no-store'}})}
+   const xml=await fetchVastXml(target);
+   return new Response(xml,{status:200,headers:{'content-type':'application/xml; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff'}});
+  }catch{return new Response('Video ad provider unavailable.',{status:502,headers:{'content-type':'text/plain; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff'}})}
  }
  if(path==='/api/ad-health'&&req.method==='GET'){
   const started=Date.now();
