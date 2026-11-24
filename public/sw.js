@@ -1,4 +1,4 @@
-const CACHE_NAME = 'noxvellox-shell-v13';
+const CACHE_NAME = 'noxvellox-shell-v14';
 const SHELL = [
   '/',
   '/videos',
@@ -7,8 +7,8 @@ const SHELL = [
   '/history',
   '/manifest.webmanifest',
   '/favicon.svg',
-  '/assets/style.v027.css?ver=0.4.9',
-  '/assets/home-dashboard.v029.css?ver=0.4.3',
+  '/assets/style.v027.css?ver=0.4.10',
+  '/assets/home-dashboard.v029.css?ver=0.4.4',
   '/assets/channel-page.v031.css?ver=0.4.0',
   '/assets/site.v028.js?ver=0.4.28'
 ];
