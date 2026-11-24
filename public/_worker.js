@@ -514,8 +514,9 @@ function watchPage({url,base,v,related,relatedCard=card,env}){
   const poster=isHttpsUrl(v.poster_url)?v.poster_url:'';
   const legacyPreRoll=embed?`<div class="pre-roll-overlay" data-pre-roll data-pre-roll-seconds="15" hidden><div class="pre-roll-card"><div class="ad-label">Advertisement  ·  Pre-roll</div><div class="pre-roll-container" data-preroll-container data-script-src="${ADSTERRA_NATIVE_SRC}"></div><p>Sponsored message. Video unlocks in <strong data-pre-roll-countdown>15</strong>s.</p><button class="button ghost" type="button" data-pre-roll-continue disabled>Continue to video</button></div></div>`:'';
   const vast=embed?prerollVastUrl(env):'';
-  const sliderSource=v.official&&isHttpsUrl(env?.EXOCLICK_VIDEO_SLIDER_SRC)?String(env.EXOCLICK_VIDEO_SLIDER_SRC).trim():'';
-  const sliderMarkup=sliderSource?'<span data-exoclick-video-slider data-src="'+esc(sliderSource)+'" aria-hidden="true"></span>':'';
+  const EXOCLICK_VIDEO_SLIDER_ZONE_ID='6104386';
+  const EXOCLICK_VIDEO_SLIDER_SRC='https://a.magsrv.com/ad-provider.js';
+  const sliderMarkup=v.official?'<div data-exoclick-video-slider data-zoneid="'+EXOCLICK_VIDEO_SLIDER_ZONE_ID+'" data-src="'+EXOCLICK_VIDEO_SLIDER_SRC+'" aria-hidden="true"><ins class="eas6a97888e31" data-zoneid="'+EXOCLICK_VIDEO_SLIDER_ZONE_ID+'"></ins></div>':'';
   const clickPlayOverlay=v.official&&embed?'<div class="click-play-overlay" data-click-play-overlay role="dialog" aria-label="Advertisement before video" style="position:absolute;inset:0;z-index:9;display:grid;place-items:center;overflow:auto;background:#08070de6;padding:20px">'+
     '<div class="click-play-backdrop" aria-hidden="true" style="position:absolute;inset:0;overflow:hidden"><img src="'+esc(poster)+'" alt="" loading="eager" decoding="async" style="width:100%;height:100%;object-fit:cover;filter:brightness(.32) blur(2px);transform:scale(1.04)"></div>'+
     '<div class="click-play-content" style="position:relative;z-index:2;width:min(100%,340px);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center">'+
