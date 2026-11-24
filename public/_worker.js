@@ -525,7 +525,7 @@ function watchPage({url,base,v,related,relatedCard=card,env}){
         '<video data-vast-video muted playsinline preload="metadata" aria-label="Sponsored video advertisement" style="display:block;width:100%;max-height:250px;aspect-ratio:16/9;object-fit:contain;background:#000;border-radius:8px"></video>'+
         '<p data-vast-status aria-live="polite" style="margin:12px 0;color:#c8bdc6;font-size:12px">'+(vast?'Loading video advertisement...':'Video ad is not configured yet.')+'</p>'+
         '<button class="button ghost" type="button" data-vast-start hidden>Play advertisement</button>'+
-        '<button class="button" type="button" data-click-play disabled style="margin-top:10px;min-height:46px;padding:12px 18px;white-space:nowrap">'+(vast?'Continue to video':'Play video')+'</button>'+
+        '<button class="button" type="button" data-click-play disabled style="margin-top:10px;min-height:46px;padding:12px 18px;white-space:nowrap" onclick="const o=this.closest(&#39;[data-click-play-overlay]&#39;),p=this.closest(&#39;[data-player]&#39;),f=p&&p.querySelector(&#39;[data-embed-url]&#39;);if(p){p.dataset.clickPlayReleased=&#39;yes&#39;;p.dataset.prerollFinished=&#39;yes&#39;}if(f&&!f.src)f.src=f.dataset.embedUrl;if(o){o.hidden=true;o.style.display=&#39;none&#39;}">'+(vast?'Continue to video':'Play video')+'</button>'+
       '</div>'+
     '</div>'+
   '</div>':'';
