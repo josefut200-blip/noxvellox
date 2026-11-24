@@ -32,3 +32,12 @@ test('important pages expose crawlable heading and video metadata', () => {
   assert.ok(worker.includes('structured:publishedArticle(v,base)'));
   assert.ok(worker.includes("robots:'noindex,follow'"));
 });
+
+
+test('public pages use canonical-domain previews and bounded related content', () => {
+  assert.ok(worker.includes('effectivePreview=preview===undefined'));
+  assert.ok(worker.includes('Noxvellox adult video catalog'));
+  assert.ok(worker.includes("limit:16,sort:'popular'"));
+  assert.ok(worker.includes('limit:16,localEntries:localFeed'));
+  assert.ok(worker.includes("'@type':'CollectionPage'"));
+});
