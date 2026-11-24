@@ -295,15 +295,21 @@
     observer.observe(container,{childList:true,subtree:true});
     slot.dataset.adObserver='active';
   });
+  const EXOCLICK_VIDEO_SLIDER_ZONE_ID='6104386';
+  const EXOCLICK_VIDEO_SLIDER_SRC='https://a.magsrv.com/ad-provider.js';
   const loadVideoSlider=()=>{
     if(!location.pathname.startsWith('/official-watch/'))return;
     if(!ageAccepted()||consent()!=='granted')return;
-    const slot=document.querySelector('[data-exoclick-video-slider]'),src=slot?.dataset.src||'';
-    if(!slot||!/^https:\\/\\//i.test(src)||slot.dataset.loaded==='yes')return;
-    slot.dataset.loaded='yes';
-    const script=document.createElement('script');script.async=true;script.type='application/javascript';script.src=src;script.dataset.exoclickVideoSlider='true';
-    script.addEventListener('error',()=>{slot.dataset.loaded='error'},{once:true});
-    document.body.appendChild(script);
+    const slot=document.querySelector('[data-exoclick-video-slider]'),zone=slot?.dataset.zoneid||'',src=slot?.dataset.src||'';
+    if(!slot||zone!==EXOCLICK_VIDEO_SLIDER_ZONE_ID||src!==EXOCLICK_VIDEO_SLIDER_SRC||slot.dataset.loaded==='yes'||slot.dataset.loaded==='loading')return;
+    slot.dataset.loaded='loading';
+    const activate=()=>{
+      window.AdProvider=window.AdProvider||[];
+      window.AdProvider.push({serve:{}});
+      slot.dataset.loaded='yes';
+    };
+    if(window.AdProvider){activate();return}
+    loadExoClick().then(activate).catch(()=>{slot.dataset.loaded='error'});
   };
   const renderAd=()=>{
     const c=consent();
