@@ -213,7 +213,8 @@
   max-width:960px;
   min-width:0;
   min-height:250px;
-  height:auto;
+  height:250px;
+  max-height:250px;
   margin:0;
   overflow:hidden;
   display:flex;
