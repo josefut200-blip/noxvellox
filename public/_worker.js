@@ -494,12 +494,12 @@ async function countPublishedVideos(db){
     return Number(row?.total||0);
   }catch{return 0}
 }
-function listPage({url,base,videos,official=[],title='All videos',subtitle='Browse our collection of authorized videos.',category='',officialPagination='',page=1,infinite=false}){
+function listPage({url,base,videos,official=[],title='All videos',subtitle='Browse our collection of authorized videos.',category='',officialPagination='',page=1,infinite=false,robots=''}){
   const pageNumber=Math.max(1,Number(page)||1),pageSuffix=pageNumber>1?` - Page ${pageNumber}`:'',metaDescription=pageNumber>1?`${subtitle} Page ${pageNumber} of the catalog.`:subtitle;
   const feedItems=videos.length?videos.map(card):official.map(officialCard);
   const renderedFeed=infinite&&feedItems.length>12?`${feedItems.slice(0,12).join('')}${adSlot('feed')}${feedItems.slice(12).join('')}`:feedItems.join('');
   const body=`<section class="wrap page-head"><div class="section-kicker">Noxvellox library</div><h1>${esc(title)}</h1><p>${esc(subtitle)}</p></section><section class="wrap">${categoryChips(category)}<div class="section" style="margin-top:25px"><div class="video-grid"${infinite?' data-infinite-grid':''}>${renderedFeed||(title==='Free Official Embeds'?'<div class="empty"><strong>Official provider feed temporarily unavailable</strong><p>Please try later. No placeholder videos or unverified embeds will be published.</p></div>':emptyMarkup)}</div>${official.length?(official[0]?.from_snapshot?'<p class="mini"><strong>Contingency catalog:</strong> last observed in the provider official RSS on November 22, 2026. This is NOT a live availability check. Entries may have been removed; playback and rights remain subject to provider policy. No video files are hosted here.</p>':'<p class="mini">Free embeds from the official platform RSS. Video files are not stored on Noxvellox; some content may be region-restricted.</p>'):''}</div>${officialPagination}${infinite?'':adSlot()}</section>`;
-  return shell({title:`${title}${pageSuffix} | Noxvellox`,description:metaDescription,base,url,body,robots:pageNumber>10?'noindex,follow':undefined});
+  return shell({title:`${title}${pageSuffix} | Noxvellox`,description:metaDescription,base,url,body,robots:robots||(pageNumber>10?'noindex,follow':undefined)});
 }
 function searchPage({url,base,q,videos,official=[],channels=[],matchedCategories=[]}){
  const cards=[...videos.map(card),...official.map(officialCard)];
@@ -1146,11 +1146,15 @@ async function route(req,env){
      // D1 changes after deployment, so generate this at request time. Only
      // clean canonical paths are emitted; pagination/search queries are excluded.
      const dateOnly=value=>{const date=String(value||'').slice(0,10);return /^\d{4}-\d{2}-\d{2}$/.test(date)?date:''};
-     const entries=['/','/videos','/official-videos','/categories','/channels',...channelsV2.map(c=>`/channels/${c.slug}`),...categories.map(c=>`/category/${slugify(c)}`),'/about','/privacy','/terms','/copyright','/contact'].map(pathname=>({pathname,lastmod:''}));
+     const entries=['/','/videos','/official-videos','/categories','/channels',...channelsV2.map(c=>`/channels/${c.slug}`),'/about','/privacy','/terms','/copyright','/contact'].map(pathname=>({pathname,lastmod:''}));
      try{
        if(db){
-         const published=await db.prepare("SELECT slug,published_at FROM videos WHERE status='published' AND slug IS NOT NULL AND slug<>'' ORDER BY published_at DESC,id DESC LIMIT 5000").all();
+         const published=await db.prepare("SELECT slug,published_at,category FROM videos WHERE status='published' AND slug IS NOT NULL AND slug<>'' ORDER BY published_at DESC,id DESC LIMIT 5000").all();
          const official=await db.prepare("SELECT id,last_seen_at FROM official_embeds WHERE visibility='active' AND id IS NOT NULL AND id<>'' ORDER BY last_seen_at DESC,id DESC LIMIT 5000").all();
+         const categoryCounts=new Map();
+         for(const row of (published.results||[])){const key=String(row.category||'').trim();if(key)categoryCounts.set(key,(categoryCounts.get(key)||0)+1)}
+         for(const category of VISIBLE_NAV_CATEGORIES){if((categoryCounts.get(category)||0)>=4)entries.push({pathname:`/category/${slugify(category)}`,lastmod:''})}
+         if((official.results||[]).length>=4)entries.push({pathname:'/category/official-embeds',lastmod:''});
          entries.push(...(published.results||[]).map(row=>({pathname:`/watch/${encodeURIComponent(row.slug)}`,lastmod:dateOnly(row.published_at)})));
          entries.push(...(official.results||[]).map(row=>({pathname:`/official-watch/${encodeURIComponent(row.id)}`,lastmod:dateOnly(row.last_seen_at)})));
        }
@@ -1204,7 +1208,7 @@ if(path==='/'){const videos=await listVideos(db,{limit:8});const official=(await
         '<div class="nv-channel-grid">'+partners.map(partnerTile).join('')+'</div>'+adSlot()+'</div>'});
   }
 else if(path.startsWith('/channels/')||path.startsWith('/channel/')){const prefix=path.startsWith('/channels/')?'/channels/':'/channel/';const slug=path.slice(prefix.length).split('/')[0];const channel=channelsV2.find(c=>c.slug===slug);if(channel){const requestedPage=Math.max(1,Math.min(1000,Number(url.searchParams.get('page')||1)));const requestedQuery=safeText(url.searchParams.get('q')||'',80);const requestedSort=['recent','popular','rating'].includes(url.searchParams.get('sort')||'recent')?(url.searchParams.get('sort')||'recent'):'recent';const limit=20;const canonicalUrl=`${base}/channels/${encodeURIComponent(channel.slug)}`;if(channel.category==='Official embeds'){const result=await officialCatalog(db,{page:requestedPage,limit,q:requestedQuery,localEntries:localFeed});markup=channelPageV4({base,url:url.href,canonicalUrl,channel,videos:[],official:result.entries,total:Number(result.total||0),page:requestedPage,limit,q:requestedQuery,sort:requestedSort})}else{const offset=(requestedPage-1)*limit;const videos=await listVideos(db,{category:channel.category,q:requestedQuery,offset,limit,sort:requestedSort});const total=await countChannelVideosV4(db,channel,requestedQuery);markup=channelPageV4({base,url:url.href,canonicalUrl,channel,videos,official:[],total,page:requestedPage,limit,q:requestedQuery,sort:requestedSort})}}else markup=notFound({base,url:url.href})}
-  else if(path.startsWith('/category/')){const c=categories.find(c=>slugify(c)===path.split('/')[2]);if(c){const videos=await listVideos(db,{category:c,limit:40});const official=videos.length?[]:await officialForCategory(db,c,localFeed);markup=listPage({base,url:url.href,videos,official,title:c,subtitle:`Explore ${c.toLowerCase()} from authorized sources.`,category:c})}else markup=notFound({base,url:url.href})}
+  else if(path.startsWith('/category/')){const c=categories.find(c=>slugify(c)===path.split('/')[2]);if(c){const videos=await listVideos(db,{category:c,limit:40});const official=videos.length?[]:await officialForCategory(db,c,localFeed);const shallow=videos.length+official.length<4;markup=listPage({base,url:url.href,videos,official,title:c,subtitle:`Explore ${c.toLowerCase()} from authorized sources.`,category:c,robots:shallow?'noindex,follow':''})}else markup=notFound({base,url:url.href})}
   else if(path.startsWith('/watch/')){const slug=path.slice(7);const v=await getVideo(db,slug);if(!v){const official=await officialById(db,slug,localFeed);if(official)return Response.redirect(`${base}/official-watch/${encodeURIComponent(slug)}`,301)}const related=v?rotateRelated(await listVideos(db,{category:v.category,limit:30,sort:'popular'}),slug,30):[];markup=v?watchPage({url:url.href,base,v,related,env}):notFound({base,url:url.href})}
  else if(path==='/history')markup=shell({base,url:url.href,title:'Watch history | Noxvellox',description:'View your recent videos. Your viewing history is saved only in this browser.',body:`<section class="wrap page-head"><div class="section-kicker">Your library</div><h1>Watch history</h1><p>Recent videos are saved in this browser and shown only here.</p></section><section class="wrap" data-history-root></section>`});
  else if(path==='/admin')markup=await adminPage({db,env,url:url.href,req,base});
