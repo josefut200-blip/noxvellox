@@ -532,7 +532,10 @@ async function syncOfficialOnDemand(db,taxonomy=taxonomyConfig){
    }
   }catch(e){console.warn('Webmaster search temporarily unavailable',page,String(e.message||e).slice(0,90));break}
  }
- if(!records.size)throw Error('Official provider is temporarily unavailable; no unverified data imported');
+ if(!records.size){
+  for(const v of officialSnapshot())records.set(v.id,{id:v.id,title:v.title,poster_url:v.poster_url||'',duration_seconds:v.duration_seconds||0,raw_tags:v.raw_tags||[],source_url:v.source_url,embed_url:v.embed_url,from_snapshot:true});
+ }
+ if(!records.size)throw Error('Official provider is temporarily unavailable; no verified snapshot available');
  if(!taxonomy)throw Error('Taxonomy configuration unavailable');
  const all=[...records.values()].map(v=>({...v,source_url:OFFICIAL_ORIGIN+'/view_video.php?viewkey='+v.id,embed_url:OFFICIAL_ORIGIN+'/embed/'+v.id}));
  const persisted=await persistOfficialRecords(db,all,taxonomy);
