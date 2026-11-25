@@ -292,7 +292,7 @@ function editorialEligible(item){
  if(!date||Number.isNaN(date.getTime())||date<new Date('2016-01-01T00:00:00.000Z'))return false;
  const resolution=String(item?.resolution||'').toLowerCase().replace(/\s+/g,'');
  if(!new Set(['720p','1080p','4k','2160p']).has(resolution))return false;
- const studio=normalizeTaxonomyToken(item?.studio||item?.channel||item?.channel_name||item?.publisher||'');
+ const studio=normalizeTaxonomyToken(item?.studio_name||item?.studio||item?.channel||item?.channel_name||item?.publisher||'');
  const tags=officialInputTags(item).map(value=>normalizeTaxonomyToken(value));
  return EDITORIAL_STUDIO_ALLOWLIST.has(studio)||tags.some(tag=>EDITORIAL_TAG_ALLOWLIST.has(tag));
 }
@@ -443,6 +443,7 @@ async function persistOfficialRecords(db,items,taxonomy){
   const publishedAt=safeText(item?.published_at||item?.publish_date||'',64),resolution=safeText(item?.resolution||'',16),studioName=safeText(item?.studio_name||item?.studio||item?.channel||'',120),description=safeText(item?.description||item?.summary||'',500);
   if(!title||!Number.isInteger(durationSeconds)||durationSeconds<MIN_OFFICIAL_DURATION_SECONDS||durationSeconds>=60000||!validOfficialListing(item,id))continue;
   const classified=classifyOfficialMetadata(item,taxonomy);
+  if(classified.blocked)continue;
   dedup.set(id,{id,title,poster_url:officialPoster(item?.poster_url||''),duration_seconds:durationSeconds,published_at:publishedAt,resolution,studio_name:studioName,description,raw_tags:classified.rawTags,categories:classified.categories,formats:classified.formats,blocked:classified.blocked});
  }
  const all=[...dedup.values()];
@@ -509,37 +510,57 @@ async function runOfficialTaxonomyBackfill(db,env,req,taxonomy){
 }
 async function syncOfficialOnDemand(db,taxonomy=taxonomyConfig){
  if(!db)throw Error('D1 database not configured');
- const records=new Map();
- const live=await retrieveOfficialFeed({force:true});
- for(const v of live.entries)records.set(v.id,{id:v.id,title:v.title,poster_url:v.poster_url||'',duration_seconds:v.duration_seconds||0,raw_tags:v.raw_tags||[]});
-  for(let page=1;page<=6;page++){
-  const addr='https://www.pornhub.com/webmasters/search?search=amateur&page='+page;
+ if(!taxonomy)throw Error('Taxonomy configuration unavailable');
+ const existingRows=await db.prepare('SELECT id FROM official_embeds').all();
+ const existing=new Set((existingRows.results||[]).map(row=>String(row.id)));
+ const records=new Map(), studios=['brazzers','teamskeet','reality kings','naughty america','bangbros','vixen','blacked','tushy','mofos','digital playground'];
+ const plans=[];
+ for(let page=1;page<=25;page++)plans.push({search:'amateur',sort:['mostviewed','toprated','newest'][(page-1)%3],page});
+ for(const studio of studios)plans.push({search:studio,sort:'mostviewed',page:1});
+ let attempted=0,failed=0,consecutiveFailures=0;
+ const addRow=(row)=>{
+  const id=String(row.video_id||row.id||''),title=safeText(row.title||row.name||'',160);
+  const uri=String(row.url||row.link||'');
+  if(!/^[a-z0-9]{8,24}$/i.test(id)||!title||!uri.includes('view_video.php?viewkey='+id))return;
+  const dur=String(row.duration||row.duration_seconds||'');let seconds=Number(dur);
+  if(/^\d+:\d\d(?::\d\d)?$/.test(dur))seconds=dur.split(':').map(Number).reduce((n,v)=>n*60+v,0);
+  const poster=officialPoster(row.poster_url||row.default_thumb||row.thumb||row.thumbnail||row.image||'');
+  const rawTags=rawTagList(row.tags||row.categories||row.keywords||[]);
+  const item={id,title,poster_url:poster,duration_seconds:seconds,raw_tags:rawTags,
+   published_at:row.published_at||row.publish_date||row.publishedAt||row.pubDate||'',
+   resolution:row.resolution||row.max_resolution||row.quality||row.video_quality||'',
+   studio_name:row.studio_name||row.studio||row.channel||row.channel_name||row.publisher||'',
+   description:safeText(row.description||row.summary||row.synopsis||'',500),
+   source_url:OFFICIAL_ORIGIN+'/view_video.php?viewkey='+id,embed_url:OFFICIAL_ORIGIN+'/embed/'+id};
+  if(!Number.isInteger(seconds)||seconds<300||seconds>=60000||!editorialEligible(item))return;
+  records.set(id,item);
+ };
+ for(const plan of plans){
+  if([...records.keys()].filter(id=>!existing.has(id)).length>=1000)break;
+  attempted++;
+  const addr=new URL('https://www.pornhub.com/webmasters/search');
+  addr.searchParams.set('search',plan.search);addr.searchParams.set('sort',plan.sort);addr.searchParams.set('page',String(plan.page));addr.searchParams.set('per_page','50');
   try{
-   const response=await fetch(addr,{redirect:'follow',headers:{accept:'application/json'},signal:AbortSignal.timeout(8000)});
+   const response=await fetch(addr,{redirect:'follow',headers:{accept:'application/json'},signal:AbortSignal.timeout(5000)});
    if(response.url){const u=new URL(response.url);if(u.protocol!=='https:'||!['www.pornhub.com','pornhub.com'].includes(u.hostname))throw Error('Invalid official search redirect')}
    if(!response.ok)throw Error('Provider HTTP '+response.status);
-   const text=await response.text();if(text.length>500000)throw Error('Invalid provider data size');
-   const parsed=JSON.parse(text);if(!Array.isArray(parsed.videos))throw Error('Invalid provider search data');
-   for(const row of parsed.videos.slice(0,50)){
-    const id=String(row.video_id||''),title=safeText(row.title||'',160);
-    const uri=String(row.url||'');
-    if(!/^[a-z0-9]{8,24}$/i.test(id)||!title||!uri.startsWith(OFFICIAL_ORIGIN+'/view_video.php?viewkey='+id))continue;
-    const dur=String(row.duration||'');let seconds=Number(dur);
-    if(/^\d+:\d\d(?::\d\d)?$/.test(dur))seconds=dur.split(':').map(Number).reduce((n,v)=>n*60+v,0);
-    const poster=officialPoster(row.poster_url||row.default_thumb||row.thumb||row.thumbnail||row.image||'');
-     if(!Number.isInteger(seconds)||seconds<MIN_OFFICIAL_DURATION_SECONDS||seconds>=60000)continue;
-     records.set(id,{id,title,poster_url:poster,duration_seconds:seconds,raw_tags:rawTagList(row.tags||row.categories||[])});
-   }
-  }catch(e){console.warn('Webmaster search temporarily unavailable',page,String(e.message||e).slice(0,90));break}
+   const body=await response.text();if(body.length>500000)throw Error('Invalid provider data size');
+   const parsed=JSON.parse(body);if(!Array.isArray(parsed.videos))throw Error('Invalid provider search data');
+   for(const row of parsed.videos.slice(0,50))addRow(row);
+   consecutiveFailures=0;
+  }catch(e){
+   failed++;consecutiveFailures++;
+   console.warn('Official search temporarily unavailable',plan.search,plan.sort,plan.page,String(e.message||e).slice(0,90));
+   if(consecutiveFailures>=3)break;
+  }
  }
  if(!records.size){
   for(const v of officialSnapshot())records.set(v.id,{id:v.id,title:v.title,poster_url:v.poster_url||'',duration_seconds:v.duration_seconds||0,raw_tags:v.raw_tags||[],source_url:v.source_url,embed_url:v.embed_url,from_snapshot:true});
  }
  if(!records.size)throw Error('Official provider is temporarily unavailable; no verified snapshot available');
- if(!taxonomy)throw Error('Taxonomy configuration unavailable');
- const all=[...records.values()].map(v=>({...v,source_url:OFFICIAL_ORIGIN+'/view_video.php?viewkey='+v.id,embed_url:OFFICIAL_ORIGIN+'/embed/'+v.id}));
- const persisted=await persistOfficialRecords(db,all,taxonomy);
- return {ok:true,synced:persisted.processed,categorized:persisted.matchedCategories,formatted:persisted.matchedFormats,automaticallyAvailable:true,noVideoFilesCopied:true};
+ const candidates=[...records.values()].filter(item=>!existing.has(item.id)).slice(0,1000);
+ const persisted=await persistOfficialRecords(db,candidates,taxonomy);
+ return {ok:true,sourceRecords:records.size,eligibleRecords:candidates.length,synced:persisted.processed,categorized:persisted.matchedCategories,formatted:persisted.matchedFormats,attempted,failed,remainingTarget:Math.max(0,1000-persisted.processed),automaticallyAvailable:true,noVideoFilesCopied:true};
 }
 const officialCard=v=>{const title=displayVideoTitle(v.title);return `<a class="video-card" href="/official-watch/${encodeURIComponent(v.id)}"><div class="video-art">${coverMarkup(v.poster_url,title,'Free official embed',v.embed_url)}<span class="play" aria-hidden="true">▶</span>${v.duration_seconds?`<span class="duration">${duration(v.duration_seconds)}</span>`:''}</div><div class="video-meta"><h3>${esc(title)}</h3><div class="sub"><strong>Official embed</strong>  ·  Pornhub</div></div></a>`};
 const officialGrid=(items,heading='Videos from official provider feed')=>`<section class="section wrap"><div class="section-head"><div><div class="section-kicker">No video files hosted here  ·  Free authorized embeds</div><h2>${esc(heading)}</h2></div><a class="section-link" href="/official-videos">View official feed ?</a></div><div class="video-grid">${items.length?items.map(officialCard).join(''):'<div class="empty"><strong>Official provider feed temporarily unavailable</strong><p>Please check the provider or try again later. No placeholder videos will be invented.</p></div>'}</div>${items[0]?.from_snapshot?'<p class="mini"><strong>Dated contingency:</strong> official RSS metadata last observed November 22, 2026; playback is not confirmed and listings can change.</p>':''}<p class="mini">Embedded directly from the original provider under its webmaster embed terms. Availability may depend on region and may change. No files are downloaded or redistributed by Noxvellox.</p></section>`;
