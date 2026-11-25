@@ -76,6 +76,21 @@ const MAX_ENTRIES_PER_RUN = (() => {
   return Number.isInteger(configured) && configured >= 500 && configured <= 1500 ? configured : 1000;
 })();
 const HD_RESOLUTIONS = new Set(['720p', '1080p', '4k']);
+const EDITORIAL_STUDIOS = new Set([
+  'brazzers', 'teamskeet', 'reality kings', 'naughty america', 'bangbros',
+  'mofos', 'vixen', 'blacked', 'tushy', 'deeper', 'evil angel',
+  'digital playground', 'pure taboo', 'sweet sinner', 'babestation', 'badoink'
+].map(normalizeTag));
+const EDITORIAL_TAGS = new Set([
+  'amateur', 'latina', 'asian', 'mature women', 'busty', 'pov',
+  'brazilian', 'couples', 'redheads', 'compilation'
+].map(normalizeTag));
+
+function editorialEligible(entry) {
+  const studio = normalizeTag(entry.studio);
+  const tags = entry.raw_tags.map(normalizeTag);
+  return EDITORIAL_STUDIOS.has(studio) || tags.some(tag => EDITORIAL_TAGS.has(tag));
+}
 
 function log(message) {
   console.log(`[feed-sync] ${message}`);
@@ -275,6 +290,7 @@ function normalizeEntry(item) {
   const resolution = normalizeResolution(valueFrom(item, ['resolution', 'max_resolution', 'quality', 'video_quality']));
   const published_at = publishedAt(valueFrom(item, ['pubDate', 'pub_date', 'publish_date', 'published_at', 'publishedAt', 'published', 'date']));
   const studio = text(valueFrom(item, ['studio', 'studio_name', 'channel', 'channel_name', 'publisher', 'producer']), 120);
+  const description = text(valueFrom(item, ['description', 'summary', 'synopsis']), 500);
   const frame_rate = Number(String(valueFrom(item, ['frame_rate', 'frameRate', 'fps'])).match(/\d{2,3}/)?.[0]) || 0;
   const orientation = text(valueFrom(item, ['orientation']), 32).toLowerCase();
   return {
@@ -291,6 +307,7 @@ function normalizeEntry(item) {
     resolution,
     published_at,
     studio,
+    description,
     frame_rate: Number.isInteger(frame_rate) ? frame_rate : 0,
     orientation
   };
@@ -368,7 +385,8 @@ async function requestFeed() {
     entry.duration_seconds >= MIN_DURATION_SECONDS &&
     HD_RESOLUTIONS.has(entry.resolution) &&
     entry.published_at &&
-    entry.published_at >= MIN_PUBLISH_DATE
+    entry.published_at >= MIN_PUBLISH_DATE &&
+    editorialEligible(entry)
   );
   if (!eligible.length) {
     const fieldNames = new Set();
@@ -386,7 +404,7 @@ async function requestFeed() {
     };
     for (const item of parsed.slice(0, 3)) addShape(item);
     log(`Feed record field names: ${[...fieldNames].sort().join(', ') || '(none)'}`);
-    throw new Error(`feed contained no entries meeting 2016+, HD (720p/1080p/4K), and ${MIN_DURATION_SECONDS}s requirements (received ${parsed.length} records, ${unique.length} valid)`);
+    throw new Error(`feed contained no entries meeting 2016+, HD (720p/1080p/4K), ${MIN_DURATION_SECONDS}s, and editorial allowlist requirements (received ${parsed.length} records, ${unique.length} valid)`);
   }
   return eligible
     .sort((a, b) => String(b.published_at).localeCompare(String(a.published_at)))
