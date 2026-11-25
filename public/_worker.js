@@ -710,6 +710,12 @@ async function ensureTaxonomySchema(db,taxonomy){
  })().catch(error=>{taxonomySchemaPromise=null;throw error});
  return taxonomySchemaPromise;
 }
+async function homeOfficialCategoryDirectory(db,taxonomy,limit=30){
+ if(!db)return [];
+ const sql="SELECT tc.slug,tc.name,tc.group_slug,tc.group_name,tc.intro_en,COUNT(DISTINCT o.id) AS count,MAX(o.poster_url) AS cover_url FROM official_embed_categories oc JOIN official_embeds o ON o.id=oc.official_video_id JOIN taxonomy_categories tc ON tc.slug=oc.category_slug WHERE o.visibility='active' AND o.id NOT IN ('696c7c920140e','6937cf5fea785') AND o.duration_seconds>=? AND o.poster_url<>'' GROUP BY tc.slug,tc.name,tc.group_slug,tc.group_name,tc.intro_en HAVING COUNT(DISTINCT o.id)>=? ORDER BY count DESC,tc.name COLLATE NOCASE ASC LIMIT ?";
+ const result=await db.prepare(sql).bind(MIN_OFFICIAL_DURATION_SECONDS,MIN_INDEXABLE_CATEGORY_VIDEOS,Math.max(1,Math.min(500,limit))).all();
+ return (result.results||[]).map(row=>({...row,count:Number(row.count||0),cover_url:String(row.cover_url||'')}));
+}
 async function categoryDirectory(db,taxonomy,limit=30){
  if(!db)return [];
  const sql="WITH source AS ("+
@@ -1739,7 +1745,7 @@ async function route(req,env){
  }
  let markup;
  const localFeed=await loadLocalOfficialFeed(env,req);
-if(path==='/'){const videos=await listVideos(db,{limit:8});const official=(await officialCatalog(db,{limit:12,localEntries:localFeed})).entries;markup=homePageV3({base,url:url.href,videos,official,partners:await partnersWithArt(env,req),categoryList:await categoryDirectory(db,taxonomy,30)});}
+if(path==='/'){const videos=await listVideos(db,{limit:8});const official=(await officialCatalog(db,{limit:12,localEntries:localFeed})).entries;markup=homePageV3({base,url:url.href,videos,official,partners:await partnersWithArt(env,req),categoryList:await homeOfficialCategoryDirectory(db,taxonomy,30)});}
  else if(path==='/videos'){
    const page=officialPageNumber(url.searchParams.get('page')||1),limit=OFFICIAL_PAGE_SIZE;
    const publishedTotal=await countPublishedVideos(db);
