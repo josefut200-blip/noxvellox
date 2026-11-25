@@ -378,7 +378,7 @@ async function officialCatalog(db,{page=1,limit=OFFICIAL_PAGE_SIZE,q='',localEnt
   const match=query?`%${query.replace(/[\\%_]/g,'\\$&')}%`:'';
   const where=query?" AND title LIKE ? ESCAPE '\\'":'';
   const [rows,count]=await Promise.all([
-    db.prepare(`SELECT id,title,poster_url,duration_seconds FROM official_embeds WHERE visibility='active' AND id NOT IN ('696c7c920140e','6937cf5fea785')${where} AND duration_seconds >= ${MIN_OFFICIAL_DURATION_SECONDS} ORDER BY CASE WHEN poster_url<>'' THEN 0 ELSE 1 END,first_seen_at DESC,id DESC LIMIT ? OFFSET ?`).bind(...(query?[match,limit,offset]:[limit,offset])).all(),
+    db.prepare(`SELECT id,title,poster_url,duration_seconds,published_at,resolution,studio_name,description FROM official_embeds WHERE visibility='active' AND id NOT IN ('696c7c920140e','6937cf5fea785')${where} AND duration_seconds >= ${MIN_OFFICIAL_DURATION_SECONDS} ORDER BY CASE WHEN poster_url<>'' THEN 0 ELSE 1 END,first_seen_at DESC,id DESC LIMIT ? OFFSET ?`).bind(...(query?[match,limit,offset]:[limit,offset])).all(),
    db.prepare(`SELECT count(*) AS total FROM official_embeds WHERE visibility='active' AND id NOT IN ('696c7c920140e','6937cf5fea785')${where} AND duration_seconds >= ${MIN_OFFICIAL_DURATION_SECONDS}`).bind(...(query?[match]:[])).first()
   ]);
    const entries=await hydrateOfficialPosters((rows.results||[]).map(v=>({...v,source_url:OFFICIAL_ORIGIN+'/view_video.php?viewkey='+v.id,embed_url:OFFICIAL_ORIGIN+'/embed/'+v.id})),db);
@@ -440,21 +440,22 @@ async function persistOfficialRecords(db,items,taxonomy){
   const id=String(item?.id||'');
   if(!/^[a-z0-9]{8,24}$/i.test(id)||REMOVED_OFFICIAL_IDS.has(id)||EMBED_BLOCKED_OFFICIAL_IDS.has(id))continue;
   const title=safeText(item?.title||'',160),durationSeconds=Number(item?.duration_seconds||0);
+  const publishedAt=safeText(item?.published_at||item?.publish_date||'',64),resolution=safeText(item?.resolution||'',16),studioName=safeText(item?.studio_name||item?.studio||item?.channel||'',120),description=safeText(item?.description||item?.summary||'',500);
   if(!title||!Number.isInteger(durationSeconds)||durationSeconds<MIN_OFFICIAL_DURATION_SECONDS||durationSeconds>=60000||!validOfficialListing(item,id))continue;
   const classified=classifyOfficialMetadata(item,taxonomy);
-  dedup.set(id,{id,title,poster_url:officialPoster(item?.poster_url||''),duration_seconds:durationSeconds,raw_tags:classified.rawTags,categories:classified.categories,formats:classified.formats,blocked:classified.blocked});
+  dedup.set(id,{id,title,poster_url:officialPoster(item?.poster_url||''),duration_seconds:durationSeconds,published_at:publishedAt,resolution,studio_name:studioName,description,raw_tags:classified.rawTags,categories:classified.categories,formats:classified.formats,blocked:classified.blocked});
  }
  const all=[...dedup.values()];
  let processed=0,blockedTitles=0,matchedCategories=0,matchedFormats=0;
  for(let offset=0;offset<all.length;offset+=200){
   const batch=all.slice(offset,offset+200);
-  const rows=batch.map(({id,title,poster_url,duration_seconds})=>({id,title,poster_url,duration_seconds}));
+  const rows=batch.map(({id,title,poster_url,duration_seconds,published_at,resolution,studio_name,description})=>({id,title,poster_url,duration_seconds,published_at,resolution,studio_name,description}));
   const metadata=batch.map(({id,raw_tags})=>({id,raw_tags_json:JSON.stringify(raw_tags)}));
   const ids=JSON.stringify(batch.map(item=>item.id));
   const categories=batch.flatMap(item=>item.categories.map(category_slug=>({id:item.id,category_slug})));
   const formats=batch.flatMap(item=>item.formats.map(format_slug=>({id:item.id,format_slug})));
   const statements=[
-   db.prepare("INSERT INTO official_embeds (id,title,poster_url,duration_seconds,source,visibility) SELECT json_extract(value,'$.id'),json_extract(value,'$.title'),json_extract(value,'$.poster_url'),json_extract(value,'$.duration_seconds'),'pornhub_official_webmaster','active' FROM json_each(?) WHERE 1 ON CONFLICT(id) DO UPDATE SET title=excluded.title,poster_url=CASE WHEN excluded.poster_url<>'' THEN excluded.poster_url ELSE official_embeds.poster_url END,duration_seconds=excluded.duration_seconds,last_seen_at=datetime('now')").bind(JSON.stringify(rows)),
+   db.prepare("INSERT INTO official_embeds (id,title,poster_url,duration_seconds,published_at,resolution,studio_name,description,source,visibility) SELECT json_extract(value,'$.id'),json_extract(value,'$.title'),json_extract(value,'$.poster_url'),json_extract(value,'$.duration_seconds'),NULLIF(json_extract(value,'$.published_at'),''),NULLIF(json_extract(value,'$.resolution'),''),NULLIF(json_extract(value,'$.studio_name'),''),NULLIF(json_extract(value,'$.description'),''),'pornhub_official_webmaster','active' FROM json_each(?) WHERE 1 ON CONFLICT(id) DO UPDATE SET title=excluded.title,poster_url=CASE WHEN excluded.poster_url<>'' THEN excluded.poster_url ELSE official_embeds.poster_url END,duration_seconds=excluded.duration_seconds,published_at=COALESCE(excluded.published_at,official_embeds.published_at),resolution=COALESCE(excluded.resolution,official_embeds.resolution),studio_name=COALESCE(excluded.studio_name,official_embeds.studio_name),description=COALESCE(excluded.description,official_embeds.description),last_seen_at=datetime('now')").bind(JSON.stringify(rows)),
    db.prepare("DELETE FROM official_embed_categories WHERE official_video_id IN (SELECT value FROM json_each(?))").bind(ids),
    db.prepare("DELETE FROM official_embed_formats WHERE official_video_id IN (SELECT value FROM json_each(?))").bind(ids),
    db.prepare("INSERT INTO official_embed_metadata (official_video_id,raw_tags_json) SELECT json_extract(value,'$.id'),json_extract(value,'$.raw_tags_json') FROM json_each(?) WHERE 1 ON CONFLICT(official_video_id) DO UPDATE SET raw_tags_json=excluded.raw_tags_json").bind(JSON.stringify(metadata)),
@@ -491,7 +492,7 @@ async function runOfficialTaxonomyBackfill(db,env,req,taxonomy){
  if(!db)throw Error('D1 database not configured');
  await ensureTaxonomySchema(db,taxonomy);
  const assetRecords=await loadOfficialStaticRecords(env,req);
- const stored=await db.prepare("SELECT id,title,poster_url,duration_seconds FROM official_embeds WHERE visibility='active' AND id NOT IN ('696c7c920140e','6937cf5fea785')").all();
+ const stored=await db.prepare("SELECT id,title,poster_url,duration_seconds,published_at,resolution,studio_name,description FROM official_embeds WHERE visibility='active' AND id NOT IN ('696c7c920140e','6937cf5fea785')").all();
  const records=new Map((stored.results||[]).map(row=>[String(row.id),{...row,source_url:OFFICIAL_ORIGIN+'/view_video.php?viewkey='+row.id,embed_url:OFFICIAL_ORIGIN+'/embed/'+row.id}]));
  for(const item of assetRecords)records.set(String(item.id),item);
  const persisted=await persistOfficialRecords(db,[...records.values()],taxonomy);
