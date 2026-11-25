@@ -1095,7 +1095,7 @@ async function adminPage({db,env,url,req,base}){
  const logged=configured&&await session(req,env);
  const videos=logged&&db?(await db.prepare('SELECT id,title,status,provider,source_url,rights_confirmed,adults_verified FROM videos ORDER BY id DESC LIMIT 200').all()).results||[]:[];
  const body=!configured?'<section class="wrap page-head"><h1>Publisher dashboard unavailable</h1><p>Administrator secrets are not configured. Access is blocked until ADMIN_PASSWORD and SESSION_SECRET are saved as production secrets.</p></section>':adminBody({logged,videos,db,feedReady:feedConfigured(env)})+(logged?'<div class="wrap"><p class="notice"><strong>Active filter:</strong> only videos with a minimum duration of 15:00 can be reviewed and published. Entries without reliable duration, authorized artwork, or an authorized player remain private.</p></div>':'');
-  return shell({base,url,gate:false,robots:'noindex,nofollow',title:'Publisher dashboard | Noxvellox',description:'Private content management console.',body:`${body}<script defer src="/assets/admin.v027.js?ver=0.4.2"></script>`});
+  return shell({base,url,gate:false,robots:'noindex,nofollow',title:'Publisher dashboard | Noxvellox',description:'Private content management console.',body:`${body}<script defer src="/assets/admin.v027.js?ver=0.4.3"></script>`});
 }
 function normalizeImportedTitle(raw){
  const original=safeText(raw,200)
