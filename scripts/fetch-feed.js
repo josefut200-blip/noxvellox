@@ -60,10 +60,22 @@ const allowedHosts = new Set(
 );
 const embedTemplate = String(process.env.OFFICIAL_EMBED_TEMPLATE || '').trim();
 const maxBytes = 2_000_000;
+const FEATURED_STUDIOS = [
+  'Brazzers', 'TeamSkeet', 'Reality Kings', 'Naughty America', 'BangBros',
+  'Vixen', 'Blacked', 'Tushy', 'Mofos', 'Digital Playground',
+  'Evil Angel', 'Pure Taboo'
+];
+const FEED_SORTS = ['most_viewed', 'top_rated', 'newest'];
+const MIN_PUBLISH_DATE = '2016-01-01T00:00:00.000Z';
 const MIN_DURATION_SECONDS = (() => {
-  const configured = Number(process.env.OFFICIAL_FEED_MIN_DURATION_SECONDS || 60);
-  return Number.isInteger(configured) && configured >= 1 && configured <= 60000 ? configured : 60;
+  const configured = Number(process.env.OFFICIAL_FEED_MIN_DURATION_SECONDS || 300);
+  return Number.isInteger(configured) && configured >= 300 && configured <= 60000 ? configured : 300;
 })();
+const MAX_ENTRIES_PER_RUN = (() => {
+  const configured = Number(process.env.OFFICIAL_FEED_MAX_ENTRIES || 1000);
+  return Number.isInteger(configured) && configured >= 500 && configured <= 1500 ? configured : 1000;
+})();
+const HD_RESOLUTIONS = new Set(['720p', '1080p', '4k']);
 
 function log(message) {
   console.log(`[feed-sync] ${message}`);
@@ -260,7 +272,9 @@ function normalizeEntry(item) {
   const rawTags = safeTags(['tags', 'raw_tags', 'categories', 'category', 'keywords', 'tag'].flatMap(key => tagValues(valueFrom(item, [key]))));
   const formats = safeTags(valueFrom(item, ['formats', 'format']));
   const language = normalizeSourceLanguage(valueFrom(item, ['language', 'lang', 'audio_language', 'locale']));
-  const resolution = text(valueFrom(item, ['resolution', 'max_resolution', 'quality']), 16).toLowerCase();
+  const resolution = normalizeResolution(valueFrom(item, ['resolution', 'max_resolution', 'quality', 'video_quality']));
+  const published_at = publishedAt(valueFrom(item, ['pubDate', 'pub_date', 'publish_date', 'published_at', 'publishedAt', 'published', 'date']));
+  const studio = text(valueFrom(item, ['studio', 'studio_name', 'channel', 'channel_name', 'publisher', 'producer']), 120);
   const frame_rate = Number(String(valueFrom(item, ['frame_rate', 'frameRate', 'fps'])).match(/\d{2,3}/)?.[0]) || 0;
   const orientation = text(valueFrom(item, ['orientation']), 32).toLowerCase();
   return {
@@ -275,6 +289,8 @@ function normalizeEntry(item) {
     formats,
     language,
     resolution,
+    published_at,
+    studio,
     frame_rate: Number.isInteger(frame_rate) ? frame_rate : 0,
     orientation
   };
@@ -291,6 +307,7 @@ function parseRss(xml) {
       source_url: field(block, 'link'),
       poster_url: field(block, 'thumb') || block.match(/<(?:media:)?thumbnail\b[^>]*\burl=["']([^"']+)["']/i)?.[1] || '',
       duration_seconds: field(block, 'duration'),
+      pubDate: field(block, 'pubDate') || field(block, 'published') || field(block, 'publish_date'),
       tags: [...rssFields(block, 'tag'), ...rssFields(block, 'tags'), ...rssFields(block, 'category')],
       language: field(block, 'language') || field(block, 'lang'),
       resolution: field(block, 'resolution') || field(block, 'quality'),
@@ -321,30 +338,38 @@ async function requestFeed() {
   };
   if (feedToken) headers.Authorization = `Bearer ${feedToken}`;
 
-  const response = await fetch(source, { method: 'GET', headers, redirect: 'manual' });
-  if (response.status >= 300 && response.status < 400) {
-    const location = response.headers.get('location');
-    if (!location) throw new Error(`feed redirected with HTTP ${response.status}`);
-    const redirect = getUrl(new URL(location, source).href, 'feed redirect');
-    hostAllowed(redirect, 'feed redirect');
-    throw new Error(`feed redirected to ${redirect.hostname}; use the provider API/RSS canonical URL`);
+  async function fetchEntries(url) {
+    const response = await fetch(url, { method: 'GET', headers, redirect: 'manual' });
+    if (response.status >= 300 && response.status < 400) {
+      const location = response.headers.get('location');
+      if (!location) throw new Error(`feed redirected with HTTP ${response.status}`);
+      const redirect = getUrl(new URL(location, url).href, 'feed redirect');
+      hostAllowed(redirect, 'feed redirect');
+      throw new Error(`feed redirected to ${redirect.hostname}; use the provider API/RSS canonical URL`);
+    }
+    if (!response.ok) throw new Error(`feed returned HTTP ${response.status}`);
+    const contentLength = Number(response.headers.get('content-length') || 0);
+    if (contentLength > maxBytes) throw new Error('feed is larger than the allowed limit');
+    const body = await response.text();
+    if (Buffer.byteLength(body, 'utf8') > maxBytes) throw new Error('feed is larger than the allowed limit');
+    const contentType = response.headers.get('content-type') || '';
+    const parsed = /json/i.test(contentType) || /^\\s*[\\[{]/.test(body)
+      ? asArray(JSON.parse(body))
+      : parseRss(body);
+    return { parsed, entries: parsed.map(normalizeEntry).filter(Boolean) };
   }
-  if (!response.ok) throw new Error(`feed returned HTTP ${response.status}`);
 
-  const contentLength = Number(response.headers.get('content-length') || 0);
-  if (contentLength > maxBytes) throw new Error('feed is larger than the allowed limit');
-  const body = await response.text();
-  if (Buffer.byteLength(body, 'utf8') > maxBytes) throw new Error('feed is larger than the allowed limit');
-
-  const contentType = response.headers.get('content-type') || '';
-  const parsed = /json/i.test(contentType) || /^\s*[\[{]/.test(body)
-    ? asArray(JSON.parse(body))
-    : parseRss(body);
-  const entries = parsed.map(normalizeEntry).filter(Boolean);
-
+  const responses = [];
+  for (const url of buildFeedUrls(source)) responses.push(await fetchEntries(url));
+  const parsed = responses.flatMap(item => item.parsed);
+  const entries = responses.flatMap(item => item.entries);
   const unique = [...new Map(entries.map(entry => [entry.id, entry])).values()];
-  const durationKnown = unique.filter(entry => entry.duration_seconds > 0).length;
-  const eligible = unique.filter(entry => entry.duration_seconds >= MIN_DURATION_SECONDS);
+  const eligible = unique.filter(entry =>
+    entry.duration_seconds >= MIN_DURATION_SECONDS &&
+    HD_RESOLUTIONS.has(entry.resolution) &&
+    entry.published_at &&
+    entry.published_at >= MIN_PUBLISH_DATE
+  );
   if (!eligible.length) {
     const fieldNames = new Set();
     const addShape = (value, prefix = '', depth = 0) => {
@@ -361,11 +386,12 @@ async function requestFeed() {
     };
     for (const item of parsed.slice(0, 3)) addShape(item);
     log(`Feed record field names: ${[...fieldNames].sort().join(', ') || '(none)'}`);
-    throw new Error(`feed contained no entries at least ${MIN_DURATION_SECONDS} seconds long (received ${parsed.length} records, ${unique.length} valid, ${durationKnown} with known duration; previous snapshot preserved)`);
+    throw new Error(`feed contained no entries meeting 2016+, HD (720p/1080p/4K), and ${MIN_DURATION_SECONDS}s requirements (received ${parsed.length} records, ${unique.length} valid)`);
   }
-  return eligible;
+  return eligible
+    .sort((a, b) => String(b.published_at).localeCompare(String(a.published_at)))
+    .slice(0, MAX_ENTRIES_PER_RUN);
 }
-
 function writeSnapshot(entries) {
   const payload = JSON.stringify({
     version: 2,
