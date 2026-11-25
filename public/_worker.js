@@ -1431,7 +1431,23 @@ async function api(req,env,url,db){
    return json({ok:true,hidden:Number(change.meta?.changes||0)});
   }catch{return json({error:'Official catalog not yet initialized'},422)}
  }
- if(path==='/api/admin/sync-official'&&req.method==='POST'){try{return json(await syncOfficialOnDemand(db))}catch(e){return json({error:safeText(e.message||e,180)},422)}}
+ async function purgePublicCache(request){
+ const cache=(typeof caches!=='undefined'&&caches.default)?caches.default:null;
+ if(!cache)return {purged:0};
+ const origin=new URL(request.url).origin;
+ const paths=['/','/official-videos','/categories','/category/brazilian','/sitemap.xml'];
+ let purged=0;
+ for(const path of paths){try{if(await cache.delete(new Request(origin+path)))purged++}catch{}}
+ return {purged};
+}
+if(path==='/api/admin/sync-official'&&req.method==='POST'){try{return json(await syncOfficialOnDemand(db))}catch(e){return json({error:safeText(e.message||e,180)},422)}}
+if(path==='/api/admin/import-official-batch'&&req.method==='POST'){
+ try{
+  const result=await syncOfficialOnDemand(db,taxonomyConfig);
+  const cacheResult=await purgePublicCache(req);
+  return json({ok:true,read:Number(result.sourceRecords||0),approved:Number(result.eligibleRecords||0),inserted:Number(result.eligibleRecords||0),categoryAssignments:Number(result.categoryAssignments||0),cache:cacheResult,note:'Official metadata only; no media files downloaded.'});
+ }catch(e){return json({error:safeText(e.message||e,180)},422)}
+}
  if(path==='/api/admin/import-pepper'&&req.method==='POST'){
    try{return json(await runPepperImport(db))}
    catch(e){return json({error:'Little Pepper private import failed: '+safeText(e.message||e,180)},422)}
