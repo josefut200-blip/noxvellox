@@ -1733,9 +1733,16 @@ const isD1QuotaError=error=>/D1_ERROR|free tier daily row read limit|daily row r
 async function quotaFallback(req,env){
  const url=new URL(req.url),base=PUBLIC_ORIGIN,path=decodeURIComponent(url.pathname).replace(/\/$/,'')||'/';
  const taxonomy=await loadTaxonomy(env,req);
- const loaded=await loadLocalOfficialFeed(env,req).catch(()=>null);
- const source=Array.isArray(loaded)&&loaded.length?loaded:officialSnapshot().filter(item=>Number(item.duration_seconds)>=300);
- const feed=source.map(item=>({...item,title:normalizeImportedTitle(item.title)||item.title,source_url:item.source_url||OFFICIAL_ORIGIN+'/view_video.php?viewkey='+item.id,embed_url:item.embed_url||OFFICIAL_ORIGIN+'/embed/'+item.id,poster_url:item.poster_url||'',raw_tags:item.raw_tags||[]})).filter(item=>Number(item.duration_seconds)>=300&&!hasBlockedTags([item.title,...(item.raw_tags||[])],taxonomy));
+ let source=[];
+ try{
+  if(env?.ASSETS?.fetch){
+   const response=await env.ASSETS.fetch(new Request(new URL('/data/videos.json',req.url)));
+   const payload=response.ok?await response.json():null;
+   source=Array.isArray(payload)?payload:(Array.isArray(payload?.entries)?payload.entries:[]);
+  }
+ }catch{}
+ if(!source.length)source=officialSnapshot();
+ const feed=source.map(item=>({...item,title:normalizeImportedTitle(item.title)||item.title,source_url:item.source_url||OFFICIAL_ORIGIN+'/view_video.php?viewkey='+item.id,embed_url:item.embed_url||OFFICIAL_ORIGIN+'/embed/'+item.id,poster_url:item.poster_url||'',raw_tags:item.raw_tags||[]})).filter(item=>!hasBlockedTags([item.title,...(item.raw_tags||[]),item.description,item.source_url,item.embed_url],taxonomy));
  const categoryItems=(Array.isArray(taxonomy?.categories)?taxonomy.categories:[]).map(category=>{
   const slug=String(category.slug||category.name||'').toLowerCase();
   const count=feed.filter(item=>[item.title,...(item.raw_tags||[])].some(value=>normalizeTaxonomyToken(value).includes(slug))).length;
