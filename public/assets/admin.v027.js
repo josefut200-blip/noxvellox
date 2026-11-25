@@ -1,3 +1,4 @@
+/* Production secret refresh marker */
 (function(){
  'use strict';
  const $=id=>document.getElementById(id);
