@@ -296,7 +296,7 @@ function editorialEligible(item){
  const tags=officialInputTags(item).map(value=>normalizeTaxonomyToken(value));
  return EDITORIAL_STUDIO_ALLOWLIST.has(studio)||tags.some(tag=>EDITORIAL_TAG_ALLOWLIST.has(tag));
 }
-function loadLocalOfficialFeed(env,req){
+async function loadLocalOfficialFeed(env,req){
  try{
   if(!env?.ASSETS?.fetch)return null;
   const assetUrl=new URL('/data/videos.json',req.url);
