@@ -284,7 +284,19 @@ async function officialFeed(){
 // When it is valid, public pages use it as the source of truth and never make
 // a live provider request from Cloudflare. A missing/invalid asset preserves
 // the legacy fallback for local tests and older deployments.
-async function loadLocalOfficialFeed(env,req){
+async const EDITORIAL_STUDIO_ALLOWLIST=new Set(['brazzers','teamskeet','reality kings','naughty america','bangbros','mofos','vixen','blacked','tushy','deeper','evil angel','digital playground','pure taboo','sweet sinner','babestation','badoink']);
+const EDITORIAL_TAG_ALLOWLIST=new Set(['amateur','latina','asian','mature women','busty','pov','brazilian','couples','redheads','compilation']);
+function editorialEligible(item){
+ const published=String(item?.published_at||item?.publish_date||'').trim();
+ const date=published?new Date(published):null;
+ if(!date||Number.isNaN(date.getTime())||date<new Date('2016-01-01T00:00:00.000Z'))return false;
+ const resolution=String(item?.resolution||'').toLowerCase().replace(/\\s+/g,'');
+ if(!new Set(['720p','1080p','4k','2160p']).has(resolution))return false;
+ const studio=normalizeTaxonomyToken(item?.studio||item?.channel||item?.channel_name||item?.publisher||'');
+ const tags=officialInputTags(item).map(value=>normalizeTaxonomyToken(value));
+ return EDITORIAL_STUDIO_ALLOWLIST.has(studio)||tags.some(tag=>EDITORIAL_TAG_ALLOWLIST.has(tag));
+}
+function loadLocalOfficialFeed(env,req){
  try{
   if(!env?.ASSETS?.fetch)return null;
   const assetUrl=new URL('/data/videos.json',req.url);
@@ -293,7 +305,7 @@ async function loadLocalOfficialFeed(env,req){
   const manualPayload=manualResponse.ok?await manualResponse.json():null;
   const entries=[...(Array.isArray(payload)?payload:(Array.isArray(payload?.entries)?payload.entries:[])),...(Array.isArray(manualPayload?.entries)?manualPayload.entries:[])];
   const normalized=entries.filter(item=>item&&/^[a-z0-9]{8,24}$/i.test(String(item.id||''))&&String(item.title||'').trim()&&isHttpsUrl(item.source_url)&&isHttpsUrl(item.embed_url)).map(item=>({...item,source_url:String(item.source_url),embed_url:String(item.embed_url),poster_url:isHttpsUrl(item.poster_url)?String(item.poster_url):(isPreviewEmbedUrl(item.embed_url)?String(item.embed_url):'')}));
-  const eligible=normalized.filter(item=>Number.isInteger(Number(item.duration_seconds))&&Number(item.duration_seconds)>=MIN_OFFICIAL_DURATION_SECONDS);
+  const eligible=normalized.filter(item=>Number.isInteger(Number(item.duration_seconds))&&Number(item.duration_seconds)>=MIN_OFFICIAL_DURATION_SECONDS&&editorialEligible(item));
   return await hydrateOfficialPosters(eligible);
  }catch{return null}
 }
