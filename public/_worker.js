@@ -554,10 +554,7 @@ async function syncOfficialOnDemand(db,taxonomy=taxonomyConfig){
    if(consecutiveFailures>=3)break;
   }
  }
- if(!records.size){
-  for(const v of officialSnapshot())records.set(v.id,{id:v.id,title:v.title,poster_url:v.poster_url||'',duration_seconds:v.duration_seconds||0,raw_tags:v.raw_tags||[],source_url:v.source_url,embed_url:v.embed_url,from_snapshot:true});
- }
- if(!records.size)throw Error('Official provider is temporarily unavailable; no verified snapshot available');
+ if(!records.size)throw Error('Official provider is temporarily unavailable; no eligible verified entries found');
  const candidates=[...records.values()].filter(item=>!existing.has(item.id)).slice(0,1000);
  const persisted=await persistOfficialRecords(db,candidates,taxonomy);
  return {ok:true,sourceRecords:records.size,eligibleRecords:candidates.length,synced:persisted.processed,categorized:persisted.matchedCategories,formatted:persisted.matchedFormats,attempted,failed,remainingTarget:Math.max(0,1000-persisted.processed),automaticallyAvailable:true,noVideoFilesCopied:true};
