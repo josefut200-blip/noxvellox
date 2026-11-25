@@ -361,6 +361,21 @@ function asArray(payload) {
   return [];
 }
 
+function buildFeedUrls(baseUrl) {
+  const urls = [];
+  const configuredStudios = String(process.env.OFFICIAL_FEED_STUDIOS || FEATURED_STUDIOS.join(','))
+    .split(',').map(value => value.trim()).filter(Boolean).join(',');
+  for (let page = 1; page <= 25; page++) {
+    const url = new URL(baseUrl.href);
+    url.searchParams.set('studios', configuredStudios);
+    url.searchParams.set('sort', FEED_SORTS[(page - 1) % FEED_SORTS.length] || 'most_viewed');
+    url.searchParams.set('page', String(page));
+    url.searchParams.set('per_page', '50');
+    urls.push(url);
+  }
+  return [...new Map(urls.map(url => [url.href, url])).values()];
+}
+
 async function requestFeed() {
   if (!feedUrl) failSafely('OFFICIAL_FEED_URL secret is not configured');
   const source = getUrl(feedUrl, 'OFFICIAL_FEED_URL');
