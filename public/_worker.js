@@ -56,7 +56,7 @@ const esc=v=>String(v??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'
 const safeText=(v,max=220)=>String(v??'').replace(/[\u0000-\u001f]/g,' ').trim().slice(0,max);
 const json=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff','strict-transport-security':'max-age=31536000; includeSubDomains'}});
 const html=(s,status=200,extra={})=>new Response(s,{status,headers:{'content-type':'text/html; charset=utf-8','cache-control':extra['cache-control']||'public, max-age=60, s-maxage=300, stale-while-revalidate=60','x-content-type-options':'nosniff','strict-transport-security':'max-age=31536000; includeSubDomains','referrer-policy':'strict-origin-when-cross-origin','x-frame-options':'DENY','permissions-policy':'camera=(), microphone=(), geolocation=()',...extra}});
-const xml=s=>new Response(s,{headers:{'content-type':'application/xml; charset=utf-8','cache-control':'public, max-age=60, s-maxage=60, stale-while-revalidate=60','x-content-type-options':'nosniff','strict-transport-security':'max-age=31536000, includeSubDomains'}});
+const xml=(s,extra={})=>new Response(s,{headers:{'content-type':'application/xml; charset=utf-8','cache-control':'public, max-age=60, s-maxage=60, stale-while-revalidate=60','x-content-type-options':'nosniff','strict-transport-security':'max-age=31536000, includeSubDomains',...extra}});
 const slugify=s=>safeText(s,150).toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,90)||`video-${Date.now()}`;
 const isHttpsUrl=s=>{try{const u=new URL(s);return u.protocol==='https:'&&!u.username&&!u.password;}catch{return false}};
 const isTransformedPreviewImageUrl=s=>{if(!isHttpsUrl(s))return false;try{const u=new URL(s);return /(^|\.)phncdn\.com$/i.test(u.hostname)&&/\/original_[^/]+\.(?:mov|mp4)\/plain\/.*\/rs:fit:\d+:\d+\/vts:\d+(?:\/|$)/i.test(u.pathname)}catch{return false}};
@@ -716,6 +716,8 @@ async function ensureTaxonomySchema(db,taxonomy){
    "CREATE TABLE IF NOT EXISTS official_embed_metadata (official_video_id TEXT PRIMARY KEY,raw_tags_json TEXT NOT NULL DEFAULT '[]',FOREIGN KEY(official_video_id) REFERENCES official_embeds(id) ON DELETE CASCADE)",
    "CREATE TABLE IF NOT EXISTS official_embed_categories (official_video_id TEXT NOT NULL,category_slug TEXT NOT NULL,PRIMARY KEY(official_video_id,category_slug),FOREIGN KEY(official_video_id) REFERENCES official_embeds(id) ON DELETE CASCADE,FOREIGN KEY(category_slug) REFERENCES taxonomy_categories(slug) ON DELETE CASCADE)",
    "CREATE INDEX IF NOT EXISTS idx_official_embeds_studio_published ON official_embeds(studio_name,published_at)",
+   "CREATE INDEX IF NOT EXISTS idx_oec_cat_embed ON official_embed_categories(category_slug,official_video_id)",
+   "CREATE INDEX IF NOT EXISTS idx_oe_active_id ON official_embeds(visibility,id)",
    "CREATE INDEX IF NOT EXISTS idx_official_embed_categories_slug ON official_embed_categories(category_slug,official_video_id)",
    "CREATE TABLE IF NOT EXISTS official_embed_formats (official_video_id TEXT NOT NULL,format_slug TEXT NOT NULL,PRIMARY KEY(official_video_id,format_slug),FOREIGN KEY(official_video_id) REFERENCES official_embeds(id) ON DELETE CASCADE)",
    "CREATE INDEX IF NOT EXISTS idx_official_embed_formats_slug ON official_embed_formats(format_slug,official_video_id)",
@@ -1729,6 +1731,14 @@ function partnerProfilePage({partner, localFeed, references, profile, base, url}
 
 async function route(req,env){
  const url=new URL(req.url),base=PUBLIC_ORIGIN,path=decodeURIComponent(url.pathname).replace(/\/$/,'')||'/',db=asD1(env.DB);
+ const cacheable=req.method==='GET'&&(path==='/'||path==='/categories'||path==='/channels'||path==='/sitemap.xml'||path.startsWith('/category/'));
+ const cache=cacheable&&typeof caches!=='undefined'&&caches.default?caches.default:null;
+ const cacheKey=cache?new Request(url.href,{method:'GET'}):null;
+ if(cache){try{const cached=await cache.match(cacheKey);if(cached)return cached}catch{}}
+ const putPublic=async response=>{
+  if(cache&&response.status===200){try{await cache.put(cacheKey,response.clone())}catch{}}
+  return response;
+ };
  if(path.startsWith('/assets/')||path==='/favicon.svg'||path==='/data/videos.json'||path==='/data/taxonomy.json')return env.ASSETS.fetch(req);
  const taxonomy=await loadTaxonomy(env,req);let taxonomyReady=false;
  if(db){try{taxonomyReady=await ensureTaxonomySchema(db,taxonomy)}catch(error){console.warn('Taxonomy schema unavailable',String(error.message||error).slice(0,100))}}
@@ -1777,7 +1787,7 @@ async function route(req,env){
      entries.push(...partners.map(partner => ({pathname:partnerPath(partner),lastmod:''})));
      const uniqueEntries=[...new Map(entries.map(entry=>[entry.pathname,entry])).values()];
      const videoXml=entry=>entry.video?`<video:video><video:thumbnail_loc>${esc(entry.video.thumbnail)}</video:thumbnail_loc><video:title>${esc(entry.video.title)}</video:title><video:description>${esc(entry.video.description)}</video:description><video:player_loc allow_embed="yes">${esc(entry.video.player)}</video:player_loc>${entry.video.duration>0?`<video:duration>${Math.floor(entry.video.duration)}</video:duration>`:''}<video:family_friendly>no</video:family_friendly></video:video>`:'';
-    return xml(`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:video="http://www.google.com/schemas/sitemap-video/1.1">\n${uniqueEntries.map(entry=>`<url><loc>${esc(base+entry.pathname)}</loc>${entry.lastmod?`<lastmod>${entry.lastmod}</lastmod>`:''}${videoXml(entry)}</url>`).join('\n')}\n</urlset>`)
+    return putPublic(xml(`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:video="http://www.google.com/schemas/sitemap-video/1.1">\n${uniqueEntries.map(entry=>`<url><loc>${esc(base+entry.pathname)}</loc>${entry.lastmod?`<lastmod>${entry.lastmod}</lastmod>`:''}${videoXml(entry)}</url>`).join('\n')}\n</urlset>`,{'cache-control':'public, max-age=300, s-maxage=1800, stale-while-revalidate=300'}))
  }
  if(req.method!=='GET'&&req.method!=='HEAD')return new Response('Method not allowed',{status:405});
  if (path.startsWith('/channels/partners/')) {
@@ -1861,7 +1871,7 @@ if(path==='/'){const videos=await listVideos(db,{limit:8});const official=(await
  if(!markup)markup=notFound({base,url:url.href});
   const knownStatic=['/','/videos','/official-videos','/search','/categories','/channels','/featured','/trending','/new-releases','/most-viewed','/admin','/about','/privacy','/terms','/copyright','/contact','/history'];
   const missing=(!knownStatic.includes(path)&&!path.startsWith('/watch/')&&!path.startsWith('/official-watch/')&&!path.startsWith('/category/')&&!path.startsWith('/channel/')&&!path.startsWith('/channels/'))||(path.startsWith('/watch/')&&!(await getVideo(db,path.slice(7))))||(path.startsWith('/official-watch/')&&!(await officialById(db,path.slice('/official-watch/'.length),localFeed)))||(path.startsWith('/category/')&&!taxonomy.categoryBySlug[path.split('/')[2]]&&!['featured','trending','new-releases','most-viewed','originals','collections','interviews','wellness','brazzers','official-embeds'].includes(path.split('/')[2]))||((path.startsWith('/channel/')||path.startsWith('/channels/'))&&!channelsV2.some(c=>c.slug===path.split('/')[2]));
- return html(markup,missing?404:200,path==='/admin'?{'cache-control':'no-store'}:{});
+ return putPublic(html(markup,missing?404:200,path==='/admin'?{'cache-control':'no-store'}:cacheable?{'cache-control':'public, max-age=300, s-maxage=1800, stale-while-revalidate=300'}:{}));
 }
 export default {
  async fetch(req,env){try{const requestUrl=new URL(req.url);if(requestUrl.hostname==='noxvellox.pages.dev')return Response.redirect(`https://noxvellox.site${requestUrl.pathname}${requestUrl.search}`,301);return await route(req,env)}catch(e){console.error('Noxvellox request error',e);return html('<!doctype html><title>Temporarily unavailable</title><h1>Service temporarily unavailable</h1><p>Please try again.</p>',503)}}
