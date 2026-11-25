@@ -370,7 +370,7 @@ async function hydrateOfficialPosters(entries,db=null){
 // scheduled syncs. The official feed remains the fallback if D1 is unavailable.
 // Importing metadata never downloads the media itself.
 const OFFICIAL_PAGE_SIZE=24;
-function officialPageNumber(value){const n=Number(value);return Number.isInteger(n)&&n>=1?Math.min(n,1000):1}
+function officialPageNumber(value){const n=Number(value);return Number.isInteger(n)&&n>=1?Math.min(n,20):1}
 async function officialCatalog(db,{page=1,limit=OFFICIAL_PAGE_SIZE,q='',localEntries=null}={}){
  const offset=(page-1)*limit;
  if(db){try{
@@ -1742,13 +1742,13 @@ async function quotaFallback(req,env){
   }
  }catch{}
  if(!source.length)source=officialSnapshot();
- const feed=source.map(item=>({...item,title:normalizeImportedTitle(item.title)||item.title,source_url:item.source_url||OFFICIAL_ORIGIN+'/view_video.php?viewkey='+item.id,embed_url:item.embed_url||OFFICIAL_ORIGIN+'/embed/'+item.id,poster_url:item.poster_url||'',raw_tags:item.raw_tags||[]})).filter(item=>!hasBlockedTags([item.title,...(item.raw_tags||[]),item.description,item.source_url,item.embed_url],taxonomy));
+ const feed=source.map(item=>({...item,title:normalizeImportedTitle(item.title)||item.title,source_url:OFFICIAL_ORIGIN+'/view_video.php?viewkey='+encodeURIComponent(item.id),embed_url:OFFICIAL_ORIGIN+'/embed/'+encodeURIComponent(item.id),poster_url:item.poster_url||'',raw_tags:item.raw_tags||[]})).filter(item=>!hasBlockedTags([item.title,...(item.raw_tags||[]),item.description,item.source_url,item.embed_url],taxonomy));
  const categoryItems=(Array.isArray(taxonomy?.categories)?taxonomy.categories:[]).map(category=>{
   const slug=String(category.slug||category.name||'').toLowerCase();
   const count=feed.filter(item=>[item.title,...(item.raw_tags||[])].some(value=>normalizeTaxonomyToken(value).includes(slug))).length;
   return {slug:category.slug||slug,name:category.name||category.slug||slug,count,cover_url:''};
  });
- const cacheHeaders={'cache-control':'public, max-age=300, s-maxage=1800, stale-while-revalidate=300'};
+ const cacheHeaders={'cache-control':'public, max-age=600, s-maxage=3600, stale-while-revalidate=600'};
  if(path==='/sitemap.xml'){
   const paths=['/','/videos','/official-videos','/categories','/channels',...categoryItems.slice(0,56).map(item=>'/category/'+encodeURIComponent(item.slug)),...feed.slice(0,1000).map(item=>'/official-watch/'+encodeURIComponent(item.id))];
   return xml('<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'+paths.map(item=>'<url><loc>'+esc(base+item)+'</loc></url>').join('')+'</urlset>',cacheHeaders);
@@ -1777,7 +1777,7 @@ async function quotaFallback(req,env){
 
 async function route(req,env){
  const url=new URL(req.url),base=PUBLIC_ORIGIN,path=decodeURIComponent(url.pathname).replace(/\/$/,'')||'/',db=asD1(env.DB);
- const cacheable=req.method==='GET'&&(path==='/'||path==='/categories'||path==='/channels'||path==='/sitemap.xml'||path.startsWith('/category/'));
+ const cacheable=req.method==='GET'&&(path==='/'||path==='/videos'||path==='/official-videos'||path==='/categories'||path==='/channels'||path==='/sitemap.xml'||path.startsWith('/category/')||path.startsWith('/official-watch/'));
  const cache=cacheable&&typeof caches!=='undefined'&&caches.default?caches.default:null;
  const cacheKey=cache?new Request(url.href,{method:'GET'}):null;
  if(cache){try{const cached=await cache.match(cacheKey);if(cached)return cached}catch{}}
@@ -1917,7 +1917,7 @@ if(path==='/'){const videos=await listVideos(db,{limit:8});const official=(await
  if(!markup)markup=notFound({base,url:url.href});
   const knownStatic=['/','/videos','/official-videos','/search','/categories','/channels','/featured','/trending','/new-releases','/most-viewed','/admin','/about','/privacy','/terms','/copyright','/contact','/history'];
   const missing=(!knownStatic.includes(path)&&!path.startsWith('/watch/')&&!path.startsWith('/official-watch/')&&!path.startsWith('/category/')&&!path.startsWith('/channel/')&&!path.startsWith('/channels/'))||(path.startsWith('/watch/')&&!(await getVideo(db,path.slice(7))))||(path.startsWith('/official-watch/')&&!(await officialById(db,path.slice('/official-watch/'.length),localFeed)))||(path.startsWith('/category/')&&!taxonomy.categoryBySlug[path.split('/')[2]]&&!['featured','trending','new-releases','most-viewed','originals','collections','interviews','wellness','brazzers','official-embeds'].includes(path.split('/')[2]))||((path.startsWith('/channel/')||path.startsWith('/channels/'))&&!channelsV2.some(c=>c.slug===path.split('/')[2]));
- return putPublic(html(markup,missing?404:200,path==='/admin'?{'cache-control':'no-store'}:cacheable?{'cache-control':'public, max-age=300, s-maxage=1800, stale-while-revalidate=300'}:{}));
+ return putPublic(html(markup,missing?404:200,path==='/admin'?{'cache-control':'no-store'}:cacheable?{'cache-control':'public, max-age=600, s-maxage=3600, stale-while-revalidate=600'}:{}));
 }
 export default {
  async fetch(req,env){try{const requestUrl=new URL(req.url);if(requestUrl.hostname==='noxvellox.pages.dev')return Response.redirect(`https://noxvellox.site${requestUrl.pathname}${requestUrl.search}`,301);return await route(req,env)}catch(e){console.error('Noxvellox request error',e);if(isD1QuotaError(e)&&req.method==='GET')try{return await quotaFallback(req,env)}catch(fallbackError){console.error('Noxvellox quota fallback error',fallbackError)}return html('<!doctype html><title>Temporarily unavailable</title><h1>Service temporarily unavailable</h1><p>Please try again.</p>',503)}}
