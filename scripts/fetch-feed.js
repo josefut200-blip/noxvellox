@@ -65,8 +65,8 @@ const FEATURED_STUDIOS = [
   'Vixen', 'Blacked', 'Tushy', 'Mofos', 'Digital Playground',
   'Evil Angel', 'Pure Taboo'
 ];
-const FEED_SORTS = ['most_viewed', 'top_rated', 'newest'];
-const MIN_PUBLISH_DATE = '2016-01-01T00:00:00.000Z';
+const FEED_SORTS = String(process.env.OFFICIAL_FEED_SORTS || 'most_viewed,top_rated,newest').split(',').map(value => value.trim()).filter(Boolean);
+const MIN_PUBLISH_DATE = `${String(process.env.OFFICIAL_FEED_MIN_PUBLISH_DATE || '2016-01-01').slice(0, 10)}T00:00:00.000Z`;
 const MIN_DURATION_SECONDS = (() => {
   const configured = Number(process.env.OFFICIAL_FEED_MIN_DURATION_SECONDS || 300);
   return Number.isInteger(configured) && configured >= 300 && configured <= 60000 ? configured : 300;
