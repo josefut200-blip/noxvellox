@@ -205,6 +205,23 @@ function durationSeconds(value) {
   return 0;
 }
 
+function publishedAt(value) {
+  if (value === undefined || value === null || !String(value).trim()) return '';
+  const raw = String(value).trim();
+  const numeric = Number(raw);
+  const date = Number.isFinite(numeric) && numeric > 0
+    ? new Date(numeric < 1e12 ? numeric * 1000 : numeric)
+    : new Date(raw);
+  return Number.isNaN(date.getTime()) ? '' : date.toISOString();
+}
+
+function normalizeResolution(value) {
+  const normalized = normalizeTag(value).replace(/\s+/g, '');
+  if (normalized === '2160p' || normalized === 'uhd' || normalized === '4k') return '4k';
+  if (normalized === '1080p' || normalized === '720p') return normalized;
+  return '';
+}
+
 function idFromUrl(value) {
   try {
     const url = new URL(String(value || ''));
