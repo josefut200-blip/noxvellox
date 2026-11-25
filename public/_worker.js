@@ -284,13 +284,13 @@ async function officialFeed(){
 // When it is valid, public pages use it as the source of truth and never make
 // a live provider request from Cloudflare. A missing/invalid asset preserves
 // the legacy fallback for local tests and older deployments.
-async const EDITORIAL_STUDIO_ALLOWLIST=new Set(['brazzers','teamskeet','reality kings','naughty america','bangbros','mofos','vixen','blacked','tushy','deeper','evil angel','digital playground','pure taboo','sweet sinner','babestation','badoink']);
+const EDITORIAL_STUDIO_ALLOWLIST=new Set(['brazzers','teamskeet','reality kings','naughty america','bangbros','mofos','vixen','blacked','tushy','deeper','evil angel','digital playground','pure taboo','sweet sinner','babestation','badoink']);
 const EDITORIAL_TAG_ALLOWLIST=new Set(['amateur','latina','asian','mature women','busty','pov','brazilian','couples','redheads','compilation']);
 function editorialEligible(item){
  const published=String(item?.published_at||item?.publish_date||'').trim();
  const date=published?new Date(published):null;
  if(!date||Number.isNaN(date.getTime())||date<new Date('2016-01-01T00:00:00.000Z'))return false;
- const resolution=String(item?.resolution||'').toLowerCase().replace(/\\s+/g,'');
+ const resolution=String(item?.resolution||'').toLowerCase().replace(/\s+/g,'');
  if(!new Set(['720p','1080p','4k','2160p']).has(resolution))return false;
  const studio=normalizeTaxonomyToken(item?.studio||item?.channel||item?.channel_name||item?.publisher||'');
  const tags=officialInputTags(item).map(value=>normalizeTaxonomyToken(value));
