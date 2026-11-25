@@ -454,6 +454,12 @@ async function persistOfficialRecords(db,items,taxonomy){
   const ids=JSON.stringify(batch.map(item=>item.id));
   const categories=batch.flatMap(item=>item.categories.map(category_slug=>({id:item.id,category_slug})));
   const formats=batch.flatMap(item=>item.formats.map(format_slug=>({id:item.id,format_slug})));
+  const enrichColumns=["published_at TEXT","resolution TEXT","studio_name TEXT","description TEXT"];
+  for(const column of enrichColumns){
+   try{await db.prepare("ALTER TABLE official_embeds ADD COLUMN "+column).run();}catch(error){
+    if(!String(error?.message||error).toLowerCase().includes("duplicate column"))throw error;
+   }
+  }
   const statements=[
    db.prepare("INSERT INTO official_embeds (id,title,poster_url,duration_seconds,published_at,resolution,studio_name,description,source,visibility) SELECT json_extract(value,'$.id'),json_extract(value,'$.title'),json_extract(value,'$.poster_url'),json_extract(value,'$.duration_seconds'),NULLIF(json_extract(value,'$.published_at'),''),NULLIF(json_extract(value,'$.resolution'),''),NULLIF(json_extract(value,'$.studio_name'),''),NULLIF(json_extract(value,'$.description'),''),'pornhub_official_webmaster','active' FROM json_each(?) WHERE 1 ON CONFLICT(id) DO UPDATE SET title=excluded.title,poster_url=CASE WHEN excluded.poster_url<>'' THEN excluded.poster_url ELSE official_embeds.poster_url END,duration_seconds=excluded.duration_seconds,published_at=COALESCE(excluded.published_at,official_embeds.published_at),resolution=COALESCE(excluded.resolution,official_embeds.resolution),studio_name=COALESCE(excluded.studio_name,official_embeds.studio_name),description=COALESCE(excluded.description,official_embeds.description),last_seen_at=datetime('now')").bind(JSON.stringify(rows)),
    db.prepare("DELETE FROM official_embed_categories WHERE official_video_id IN (SELECT value FROM json_each(?))").bind(ids),
@@ -688,6 +694,7 @@ async function ensureTaxonomySchema(db,taxonomy){
    "CREATE TABLE IF NOT EXISTS official_embeds (id TEXT PRIMARY KEY,title TEXT NOT NULL,poster_url TEXT NOT NULL DEFAULT '',duration_seconds INTEGER NOT NULL DEFAULT 0,source TEXT NOT NULL DEFAULT 'pornhub_webmaster',visibility TEXT NOT NULL DEFAULT 'active',first_seen_at TEXT NOT NULL DEFAULT (datetime('now')),last_seen_at TEXT NOT NULL DEFAULT (datetime('now')))",
    "CREATE TABLE IF NOT EXISTS official_embed_metadata (official_video_id TEXT PRIMARY KEY,raw_tags_json TEXT NOT NULL DEFAULT '[]',FOREIGN KEY(official_video_id) REFERENCES official_embeds(id) ON DELETE CASCADE)",
    "CREATE TABLE IF NOT EXISTS official_embed_categories (official_video_id TEXT NOT NULL,category_slug TEXT NOT NULL,PRIMARY KEY(official_video_id,category_slug),FOREIGN KEY(official_video_id) REFERENCES official_embeds(id) ON DELETE CASCADE,FOREIGN KEY(category_slug) REFERENCES taxonomy_categories(slug) ON DELETE CASCADE)",
+   "CREATE INDEX IF NOT EXISTS idx_official_embeds_studio_published ON official_embeds(studio_name,published_at)",
    "CREATE INDEX IF NOT EXISTS idx_official_embed_categories_slug ON official_embed_categories(category_slug,official_video_id)",
    "CREATE TABLE IF NOT EXISTS official_embed_formats (official_video_id TEXT NOT NULL,format_slug TEXT NOT NULL,PRIMARY KEY(official_video_id,format_slug),FOREIGN KEY(official_video_id) REFERENCES official_embeds(id) ON DELETE CASCADE)",
    "CREATE INDEX IF NOT EXISTS idx_official_embed_formats_slug ON official_embed_formats(format_slug,official_video_id)",
