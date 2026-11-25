@@ -1729,6 +1729,45 @@ function partnerProfilePage({partner, localFeed, references, profile, base, url}
   return shell({base,url,title:partner.name+' | Content partners | Noxvellox',description,body});
 }
 
+const isD1QuotaError=error=>/D1_ERROR|free tier daily row read limit|daily row read limit|exceeded.*row read/i.test(String(error?.message||error));
+async function quotaFallback(req,env){
+ const url=new URL(req.url),base=PUBLIC_ORIGIN,path=decodeURIComponent(url.pathname).replace(/\/$/,'')||'/';
+ const taxonomy=await loadTaxonomy(env,req);
+ const loaded=await loadLocalOfficialFeed(env,req).catch(()=>null);
+ const source=Array.isArray(loaded)&&loaded.length?loaded:officialSnapshot().filter(item=>Number(item.duration_seconds)>=300);
+ const feed=source.map(item=>({...item,title:normalizeImportedTitle(item.title)||item.title,source_url:item.source_url||OFFICIAL_ORIGIN+'/view_video.php?viewkey='+item.id,embed_url:item.embed_url||OFFICIAL_ORIGIN+'/embed/'+item.id,poster_url:item.poster_url||'',raw_tags:item.raw_tags||[]})).filter(item=>Number(item.duration_seconds)>=300&&!hasBlockedTags([item.title,...(item.raw_tags||[])],taxonomy));
+ const categoryItems=(Array.isArray(taxonomy?.categories)?taxonomy.categories:[]).map(category=>{
+  const slug=String(category.slug||category.name||'').toLowerCase();
+  const count=feed.filter(item=>[item.title,...(item.raw_tags||[])].some(value=>normalizeTaxonomyToken(value).includes(slug))).length;
+  return {slug:category.slug||slug,name:category.name||category.slug||slug,count,cover_url:''};
+ });
+ const cacheHeaders={'cache-control':'public, max-age=300, s-maxage=1800, stale-while-revalidate=300'};
+ if(path==='/sitemap.xml'){
+  const paths=['/','/videos','/official-videos','/categories','/channels',...categoryItems.slice(0,56).map(item=>'/category/'+encodeURIComponent(item.slug)),...feed.slice(0,1000).map(item=>'/official-watch/'+encodeURIComponent(item.id))];
+  return xml('<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'+paths.map(item=>'<url><loc>'+esc(base+item)+'</loc></url>').join('')+'</urlset>',cacheHeaders);
+ }
+ if(path==='/official-watch/'||path.startsWith('/official-watch/')){
+  const id=path.slice('/official-watch/'.length),video=feed.find(item=>String(item.id)===id);
+  if(!video)return html(notFound({base,url:url.href}),404,cacheHeaders);
+  const related=feed.filter(item=>String(item.id)!==id).slice(0,30);
+  return html(officialWatch({base,url:url.href,video,related,env}),200,cacheHeaders);
+ }
+ if(path==='/' )return html(homePageV3({base,url:url.href,videos:[],official:feed.slice(0,12),partners:[],categoryList:categoryItems.slice(0,8)}),200,cacheHeaders);
+ if(path==='/videos'||path==='/official-videos')return html(listPage({base,url:url.href,videos:[],official:feed.slice(0,24),title:path==='/videos'?'Videos':'Free Official Embeds',subtitle:'Temporary read-only catalog from the verified official feed.'}),200,cacheHeaders);
+ if(path==='/categories'){
+  const body='<section class="wrap page-head"><h1>Categories</h1><p>Categories from the static taxonomy while the database is temporarily unavailable.</p></section><section class="wrap category-grid">'+categoryItems.slice(0,56).map(item=>'<a class="category-card" href="/category/'+encodeURIComponent(item.slug)+'"><h2>'+esc(item.name)+'</h2><p>'+Number(item.count).toLocaleString('en-US')+' videos</p></a>').join('')+'</section>';
+  return html(shell({base,url:url.href,title:'Categories | Noxvellox',description:'Catalog categories.',body}),200,cacheHeaders);
+ }
+ if(path==='/channels'){
+  return html(shell({base,url:url.href,title:'Channels | Noxvellox',description:'Verified channels.',body:'<section class="wrap page-head"><h1>Channels</h1><p>Channel directory temporarily served from static assets while the database is unavailable.</p></section>'}),200,cacheHeaders);
+ }
+ if(path.startsWith('/category/')){
+  const slug=path.slice('/category/'.length),items=feed.filter(item=>(item.raw_tags||[]).some(tag=>normalizeTaxonomyToken(tag)===normalizeTaxonomyToken(slug))||normalizeTaxonomyToken(item.title).includes(normalizeTaxonomyToken(slug)));
+  return html(listPage({base,url:url.href,videos:[],official:items.slice(0,24),title:categoryItems.find(item=>item.slug===slug)?.name||slug,subtitle:'Temporary read-only category catalog.'}),200,cacheHeaders);
+ }
+ return html(shell({base,url:url.href,title:'Noxvellox',description:'Temporary read-only catalog.',body:'<section class="wrap page-head"><h1>Catalog temporarily in read-only mode</h1><p>The database quota is temporarily exhausted. The verified static catalog remains available.</p></section>'}),200,cacheHeaders);
+}
+
 async function route(req,env){
  const url=new URL(req.url),base=PUBLIC_ORIGIN,path=decodeURIComponent(url.pathname).replace(/\/$/,'')||'/',db=asD1(env.DB);
  const cacheable=req.method==='GET'&&(path==='/'||path==='/categories'||path==='/channels'||path==='/sitemap.xml'||path.startsWith('/category/'));
@@ -1874,6 +1913,6 @@ if(path==='/'){const videos=await listVideos(db,{limit:8});const official=(await
  return putPublic(html(markup,missing?404:200,path==='/admin'?{'cache-control':'no-store'}:cacheable?{'cache-control':'public, max-age=300, s-maxage=1800, stale-while-revalidate=300'}:{}));
 }
 export default {
- async fetch(req,env){try{const requestUrl=new URL(req.url);if(requestUrl.hostname==='noxvellox.pages.dev')return Response.redirect(`https://noxvellox.site${requestUrl.pathname}${requestUrl.search}`,301);return await route(req,env)}catch(e){console.error('Noxvellox request error',e);return html('<!doctype html><title>Temporarily unavailable</title><h1>Service temporarily unavailable</h1><p>Please try again.</p>',503)}}
+ async fetch(req,env){try{const requestUrl=new URL(req.url);if(requestUrl.hostname==='noxvellox.pages.dev')return Response.redirect(`https://noxvellox.site${requestUrl.pathname}${requestUrl.search}`,301);return await route(req,env)}catch(e){console.error('Noxvellox request error',e);if(isD1QuotaError(e)&&req.method==='GET')try{return await quotaFallback(req,env)}catch(fallbackError){console.error('Noxvellox quota fallback error',fallbackError)}return html('<!doctype html><title>Temporarily unavailable</title><h1>Service temporarily unavailable</h1><p>Please try again.</p>',503)}}
 };
 
