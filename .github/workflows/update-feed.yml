@@ -9,8 +9,8 @@ on:
         description: Minimum duration for official feed entries
         required: false
         type: choice
-        default: "60"
-        options: ["60", "300", "900"]
+        default: "300"
+        options: ["300", "600", "900"]
 
 permissions:
   contents: write
@@ -42,7 +42,9 @@ jobs:
           OFFICIAL_FEED_ALLOWED_HOSTS: ${{ secrets.OFFICIAL_FEED_ALLOWED_HOSTS }}
           OFFICIAL_FEED_EXTRA_ALLOWED_HOSTS: ${{ secrets.OFFICIAL_FEED_EXTRA_ALLOWED_HOSTS }}
           OFFICIAL_EMBED_TEMPLATE: ${{ secrets.OFFICIAL_EMBED_TEMPLATE }}
-          OFFICIAL_FEED_MIN_DURATION_SECONDS: ${{ inputs.minimum_duration_seconds || '60' }}
+          OFFICIAL_FEED_MIN_DURATION_SECONDS: ${{ inputs.minimum_duration_seconds || '300' }}
+          OFFICIAL_FEED_MAX_ENTRIES: '1000'
+          OFFICIAL_FEED_STUDIOS: 'Brazzers,TeamSkeet,Reality Kings,Naughty America,BangBros,Vixen,Blacked,Tushy,Mofos,Digital Playground,Evil Angel,Pure Taboo'
 
       - name: Commit changed snapshot
         run: |
