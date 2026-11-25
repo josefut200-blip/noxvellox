@@ -710,12 +710,6 @@ async function ensureTaxonomySchema(db,taxonomy){
  })().catch(error=>{taxonomySchemaPromise=null;throw error});
  return taxonomySchemaPromise;
 }
-async function homeOfficialCategoryDirectory(db,taxonomy,limit=30){
- if(!db)return [];
- const sql="SELECT tc.slug,tc.name,tc.group_slug,tc.group_name,tc.intro_en,COUNT(DISTINCT o.id) AS count,MAX(o.poster_url) AS cover_url FROM official_embed_categories oc JOIN official_embeds o ON o.id=oc.official_video_id JOIN taxonomy_categories tc ON tc.slug=oc.category_slug WHERE o.visibility='active' AND o.id NOT IN ('696c7c920140e','6937cf5fea785') AND o.duration_seconds>=? AND o.poster_url<>'' GROUP BY tc.slug,tc.name,tc.group_slug,tc.group_name,tc.intro_en HAVING COUNT(DISTINCT o.id)>=? ORDER BY count DESC,tc.name COLLATE NOCASE ASC LIMIT ?";
- const result=await db.prepare(sql).bind(MIN_OFFICIAL_DURATION_SECONDS,MIN_INDEXABLE_CATEGORY_VIDEOS,Math.max(1,Math.min(500,limit))).all();
- return (result.results||[]).map(row=>({...row,count:Number(row.count||0),cover_url:String(row.cover_url||'')}));
-}
 async function categoryDirectory(db,taxonomy,limit=30){
  if(!db)return [];
  const sql="WITH source AS ("+
@@ -837,7 +831,7 @@ const homeChannelCardV3=ch=>`<a class="home-channel-card" href="/channels/${enco
 function homePageV3({base,url,videos,official=[],partners,categoryList=[]}){
  const recent=[...videos.map(v=>({...v,__official:false})),...official.map(v=>({...v,__official:true}))].slice(0,8);
 
- const categoryTiles=categoryList.filter(c=>Number(c.count)>=20).slice(0,8).map(c=>{const meta=categoryMetaV2[c.name]||categoryMetaV2.Collections||{}; const cover=c.cover_url||meta.cover||'';return '<a class="home-category-card" href="/category/'+encodeURIComponent(c.slug)+'"><div class="home-category-art"><img src="'+esc(cover)+'" loading="lazy" decoding="async" data-category-image width="600" height="338" alt="'+esc(c.name)+' category cover"><div class="home-category-shade"></div><span class="home-category-icon" aria-hidden="true">✦</span></div><div class="home-category-copy"><strong>'+esc(c.name)+'</strong><br><small>'+Number(c.count).toLocaleString('en-US')+' videos</small></div></a>'}).join('')||'<div class="empty"><strong>No published categories yet</strong><p>Categories appear after approved videos include publisher-supplied tags.</p></div>';
+ const categoryTiles=categoryList.slice(0,8).map(c=>{const meta=categoryMetaV2[c.name]||categoryMetaV2.Collections||{}; const cover=c.cover_url||meta.cover||'';return '<a class="home-category-card" href="/category/'+encodeURIComponent(c.slug)+'"><div class="home-category-art"><img src="'+esc(cover)+'" loading="lazy" decoding="async" data-category-image width="600" height="338" alt="'+esc(c.name)+' category cover"><div class="home-category-shade"></div><span class="home-category-icon" aria-hidden="true">✦</span></div><div class="home-category-copy"><strong>'+esc(c.name)+'</strong><br><small>'+Number(c.count).toLocaleString('en-US')+' videos</small></div></a>'}).join('')||'<div class="empty"><strong>No published categories yet</strong><p>Categories appear after approved videos include publisher-supplied tags.</p></div>';
  const channelTiles=partners.slice(0,6).map(partnerTile).join('');
  const recentMarkup=recent.length?recent.map(v=>homeCardV3(v,v.__official===true)).join(''):`<div class="empty"><strong>No recent public videos yet</strong><p>Approved listings will appear here automatically.</p></div>`;
  const sidebar=`<aside class="home-sidebar"><div class="home-sidebar-brand"><span class="home-sidebar-mark">N</span><strong>NOXVELLOX</strong></div><nav aria-label="Quick navigation"><a class="active" href="/"><span></span>Home</a><a href="/videos"><span aria-hidden="true">▶</span>Videos</a><a href="/categories"><span aria-hidden="true">▦</span>Categories</a><a href="/channels"><span aria-hidden="true">♙</span>Channels</a><a href="/channels"><span aria-hidden="true">♡</span>Following</a></nav><div class="home-sidebar-rule"></div><div class="home-sidebar-label">Explore</div><nav aria-label="Explore navigation"><a href="/trending"><span aria-hidden="true">↗</span>Trending</a><a href="/new-releases"><span aria-hidden="true">✦</span>New releases</a><a href="/most-viewed"><span aria-hidden="true">◉</span>Most viewed</a><a href="/about"><span aria-hidden="true">✉</span>Support</a></nav></aside>`;
@@ -1745,7 +1739,7 @@ async function route(req,env){
  }
  let markup;
  const localFeed=await loadLocalOfficialFeed(env,req);
-if(path==='/'){const videos=await listVideos(db,{limit:8});const official=(await officialCatalog(db,{limit:12,localEntries:localFeed})).entries;markup=homePageV3({base,url:url.href,videos,official,partners:await partnersWithArt(env,req),categoryList:await homeOfficialCategoryDirectory(db,taxonomy,30)});}
+if(path==='/'){const videos=await listVideos(db,{limit:8});const official=(await officialCatalog(db,{limit:12,localEntries:localFeed})).entries;markup=homePageV3({base,url:url.href,videos,official,partners:await partnersWithArt(env,req),categoryList:await categoryDirectory(db,taxonomy,30)});}
  else if(path==='/videos'){
    const page=officialPageNumber(url.searchParams.get('page')||1),limit=OFFICIAL_PAGE_SIZE;
    const publishedTotal=await countPublishedVideos(db);
