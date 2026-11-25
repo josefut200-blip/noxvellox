@@ -1443,9 +1443,11 @@ async function api(req,env,url,db){
 if(path==='/api/admin/sync-official'&&req.method==='POST'){try{return json(await syncOfficialOnDemand(db))}catch(e){return json({error:safeText(e.message||e,180)},422)}}
 if(path==='/api/admin/import-official-batch'&&req.method==='POST'){
  try{
+  const before=await db.prepare("SELECT count(*) AS total FROM official_embeds").first();
   const result=await syncOfficialOnDemand(db,taxonomyConfig);
+  const after=await db.prepare("SELECT count(*) AS total FROM official_embeds").first();
   const cacheResult=await purgePublicCache(req);
-  return json({ok:true,read:Number(result.sourceRecords||0),approved:Number(result.eligibleRecords||0),inserted:Number(result.eligibleRecords||0),categoryAssignments:Number(result.categoryAssignments||0),cache:cacheResult,note:'Official metadata only; no media files downloaded.'});
+  return json({ok:true,read:Number(result.sourceRecords||0),approved:Number(result.eligibleRecords||0),inserted:Math.max(0,Number(after?.total||0)-Number(before?.total||0)),categoryAssignments:Number(result.categoryAssignments||0),cache:cacheResult,note:'Official metadata only; no media files downloaded.'});
  }catch(e){return json({error:safeText(e.message||e,180)},422)}
 }
  if(path==='/api/admin/import-pepper'&&req.method==='POST'){
