@@ -47,7 +47,17 @@
    try{const data=await request('/api/admin/hide-official',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({id})});message((data.hidden?'Hidden official embed '+id:'ID not found or already hidden')+'. Future automatic imports will not unhide it.');}
    catch(err){message(err.message,true)}
  });
-  $('import-official-batch')?.addEventListener('click',async e=>{const b=e.currentTarget;b.disabled=true;message('Importando lote oficial (até 250 vídeos) e aplicando filtros editoriais.');try{const data=await request('/api/admin/import-official-batch',{method:'POST'});message(`Lote concluído: ${data.read||0} lidos, ${data.approved||0} aprovados/inseridos, ${data.categoryAssignments||0} vínculos de categoria; cache limpo. Recarregando.`);setTimeout(()=>location.reload(),1500)}catch(error){b.disabled=false;message(error.message,true)}});
+  $('import-official-batch')?.addEventListener('click',async e=>{
+   const b=e.currentTarget,channel=String($('official-channel')?.value||'').trim();
+   const scope=channel?('do canal '+channel):'de todos os canais';
+   b.disabled=true;message('Importando lote oficial '+scope+' (2020+) e aplicando filtros editoriais.');
+   try{
+    const data=await request('/api/admin/import-official-batch',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({channel})});
+    const importedChannel=data.channel&&data.channel!=='all'?('canal '+data.channel):'todos os canais';
+    message('Lote concluído ('+importedChannel+' · 2020+): '+(data.read||0)+' lidos, '+(data.approved||0)+' aprovados/inseridos, '+(data.categoryAssignments||0)+' vínculos de categoria; cache limpo. Recarregando.');
+    setTimeout(()=>location.reload(),1500);
+   }catch(error){b.disabled=false;message(error.message,true)}
+  });
  $('sync-official')?.addEventListener('click',async e=>{
    const b=e.currentTarget;b.disabled=true;message('Syncing official webmaster embeds (RSS + three search pages).');
    try{const data=await request('/api/admin/sync-official',{method:'POST'});message(`${data.synced||0} official embed metadata records synchronized. No video files downloaded. View /official-videos.`);}

@@ -45,6 +45,7 @@ jobs:
           OFFICIAL_FEED_MIN_DURATION_SECONDS: ${{ inputs.minimum_duration_seconds || '300' }}
           OFFICIAL_FEED_MAX_ENTRIES: '1000'
           OFFICIAL_FEED_STUDIOS: 'Brazzers,TeamSkeet,Reality Kings,Naughty America,BangBros,Vixen,Blacked,Tushy,Mofos,Digital Playground,Evil Angel,Pure Taboo'
+          OFFICIAL_FEED_MIN_PUBLISH_DATE: '2020-01-01'
 
       - name: Commit changed snapshot
         run: |

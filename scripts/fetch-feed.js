@@ -72,7 +72,13 @@ const FEATURED_STUDIOS = [
   'Evil Angel', 'Pure Taboo'
 ];
 const FEED_SORTS = String(process.env.OFFICIAL_FEED_SORTS || 'most_viewed,top_rated,newest').split(',').map(value => value.trim()).filter(Boolean);
-const MIN_PUBLISH_DATE = `${String(process.env.OFFICIAL_FEED_MIN_PUBLISH_DATE || '2016-01-01').slice(0, 10)}T00:00:00.000Z`;
+const MIN_PUBLISH_DATE = (() => {
+  const floor = Date.parse('2020-01-01T00:00:00.000Z');
+  const configured = String(process.env.OFFICIAL_FEED_MIN_PUBLISH_DATE || '2020-01-01').slice(0, 10);
+  const configuredTime = Date.parse(configured + 'T00:00:00.000Z');
+  const effective = Number.isFinite(configuredTime) && configuredTime >= floor ? configured : '2020-01-01';
+  return effective + 'T00:00:00.000Z';
+})();
 const MIN_DURATION_SECONDS = (() => {
   const configured = Number(process.env.OFFICIAL_FEED_MIN_DURATION_SECONDS || 300);
   return Number.isInteger(configured) && configured >= 300 && configured <= 60000 ? configured : 300;
@@ -496,7 +502,7 @@ async function requestFeed() {
     };
     for (const item of parsed.slice(0, 3)) addShape(item);
     log(`Feed record field names: ${[...fieldNames].sort().join(', ') || '(none)'}`);
-    throw new Error(`feed contained no entries meeting 2016+, HD (720p/1080p/4K), ${MIN_DURATION_SECONDS}s, and editorial allowlist requirements (received ${parsed.length} records, ${unique.length} valid)`);
+    throw new Error(`feed contained no entries meeting 2020+, HD (720p/1080p/4K), ${MIN_DURATION_SECONDS}s, and editorial allowlist requirements (received ${parsed.length} records, ${unique.length} valid)`);
   }
   return eligible
     .sort((a, b) => String(b.published_at).localeCompare(String(a.published_at)))

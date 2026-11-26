@@ -13,10 +13,10 @@
   "vars": {
     "ALLOWED_EMBED_HOSTS": "adultembed.com,iframe.videodelivery.net,www.pornhub.com",
     "ALLOWED_FEED_HOSTS": "adultembed.com",
-    "VIDEO_FEED_URL": "https://adultembed.com/api/v1/search?studios=brazzers,teamskeet,reality-kings,naughty-america,bangbros,vixen,blacked,tushy,mofos,digital-playground,evil-angel,pure-taboo&per_page=100&sort=most_viewed&quality=hd&published_after=2016-01-01&min_duration=300&format=json",
+    "VIDEO_FEED_URL": "https://adultembed.com/api/v1/search?studios=brazzers,teamskeet,reality-kings,naughty-america,bangbros,vixen,blacked,tushy,mofos,digital-playground,evil-angel,pure-taboo&per_page=100&sort=most_viewed&quality=hd&published_after=2020-01-01&min_duration=300&format=json",
     "OFFICIAL_FEED_STUDIOS": "Brazzers,TeamSkeet,Reality Kings,Naughty America,BangBros,Vixen,Blacked,Tushy,Mofos,Digital Playground,Evil Angel,Pure Taboo",
     "OFFICIAL_FEED_SORTS": "most_viewed,top_rated,newest",
-    "OFFICIAL_FEED_MIN_PUBLISH_DATE": "2016-01-01",
+    "OFFICIAL_FEED_MIN_PUBLISH_DATE": "2020-01-01",
     "OFFICIAL_FEED_MIN_DURATION_SECONDS": "300",
     "OFFICIAL_FEED_MAX_ENTRIES": "1000",
     "AUTO_PUBLISH_BRAZZERS": "verified-only",
