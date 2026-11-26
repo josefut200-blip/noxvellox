@@ -20,7 +20,10 @@
       frame.setAttribute('scrolling','no');
       frame.setAttribute('allowfullscreen','');
       frame.setAttribute('playsinline','');
-      frame.setAttribute('allow','autoplay; fullscreen; encrypted-media; picture-in-picture');
+      frame.setAttribute('webkitallowfullscreen','');
+      frame.setAttribute('mozallowfullscreen','');
+      frame.setAttribute('referrerpolicy','origin');
+      frame.setAttribute('allow','autoplay; fullscreen; picture-in-picture; encrypted-media; accelerometer; gyroscope');
       const raw=frame.getAttribute('data-embed-url')||frame.getAttribute('src');
       if(!raw||frame.getAttribute('src'))return;
       try{
