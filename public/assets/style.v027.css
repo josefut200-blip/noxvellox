@@ -368,17 +368,26 @@
 .player-shell{
   position:relative!important;
   width:100%!important;
-  aspect-ratio:16/9!important;
+  height:0!important;
+  min-height:0!important;
+  max-height:none!important;
+  padding-bottom:56.25%!important;
+  aspect-ratio:auto!important;
   overflow:hidden!important;
   pointer-events:auto!important;
 }
 .player-shell iframe{
   position:absolute!important;
-  inset:0!important;
+  top:0!important;
+  left:0!important;
+  right:auto!important;
+  bottom:auto!important;
   z-index:5!important;
   display:block!important;
   width:100%!important;
   height:100%!important;
+  min-height:0!important;
+  border:0!important;
   pointer-events:auto!important;
 }
 [hidden],
@@ -399,12 +408,19 @@
 @media(max-width:768px){
   .player-shell{
     width:100%!important;
-    height:auto!important;
+    height:0!important;
     min-height:0!important;
     max-height:none!important;
-    aspect-ratio:16/9!important;
+    padding-bottom:56.25%!important;
+    aspect-ratio:auto!important;
   }
   .player-shell iframe{
+    top:0!important;
+    left:0!important;
+    right:auto!important;
+    bottom:auto!important;
+    width:100%!important;
+    height:100%!important;
     min-height:0!important;
     z-index:5!important;
     pointer-events:auto!important;
