@@ -624,7 +624,7 @@ function officialWatch({base,url,video,related=[],env={}}){
   const providerEmbed=(()=>{
     try{
       const parsed=new URL(rawEmbed);
-      const match=parsed.pathname.match(/^\\/player\\/embed\\/([0-9]{6,15})\\/?$/i);
+      const match=parsed.pathname.match(/^\/player\/embed\/([0-9]{6,15})\/?$/i);
       if(parsed.protocol==='https:'&&match&&['pornalizer.app','adultembed.com'].includes(parsed.hostname.toLowerCase())){
         return 'https://adultembed.com/player/embed/'+encodeURIComponent(match[1])+'/';
       }
