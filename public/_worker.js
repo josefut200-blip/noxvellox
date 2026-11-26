@@ -509,7 +509,7 @@ async function runOfficialTaxonomyBackfill(db,env,req,taxonomy){
  const active=directory.filter(item=>item.seo_indexable).map(item=>({slug:item.slug,name:item.name,count:item.count}));
  return {ok:true,sourceRecords:assetRecords.length,eligibleRecords:persisted.processed,blockedTitles:persisted.blockedTitles,categoryAssignments:persisted.matchedCategories,formatAssignments:persisted.matchedFormats,activeCategoryCount:active.length,activeCategories:active,noMediaHosted:true};
 }
-async function syncOfficialOnDemand(db,taxonomy=taxonomyConfig){
+async function syncOfficialOnDemand(db,taxonomy=taxonomyConfig,env=null,req=null){
  if(!db)throw Error('D1 database not configured');
  if(!taxonomy)throw Error('Taxonomy configuration unavailable');
  const existingRows=await db.prepare('SELECT id FROM official_embeds').all();
@@ -518,7 +518,7 @@ async function syncOfficialOnDemand(db,taxonomy=taxonomyConfig){
  const plans=[];
  for(let page=1;page<=25;page++)plans.push({search:'amateur',sort:['mostviewed','toprated','newest'][(page-1)%3],page});
  for(const studio of studios)plans.push({search:studio,sort:'mostviewed',page:1});
- let attempted=0,failed=0,consecutiveFailures=0;
+ let attempted=0,failed=0,successfulResponses=0,consecutiveFailures=0,providerFailure='';
  const addRow=(row)=>{
   const id=String(row.video_id||row.id||''),title=safeText(row.title||row.name||'',160);
   const uri=String(row.url||row.link||'');
@@ -528,9 +528,9 @@ async function syncOfficialOnDemand(db,taxonomy=taxonomyConfig){
   const poster=officialPoster(row.poster_url||row.default_thumb||row.thumb||row.thumbnail||row.image||'');
   const rawTags=rawTagList(row.tags||row.categories||row.keywords||[]);
   const item={id,title,poster_url:poster,duration_seconds:seconds,raw_tags:rawTags,
-   published_at:row.published_at||row.publish_date||row.publishedAt||row.pubDate||'',
-   resolution:row.resolution||row.max_resolution||row.quality||row.video_quality||'',
-   studio_name:row.studio_name||row.studio||row.channel||row.channel_name||row.publisher||'',
+   published_at:row.published_at||row.publish_date||row.publishedAt||row.pubDate||row.published||row.created_at||row.uploaded_at||'',
+   resolution:row.resolution||row.max_resolution||row.quality||row.video_quality||row.video_quality_label||'',
+   studio_name:row.studio_name||row.studio||row.channel||row.channel_name||row.publisher||row.producer||'',
    description:safeText(row.description||row.summary||row.synopsis||'',500),
    source_url:OFFICIAL_ORIGIN+'/view_video.php?viewkey='+id,embed_url:OFFICIAL_ORIGIN+'/embed/'+id};
   if(!Number.isInteger(seconds)||seconds<300||seconds>=60000||!editorialEligible(item))return;
@@ -547,18 +547,38 @@ async function syncOfficialOnDemand(db,taxonomy=taxonomyConfig){
    if(!response.ok)throw Error('Provider HTTP '+response.status);
    const body=await response.text();if(body.length>500000)throw Error('Invalid provider data size');
    const parsed=JSON.parse(body);if(!Array.isArray(parsed.videos))throw Error('Invalid provider search data');
+   successfulResponses++;
    for(const row of parsed.videos.slice(0,50))addRow(row);
    consecutiveFailures=0;
   }catch(e){
    failed++;consecutiveFailures++;
-   console.warn('Official search temporarily unavailable',plan.search,plan.sort,plan.page,String(e.message||e).slice(0,90));
+   providerFailure=String(e.message||e).slice(0,120);
+   console.warn('Official search temporarily unavailable',plan.search,plan.sort,plan.page,providerFailure);
    if(consecutiveFailures>=3)break;
   }
  }
- if(!records.size)throw Error('Official provider is temporarily unavailable; no eligible verified entries found');
+ if(!records.size){
+  let snapshotCount=0,snapshotEligible=0;
+  if(env&&req){
+   try{
+    const snapshot=await loadOfficialStaticRecords(env,req);
+    snapshotCount=snapshot.length;
+    const fallbackCandidates=snapshot.filter(item=>editorialEligible(item)).filter(item=>!existing.has(String(item.id))).slice(0,250);
+    snapshotEligible=fallbackCandidates.length;
+    if(fallbackCandidates.length){
+     const persisted=await persistOfficialRecords(db,fallbackCandidates,taxonomy);
+     return {ok:true,source:'authorized_static_snapshot',sourceRecords:snapshotCount,eligibleRecords:fallbackCandidates.length,synced:persisted.processed,categorized:persisted.matchedCategories,formatted:persisted.matchedFormats,attempted,failed,remainingTarget:Math.max(0,250-persisted.processed),automaticallyAvailable:true,noVideoFilesCopied:true};
+    }
+   }catch(e){
+    providerFailure=providerFailure||String(e.message||e).slice(0,120);
+   }
+  }
+  if(successfulResponses)throw Error('Official provider responded, but no records met the active filters (2016+, HD, at least 300 seconds, editorial allowlist). Static snapshot: '+snapshotCount+' records, '+snapshotEligible+' eligible.');
+  throw Error('Official provider unavailable from Cloudflare (live attempts failed'+(providerFailure?': '+providerFailure:'')+'). Static snapshot: '+snapshotCount+' records, '+snapshotEligible+' eligible.');
+ }
  const candidates=[...records.values()].filter(item=>!existing.has(item.id)).slice(0,250);
  const persisted=await persistOfficialRecords(db,candidates,taxonomy);
- return {ok:true,sourceRecords:records.size,eligibleRecords:candidates.length,synced:persisted.processed,categorized:persisted.matchedCategories,formatted:persisted.matchedFormats,attempted,failed,remainingTarget:Math.max(0,250-persisted.processed),automaticallyAvailable:true,noVideoFilesCopied:true};
+ return {ok:true,source:'live_webmaster_search',sourceRecords:records.size,eligibleRecords:candidates.length,synced:persisted.processed,categorized:persisted.matchedCategories,formatted:persisted.matchedFormats,attempted,failed,remainingTarget:Math.max(0,250-persisted.processed),automaticallyAvailable:true,noVideoFilesCopied:true};
 }
 const officialCard=v=>{const title=displayVideoTitle(v.title);return `<a class="video-card" href="/official-watch/${encodeURIComponent(v.id)}"><div class="video-art">${coverMarkup(v.poster_url,title,'Free official embed',v.embed_url)}<span class="play" aria-hidden="true">▶</span>${v.duration_seconds?`<span class="duration">${duration(v.duration_seconds)}</span>`:''}</div><div class="video-meta"><h3>${esc(title)}</h3><div class="sub"><strong>Official embed</strong>  ·  Pornhub</div></div></a>`};
 const officialGrid=(items,heading='Videos from official provider feed')=>`<section class="section wrap"><div class="section-head"><div><div class="section-kicker">No video files hosted here  ·  Free authorized embeds</div><h2>${esc(heading)}</h2></div><a class="section-link" href="/official-videos">View official feed ?</a></div><div class="video-grid">${items.length?items.map(officialCard).join(''):'<div class="empty"><strong>Official provider feed temporarily unavailable</strong><p>Please check the provider or try again later. No placeholder videos will be invented.</p></div>'}</div>${items[0]?.from_snapshot?'<p class="mini"><strong>Dated contingency:</strong> official RSS metadata last observed November 22, 2026; playback is not confirmed and listings can change.</p>':''}<p class="mini">Embedded directly from the original provider under its webmaster embed terms. Availability may depend on region and may change. No files are downloaded or redistributed by Noxvellox.</p></section>`;
@@ -1455,11 +1475,11 @@ async function api(req,env,url,db){
  for(const path of paths){try{if(await cache.delete(new Request(origin+path)))purged++}catch{}}
  return {purged};
 }
-if(path==='/api/admin/sync-official'&&req.method==='POST'){try{return json(await syncOfficialOnDemand(db))}catch(e){return json({error:safeText(e.message||e,180)},422)}}
+if(path==='/api/admin/sync-official'&&req.method==='POST'){try{return json(await syncOfficialOnDemand(db,taxonomyConfig,env,req))}catch(e){return json({error:safeText(e.message||e,180)},422)}}
 if(path==='/api/admin/import-official-batch'&&req.method==='POST'){
  try{
   const before=await db.prepare("SELECT count(*) AS total FROM official_embeds").first();
-  const result=await syncOfficialOnDemand(db,taxonomyConfig);
+  const result=await syncOfficialOnDemand(db,taxonomyConfig,env,req);
   const after=await db.prepare("SELECT count(*) AS total FROM official_embeds").first();
   const cacheResult=await purgePublicCache(req);
   return json({ok:true,read:Number(result.sourceRecords||0),approved:Number(result.eligibleRecords||0),inserted:Math.max(0,Number(after?.total||0)-Number(before?.total||0)),categoryAssignments:Number(result.categoryAssignments||0),cache:cacheResult,note:'Official metadata only; no media files downloaded.'});
