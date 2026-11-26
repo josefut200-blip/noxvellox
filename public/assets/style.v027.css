@@ -600,3 +600,13 @@ body .watch-layout .player-shell.has-ad-overlay .click-play-overlay{
 @media(max-width:768px){
   .player-cover-play{min-height:56px!important;min-width:160px!important;font-size:15px!important;}
 }
+
+/* Cover owns the first gesture; the iframe gets interaction only after release. */
+.player-shell:not([data-player-released="yes"]) iframe{
+  z-index:1!important;
+  pointer-events:none!important;
+}
+.player-shell[data-player-released="yes"] iframe{
+  z-index:5!important;
+  pointer-events:auto!important;
+}
