@@ -652,7 +652,8 @@ async function officialWatch({base,url,video,related=[],env={}}){
     }catch{}
     return rawEmbed;
   })();
-  const playbackEmbed=await signedAdultEmbedUrl(providerEmbed,base);\n  const v={title:video.title,category:'Official embeds',poster_url:video.poster_url,embed_url:embedBlocked?'':playbackEmbed,source_url:embedBlocked?`https://cn.pornhub.com/view_video.php?viewkey=${encodeURIComponent(video.id)}`:playbackEmbed||video.source_url,provider:'',duration_seconds:video.duration_seconds,description:'Video hosted and streamed by the original platform.',official:true,embed_blocked:embedBlocked,slug:video.id,published_at:null};
+  const playbackEmbed=await signedAdultEmbedUrl(providerEmbed,base);
+  const v={title:video.title,category:'Official embeds',poster_url:video.poster_url,embed_url:embedBlocked?'':playbackEmbed,source_url:embedBlocked?`https://cn.pornhub.com/view_video.php?viewkey=${encodeURIComponent(video.id)}`:playbackEmbed||video.source_url,provider:'',duration_seconds:video.duration_seconds,description:'Video hosted and streamed by the original platform.',official:true,embed_blocked:embedBlocked,slug:video.id,published_at:null};
   const configuredHosts=String(env?.ALLOWED_EMBED_HOSTS||'').split(',').map(value=>value.trim().toLowerCase()).filter(Boolean);
   const officialHosts=[...new Set([...configuredHosts,'www.pornhub.com','pornalizer.app','adultembed.com'])].join(',');
   return watchPage({url,base,v,related:related.map(item=>({slug:item.id,title:item.title,poster_url:item.poster_url,duration_seconds:item.duration_seconds,category:'Free official embed',provider:'',official:true})),env:{...env,ALLOWED_EMBED_HOSTS:officialHosts}});
