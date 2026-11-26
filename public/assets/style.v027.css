@@ -391,3 +391,50 @@
   margin:0 auto!important;
   max-width:100%!important;
 }
+
+/* Explicit player-shell state prevents the mobile pre-play card from being clipped. */
+.player-shell.has-ad-overlay{
+  aspect-ratio:auto!important;
+  height:auto!important;
+  min-height:380px!important;
+  max-height:none!important;
+  overflow:visible!important;
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:center!important;
+  justify-content:center!important;
+  padding:20px 12px!important;
+  box-sizing:border-box!important;
+}
+.player-shell.has-ad-overlay [data-click-play-overlay]{
+  position:relative!important;
+  inset:auto!important;
+  width:100%!important;
+  height:auto!important;
+  min-height:380px!important;
+  padding:24px 12px!important;
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:14px!important;
+  box-sizing:border-box!important;
+}
+@media(max-width:768px){
+  .player-shell.has-ad-overlay{
+    aspect-ratio:auto!important;
+    height:auto!important;
+    min-height:380px!important;
+    max-height:none!important;
+    overflow:visible!important;
+  }
+  .player-shell.has-ad-overlay [data-click-play-overlay]{
+    position:relative!important;
+    inset:auto!important;
+    width:100%!important;
+    height:auto!important;
+    min-height:380px!important;
+    padding:24px 12px!important;
+    gap:14px!important;
+  }
+}
