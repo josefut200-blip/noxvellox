@@ -8,14 +8,19 @@
   document.querySelectorAll('.detail-row').forEach(el=>{if(el.textContent.includes('Provider:')){el.textContent=el.textContent.replace(/Provider:.*$/,'').trim()}});
   document.querySelectorAll('.video-card .sub').forEach(el=>{if(el.textContent.includes('Pornhub'))el.textContent='Free official embed'});
   const modal=document.querySelector('[data-age-gate]');
-  try{if(sessionStorage.getItem('noxvellox-age-confirmed')==='yes')modal?.remove()}catch{}
+  const AGE_KEY='noxvellox_age_verified';
+  const COOKIE_KEY='noxvellox_cookie_preferences';
+  const readCookie=name=>{const match=document.cookie.split('; ').find(item=>item.startsWith(name+'='));return match?decodeURIComponent(match.slice(name.length+1)) : '';};
+  const setPreferenceCookie=(name,value)=>{try{document.cookie=name+'='+encodeURIComponent(value)+'; Max-Age=2592000; Path=/; SameSite=Lax'}catch{}};
+  const ageVerified=()=>{try{return localStorage.getItem(AGE_KEY)==='1'||readCookie(AGE_KEY)==='1'}catch{return readCookie(AGE_KEY)==='1'}};
+  if(ageVerified()){modal?.remove();}
   const CONSENT_KEY='noxvellox-optional-ads';
-  const consent=()=>{try{return localStorage.getItem(CONSENT_KEY)||'unset'}catch{return 'unset'}};
-  const setConsent=value=>{try{localStorage.setItem(CONSENT_KEY,value)}catch{}};
+  const consent=()=>{try{return localStorage.getItem(CONSENT_KEY)||readCookie(COOKIE_KEY).split('|')[0]||'unset'}catch{return readCookie(COOKIE_KEY).split('|')[0]||'unset'}};
+  const setConsent=value=>{try{localStorage.setItem(CONSENT_KEY,value)}catch{}setPreferenceCookie(COOKIE_KEY,value+'|'+analyticsConsent())};
   const ANALYTICS_CONSENT_KEY='noxvellox-google-analytics';
   const GA_ID='G-SZY1W9EZ3G';
   const analyticsConsent=()=>{try{return localStorage.getItem(ANALYTICS_CONSENT_KEY)||'unset'}catch{return 'unset'}};
-  const setAnalyticsConsent=value=>{try{localStorage.setItem(ANALYTICS_CONSENT_KEY,value)}catch{}};
+  const setAnalyticsConsent=value=>{try{localStorage.setItem(ANALYTICS_CONSENT_KEY,value)}catch{}setPreferenceCookie(COOKIE_KEY,consent()+'|'+value)};
   const loadAnalytics=()=>{
     if(analyticsConsent()!=='granted'||document.querySelector('[data-google-analytics]'))return;
     window.dataLayer=window.dataLayer||[];
@@ -454,7 +459,8 @@
   });
   // One entry screen, two independent choices. Optional advertising is off by default.
   const confirmAge=()=>{
-    try{sessionStorage.setItem('noxvellox-age-confirmed','yes')}catch{}
+    try{localStorage.setItem(AGE_KEY,'1')}catch{}
+    setPreferenceCookie(AGE_KEY,'1');
     modal?.remove();
     releaseEmbeds();
     renderAd();
