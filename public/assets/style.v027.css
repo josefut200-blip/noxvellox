@@ -610,3 +610,11 @@ body .watch-layout .player-shell.has-ad-overlay .click-play-overlay{
   z-index:5!important;
   pointer-events:auto!important;
 }
+
+/* Remove any stale legacy fallback button from cached markup. */
+.mobile-player-fallback-wrap,
+.mobile-player-fallback{
+  display:none!important;
+  visibility:hidden!important;
+  pointer-events:none!important;
+}
