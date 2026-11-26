@@ -311,3 +311,4 @@
   bottom:18px;
 }
 @media(max-width:700px){.sponsored-exoclick-grid{grid-template-columns:1fr!important}}
+.exoclick-ad-slot{height:auto;min-height:0;display:block}.exoclick-ad-slot[hidden]{display:none!important}.exoclick-banner-grid{box-sizing:border-box}
