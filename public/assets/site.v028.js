@@ -488,8 +488,7 @@
       let popunderLoaded=false;try{popunderLoaded=sessionStorage.getItem('noxvellox-popunder-loaded')==='yes'}catch{}
       if(!popunderLoaded){loadConsentUnit('noxvellox-popunder',APPROVED_POPUNDER_SRC);try{sessionStorage.setItem('noxvellox-popunder-loaded','yes')}catch{}}
     }
-    if(!slots.length){releaseEmbeds();return;}
-    slots.slice(0,1).forEach(slot=>{
+    if(slots.length)slots.slice(0,1).forEach(slot=>{
       const message=slot.querySelector('[data-ad-message]');
 
       const container=slot.querySelector('[data-ad-container]');
