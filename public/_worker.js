@@ -426,23 +426,36 @@ async function officialById(db,id,localEntries=null){
 // separately imported Little Pepper/Brazzers metadata, official embeds in the
 // provider webmaster program are allowed as automatic feed listings.
 
-function validOfficialListing(item,id){
+function validOfficialListing(item,id,env=null){
  try{
+  const normalizedId=String(id||'');
+  if(!/^[a-z0-9]{6,24}$/i.test(normalizedId))return false;
   const source=new URL(String(item?.source_url||'')),embed=new URL(String(item?.embed_url||''));
   const hosts=new Set(['www.pornhub.com','pornhub.com']);
-  return source.protocol==='https:'&&hosts.has(source.hostname)&&source.pathname==='/view_video.php'&&source.searchParams.get('viewkey')===id&&
-   embed.protocol==='https:'&&hosts.has(embed.hostname)&&embed.pathname==='/embed/'+id;
+  const pornHubListing=source.protocol==='https:'&&hosts.has(source.hostname.toLowerCase())&&source.pathname==='/view_video.php'&&source.searchParams.get('viewkey')===normalizedId&&
+   embed.protocol==='https:'&&hosts.has(embed.hostname.toLowerCase())&&embed.pathname==='/embed/'+normalizedId;
+  if(pornHubListing)return true;
+
+  // The authorized feed can publish its own HTTPS player host. Accept it only
+  // when the host is explicitly configured and both URLs resolve to the exact
+  // provider player for this record; arbitrary mirrors remain rejected.
+  const configuredHosts=String(env?.ALLOWED_EMBED_HOSTS||'').split(',').map(value=>value.trim().toLowerCase()).filter(Boolean);
+  const embedHost=embed.hostname.toLowerCase();
+  const configured=configuredHosts.some(host=>embedHost===host||embedHost.endsWith('.'+host));
+  const providerPath='/player/embed/'+normalizedId;
+  return source.protocol==='https:'&&embed.protocol==='https:'&&source.hostname.toLowerCase()===embedHost&&configured&&
+   source.pathname.replace(/\\/+$/,'')===providerPath&&embed.pathname.replace(/\\/+$/,'')===providerPath;
  }catch{return false}
 }
-async function persistOfficialRecords(db,items,taxonomy){
+async function persistOfficialRecords(db,items,taxonomy,env=null){
  if(!db)throw Error('D1 database not configured');
  const dedup=new Map();
  for(const item of Array.isArray(items)?items:[]){
   const id=String(item?.id||'');
-  if(!/^[a-z0-9]{8,24}$/i.test(id)||REMOVED_OFFICIAL_IDS.has(id)||EMBED_BLOCKED_OFFICIAL_IDS.has(id))continue;
+  if(!/^[a-z0-9]{6,24}$/i.test(id)||REMOVED_OFFICIAL_IDS.has(id)||EMBED_BLOCKED_OFFICIAL_IDS.has(id))continue;
   const title=safeText(item?.title||'',160),durationSeconds=Number(item?.duration_seconds||0);
   const publishedAt=safeText(item?.published_at||item?.publish_date||'',64),resolution=safeText(item?.resolution||'',16),studioName=safeText(item?.studio_name||item?.studio||item?.channel||'',120),description=safeText(item?.description||item?.summary||'',500);
-  if(!title||!Number.isInteger(durationSeconds)||durationSeconds<MIN_OFFICIAL_DURATION_SECONDS||durationSeconds>=60000||!validOfficialListing(item,id))continue;
+  if(!title||!Number.isInteger(durationSeconds)||durationSeconds<MIN_OFFICIAL_DURATION_SECONDS||durationSeconds>=60000||!validOfficialListing(item,id,env))continue;
   const classified=classifyOfficialMetadata(item,taxonomy);
   if(classified.blocked)continue;
   dedup.set(id,{id,title,poster_url:officialPoster(item?.poster_url||''),duration_seconds:durationSeconds,published_at:publishedAt,resolution,studio_name:studioName,description,raw_tags:classified.rawTags,categories:classified.categories,formats:classified.formats,blocked:classified.blocked});
@@ -490,7 +503,7 @@ async function loadOfficialStaticRecords(env,req){
   ...(Array.isArray(base)?base:(Array.isArray(base?.entries)?base.entries:[])),
   ...(Array.isArray(manual)?manual:(Array.isArray(manual?.entries)?manual.entries:[]))
  ];
- return entries.filter(item=>item&&/^[a-z0-9]{8,24}$/i.test(String(item.id||''))).map(item=>({...item}));
+ return entries.filter(item=>item&&/^[a-z0-9]{6,24}$/i.test(String(item.id||''))).map(item=>({...item}));
 }
 async function taxonomyBackfillTokenHash(token){
  const bytes=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(String(token||'')));
@@ -503,7 +516,7 @@ async function runOfficialTaxonomyBackfill(db,env,req,taxonomy){
  const stored=await db.prepare("SELECT id,title,poster_url,duration_seconds,published_at,resolution,studio_name,description FROM official_embeds WHERE visibility='active' AND id NOT IN ('696c7c920140e','6937cf5fea785')").all();
  const records=new Map((stored.results||[]).map(row=>[String(row.id),{...row,source_url:OFFICIAL_ORIGIN+'/view_video.php?viewkey='+row.id,embed_url:OFFICIAL_ORIGIN+'/embed/'+row.id}]));
  for(const item of assetRecords)records.set(String(item.id),item);
- const persisted=await persistOfficialRecords(db,[...records.values()],taxonomy);
+ const persisted=await persistOfficialRecords(db,[...records.values()],taxonomy,env);
  await db.prepare("INSERT OR IGNORE INTO taxonomy_migrations(version) VALUES (2)").run();
  const directory=await categoryDirectory(db,taxonomy,500);
  const active=directory.filter(item=>item.seo_indexable).map(item=>({slug:item.slug,name:item.name,count:item.count}));
@@ -566,7 +579,7 @@ async function syncOfficialOnDemand(db,taxonomy=taxonomyConfig,env=null,req=null
     const fallbackCandidates=snapshot.filter(item=>editorialEligible(item)).filter(item=>!existing.has(String(item.id))).slice(0,250);
     snapshotEligible=fallbackCandidates.length;
     if(fallbackCandidates.length){
-     const persisted=await persistOfficialRecords(db,fallbackCandidates,taxonomy);
+     const persisted=await persistOfficialRecords(db,fallbackCandidates,taxonomy,env);
      return {ok:true,source:'authorized_static_snapshot',sourceRecords:snapshotCount,eligibleRecords:fallbackCandidates.length,synced:persisted.processed,categorized:persisted.matchedCategories,formatted:persisted.matchedFormats,attempted,failed,remainingTarget:Math.max(0,250-persisted.processed),automaticallyAvailable:true,noVideoFilesCopied:true};
     }
    }catch(e){
@@ -577,7 +590,7 @@ async function syncOfficialOnDemand(db,taxonomy=taxonomyConfig,env=null,req=null
   throw Error('Official provider unavailable from Cloudflare (live attempts failed'+(providerFailure?': '+providerFailure:'')+'). Static snapshot: '+snapshotCount+' records, '+snapshotEligible+' eligible.');
  }
  const candidates=[...records.values()].filter(item=>!existing.has(item.id)).slice(0,250);
- const persisted=await persistOfficialRecords(db,candidates,taxonomy);
+ const persisted=await persistOfficialRecords(db,candidates,taxonomy,env);
  return {ok:true,source:'live_webmaster_search',sourceRecords:records.size,eligibleRecords:candidates.length,synced:persisted.processed,categorized:persisted.matchedCategories,formatted:persisted.matchedFormats,attempted,failed,remainingTarget:Math.max(0,250-persisted.processed),automaticallyAvailable:true,noVideoFilesCopied:true};
 }
 const officialCard=v=>{const title=displayVideoTitle(v.title);return `<a class="video-card" href="/official-watch/${encodeURIComponent(v.id)}"><div class="video-art">${coverMarkup(v.poster_url,title,'Free official embed',v.embed_url)}<span class="play" aria-hidden="true">▶</span>${v.duration_seconds?`<span class="duration">${duration(v.duration_seconds)}</span>`:''}</div><div class="video-meta"><h3>${esc(title)}</h3><div class="sub"><strong>Official embed</strong>  ·  Pornhub</div></div></a>`};
