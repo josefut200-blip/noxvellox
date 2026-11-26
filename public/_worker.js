@@ -1867,7 +1867,7 @@ async function route(req,env){
    return Response.redirect(safeUrl.href,302);
   }
  }
- const cacheable=req.method==='GET'&&(path==='/'||path==='/videos'||path==='/official-videos'||path==='/categories'||path==='/channels'||path==='/sitemap.xml'||path.startsWith('/category/')||path.startsWith('/official-watch/'));
+ const cacheable=req.method==='GET'&&path!=='/official-watch/7096442'&&(path==='/'||path==='/videos'||path==='/official-videos'||path==='/categories'||path==='/channels'||path==='/sitemap.xml'||path.startsWith('/category/')||path.startsWith('/official-watch/'));
  const cache=cacheable&&typeof caches!=='undefined'&&caches.default?caches.default:null;
  const cacheUrl=new URL(url.href);
  const cacheRevision=path==='/official-watch/7096442'?'2026-11-26-player-adultembed-signed-6':'2026-11-26-player-adultembed-signed-5';
