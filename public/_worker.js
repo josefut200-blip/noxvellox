@@ -616,13 +616,24 @@ async function syncOfficialOnDemand(db,taxonomy=taxonomyConfig,env=null,req=null
  const persisted=await persistOfficialRecords(db,candidates,taxonomy,env);
  return {ok:true,source:'live_webmaster_search',channel:selectedChannel||'all',sourceRecords:records.size,eligibleRecords:candidates.length,synced:persisted.processed,categorized:persisted.matchedCategories,formatted:persisted.matchedFormats,attempted,failed,remainingTarget:Math.max(0,250-persisted.processed),automaticallyAvailable:true,noVideoFilesCopied:true};
 }
-const officialCard=v=>{const title=displayVideoTitle(v.title);return `<a class="video-card" href="/official-watch/${encodeURIComponent(v.id)}"><div class="video-art">${coverMarkup(v.poster_url,title,'Free official embed',v.embed_url)}<span class="play" aria-hidden="true">▶</span>${v.duration_seconds?`<span class="duration">${duration(v.duration_seconds)}</span>`:''}</div><div class="video-meta"><h3>${esc(title)}</h3><div class="sub"><strong>Official embed</strong>  ·  Pornhub</div></div></a>`};
+const officialCard=v=>{const title=displayVideoTitle(v.title);return `<a class="video-card" href="/official-watch/${encodeURIComponent(v.id)}"><div class="video-art">${coverMarkup(v.poster_url,title,'Free official embed',v.embed_url)}<span class="play" aria-hidden="true">▶</span>${v.duration_seconds?`<span class="duration">${duration(v.duration_seconds)}</span>`:''}</div><div class="video-meta"><h3>${esc(title)}</h3><div class="sub"><strong>Official embed</strong>  ·  AdultEmbed</div></div></a>`};
 const officialGrid=(items,heading='Videos from official provider feed')=>`<section class="section wrap"><div class="section-head"><div><div class="section-kicker">No video files hosted here  ·  Free authorized embeds</div><h2>${esc(heading)}</h2></div><a class="section-link" href="/official-videos">View official feed ?</a></div><div class="video-grid">${items.length?items.map(officialCard).join(''):'<div class="empty"><strong>Official provider feed temporarily unavailable</strong><p>Please check the provider or try again later. No placeholder videos will be invented.</p></div>'}</div>${items[0]?.from_snapshot?'<p class="mini"><strong>Dated contingency:</strong> official RSS metadata last observed November 22, 2026; playback is not confirmed and listings can change.</p>':''}<p class="mini">Embedded directly from the original provider under its webmaster embed terms. Availability may depend on region and may change. No files are downloaded or redistributed by Noxvellox.</p></section>`;
 function officialWatch({base,url,video,related=[],env={}}){
   const embedBlocked=EMBED_BLOCKED_OFFICIAL_IDS.has(String(video.id));
-  const v={title:video.title,category:'Official embeds',poster_url:video.poster_url,embed_url:embedBlocked?'':video.embed_url,source_url:embedBlocked?`https://cn.pornhub.com/view_video.php?viewkey=${encodeURIComponent(video.id)}`:video.source_url,provider:'',duration_seconds:video.duration_seconds,description:'Video hosted and streamed by the original platform.',official:true,embed_blocked:embedBlocked,slug:video.id,published_at:null};
+  const rawEmbed=String(video?.embed_url||'');
+  const providerEmbed=(()=>{
+    try{
+      const parsed=new URL(rawEmbed);
+      const match=parsed.pathname.match(/^\\/player\\/embed\\/([0-9]{6,15})\\/?$/i);
+      if(parsed.protocol==='https:'&&match&&['pornalizer.app','adultembed.com'].includes(parsed.hostname.toLowerCase())){
+        return 'https://adultembed.com/player/embed/'+encodeURIComponent(match[1])+'/';
+      }
+    }catch{}
+    return rawEmbed;
+  })();
+  const v={title:video.title,category:'Official embeds',poster_url:video.poster_url,embed_url:embedBlocked?'':providerEmbed,source_url:embedBlocked?`https://cn.pornhub.com/view_video.php?viewkey=${encodeURIComponent(video.id)}`:providerEmbed||video.source_url,provider:'',duration_seconds:video.duration_seconds,description:'Video hosted and streamed by the original platform.',official:true,embed_blocked:embedBlocked,slug:video.id,published_at:null};
   const configuredHosts=String(env?.ALLOWED_EMBED_HOSTS||'').split(',').map(value=>value.trim().toLowerCase()).filter(Boolean);
-  const officialHosts=[...new Set([...configuredHosts,'www.pornhub.com','pornalizer.app'])].join(',');
+  const officialHosts=[...new Set([...configuredHosts,'www.pornhub.com','pornalizer.app','adultembed.com'])].join(',');
   return watchPage({url,base,v,related:related.map(item=>({slug:item.id,title:item.title,poster_url:item.poster_url,duration_seconds:item.duration_seconds,category:'Free official embed',provider:'',official:true})),env:{...env,ALLOWED_EMBED_HOSTS:officialHosts}});
 }
 
@@ -1837,7 +1848,7 @@ async function route(req,env){
  const cacheable=req.method==='GET'&&(path==='/'||path==='/videos'||path==='/official-videos'||path==='/categories'||path==='/channels'||path==='/sitemap.xml'||path.startsWith('/category/')||path.startsWith('/official-watch/'));
  const cache=cacheable&&typeof caches!=='undefined'&&caches.default?caches.default:null;
  const cacheUrl=new URL(url.href);
- const cacheIdentity=new URL(cacheUrl.origin+'/__nv-cache/2026-11-26-player-sandbox-3'+cacheUrl.pathname);
+ const cacheIdentity=new URL(cacheUrl.origin+'/__nv-cache/2026-11-26-player-adultembed-4'+cacheUrl.pathname);
  cacheIdentity.search=cacheUrl.search;
  const cacheKey=cache?new Request(cacheIdentity.href,{method:'GET'}):null;
  if(cache){try{const cached=await cache.match(cacheKey);if(cached)return cached}catch{}}
