@@ -221,7 +221,7 @@
   }
   function setupClickToPlay(){
     document.querySelectorAll('[data-click-play-overlay]').forEach(overlay=>{
-      const player=overlay.closest('[data-player]'),button=overlay.querySelector('[data-countdown-play]')||overlay.querySelector('[data-click-play]');
+      const player=overlay.closest('[data-player]'),button=overlay.querySelector('[data-countdown-play]')||overlay.querySelector('[data-click-play]'),close=overlay.querySelector('[data-click-play-close]');
       if(!player||!button||overlay.dataset.clickPlayBound==='yes')return;
       overlay.dataset.clickPlayBound='yes';
       let remaining=5,released=false;
@@ -262,6 +262,7 @@
       const fallback=window.setTimeout(()=>release('Watch Video'),3000);
       if(typeof consent==='function'&&consent()==='granted')loadExoClick().catch(()=>release('Watch Video'));
       button.addEventListener('click',()=>release('Skip Ad & Watch Video'),{once:true});
+      close?.addEventListener('click',()=>release('Watch Video'),{once:true});
     });
   }
   const releaseClickPlay=button=>{
