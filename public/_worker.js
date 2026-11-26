@@ -971,9 +971,9 @@ function watchPage({url,base,v,related,relatedCard=card,env}){
   const overlayPoster=poster.replace(/[\\'()]/g,'');
   const clickPlayOverlay=v.official&&embed?'<div class="click-play-overlay" data-click-play-overlay role="dialog" aria-label="Advertisement before playback" style="position:absolute;inset:0;z-index:9;display:flex;align-items:center;justify-content:center;overflow:hidden;background:#08070b url('+overlayPoster+') center/cover no-repeat">'+
     '<div style="position:absolute;inset:0;background:rgba(0,0,0,.78)"></div>'+
-    '<div class="click-play-ad-card" style="position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;justify-content:center;width:min(100%,360px);padding:20px;text-align:center;background:#141418;border-radius:12px;border:1px solid rgba(255,255,255,.1)">'+
+    '<div class="click-play-ad-card" style="position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;justify-content:center;width:min(100%,300px);padding:16px;text-align:center;background:#141418;border-radius:12px;border:1px solid rgba(255,255,255,.1)"><button type="button" class="click-play-close" data-click-play-close aria-label="Close advertisement" title="Close advertisement">×</button>'+
       '<div style="margin-bottom:12px;color:#fff;font:700 11px/1.2 Arial,sans-serif;letter-spacing:.12em;text-transform:uppercase">Advertisement</div>'+
-      '<div data-exoclick-banner data-zoneid="6104372" data-src="https://a.magsrv.com/ad-provider.js" style="width:300px;height:250px;max-width:100%;overflow:hidden;margin:0 auto"><ins class="eas6a97888e31" data-zoneid="6104372"></ins></div>'+
+      '<div class="click-play-ad-slot" data-exoclick-banner data-zoneid="6104372" data-src="https://a.magsrv.com/ad-provider.js" style="width:240px;height:200px;max-width:100%;overflow:hidden;margin:0 auto"><ins class="eas6a97888e31" data-zoneid="6104372"></ins></div>'+
       '<button type="button" class="button ghost" data-click-play data-countdown-play disabled style="margin-top:16px;min-height:40px;padding:10px 18px">Skip Ad in 5s...</button>'+
     '</div>'+
   '</div>':'';
