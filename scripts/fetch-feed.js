@@ -22,9 +22,15 @@ function normalizeTag(value) {
     .replace(/&/g, ' and ').replace(/[^a-z0-9]+/g, ' ').trim().replace(/\s+/g, ' ');
 }
 function tagValues(value) {
-  const values = Array.isArray(value) ? value : typeof value === 'string' ? value.split(/[;,|]/) : [];
+  const values = Array.isArray(value)
+    ? value
+    : typeof value === 'string'
+      ? value.split(/[;,|]/)
+      : value && typeof value === 'object'
+        ? [value]
+        : [];
   return [...new Set(values.map(item => item && typeof item === 'object'
-    ? String(item.slug || item.name || item.label || item.tag || '')
+    ? String(item.slug || item.name || item.label || item.tag || item.title || '')
     : String(item ?? '')).map(item => text(item, 80)).filter(Boolean))].slice(0, 80);
 }
 function safeTags(value) {
@@ -217,8 +223,9 @@ function publishedAt(value) {
 
 function normalizeResolution(value) {
   const normalized = normalizeTag(value).replace(/\s+/g, '');
-  if (normalized === '2160p' || normalized === 'uhd' || normalized === '4k') return '4k';
-  if (normalized === '1080p' || normalized === '720p') return normalized;
+  if (/^(2160p?|uhd|4k)$/.test(normalized)) return '4k';
+  if (/^1080p?$/.test(normalized)) return '1080p';
+  if (/^720p?$/.test(normalized)) return '720p';
   return '';
 }
 
@@ -304,9 +311,25 @@ function normalizeEntry(item) {
   const rawTags = safeTags(['tags', 'raw_tags', 'categories', 'category', 'keywords', 'tag'].flatMap(key => tagValues(valueFrom(item, [key]))));
   const formats = safeTags(valueFrom(item, ['formats', 'format']));
   const language = normalizeSourceLanguage(valueFrom(item, ['language', 'lang', 'audio_language', 'locale']));
-  const resolution = normalizeResolution(valueFrom(item, ['resolution', 'max_resolution', 'quality', 'video_quality']));
-  const published_at = publishedAt(valueFrom(item, ['pubDate', 'pub_date', 'publish_date', 'published_at', 'publishedAt', 'published', 'date']));
-  const studio = text(valueFrom(item, ['studio', 'studio_name', 'channel', 'channel_name', 'publisher', 'producer']), 120);
+  const resolutionValue = valueFrom(item, ['resolution', 'max_resolution', 'quality', 'video_quality']);
+  const resolution = normalizeResolution(
+    resolutionValue && typeof resolutionValue === 'object'
+      ? valueFrom(resolutionValue, ['value', 'name', 'label', 'quality', 'resolution'])
+      : resolutionValue
+  );
+  const publishedValue = valueFrom(item, ['pubDate', 'pub_date', 'publish_date', 'published_at', 'publishedAt', 'published', 'date']);
+  const published_at = publishedAt(
+    publishedValue && typeof publishedValue === 'object'
+      ? valueFrom(publishedValue, ['value', 'date', 'timestamp'])
+      : publishedValue
+  );
+  const studioValue = valueFrom(item, ['studio', 'studio_name', 'channel', 'channel_name', 'publisher', 'producer']);
+  const studio = text(
+    studioValue && typeof studioValue === 'object'
+      ? valueFrom(studioValue, ['name', 'slug', 'title', 'label'])
+      : studioValue,
+    120
+  );
   const description = text(valueFrom(item, ['description', 'summary', 'synopsis']), 500);
   const frame_rate = Number(String(valueFrom(item, ['frame_rate', 'frameRate', 'fps'])).match(/\d{2,3}/)?.[0]) || 0;
   const orientation = text(valueFrom(item, ['orientation']), 32).toLowerCase();
