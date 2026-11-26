@@ -234,6 +234,11 @@
         player.dataset.prerollFinished='yes';
         player.dataset.preplayActive='no';
         player.classList.remove('has-ad-overlay');
+        player.style.removeProperty('aspect-ratio');
+        player.style.removeProperty('height');
+        player.style.removeProperty('min-height');
+        player.style.removeProperty('max-height');
+        player.style.removeProperty('overflow');
         button.disabled=false;
         button.textContent=label||'Skip Ad & Watch Video';
         hideOverlay(overlay);
