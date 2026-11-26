@@ -622,11 +622,11 @@ async function signedAdultEmbedUrl(value,base){
   const raw=String(value||'');
   try{
     const parsed=new URL(raw);
-    const match=parsed.pathname.match(/^\\/player\\/embed\\/([0-9]{6,15})\\/?$/i);
+    const match=parsed.pathname.match(/^\/player\/embed\/([0-9]{6,15})\/?$/i);
     if(parsed.protocol!=='https:'||parsed.hostname.toLowerCase()!=='adultembed.com'||!match)return raw;
     const response=await fetch('https://adultembed.com/api/videos/'+encodeURIComponent(match[1])+'/get-embed/',{
       method:'POST',
-      headers:{accept:'application/json','x-site-url':String(base||'https://noxvellox.site').replace(/\\/$/,'')},
+      headers:{accept:'application/json','x-site-url':String(base||'https://noxvellox.site').replace(/\/$/,'')},
       redirect:'manual',
       signal:AbortSignal.timeout(3500)
     });
@@ -634,7 +634,7 @@ async function signedAdultEmbedUrl(value,base){
     const payload=await response.json();
     const candidate=String(payload?.player_url||payload?.playerUrl||payload?.embed_url||'').trim();
     const signed=new URL(candidate);
-    const signedId=signed.pathname.match(/^\\/player\\/embed\\/([0-9]{6,15})\\/?$/i);
+    const signedId=signed.pathname.match(/^\/player\/embed\/([0-9]{6,15})\/?$/i);
     if(signed.protocol==='https:'&&signed.hostname.toLowerCase()==='adultembed.com'&&signedId&&signedId[1]===match[1])return signed.href;
   }catch{}
   return raw;
