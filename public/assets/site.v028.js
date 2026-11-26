@@ -203,7 +203,7 @@
     });
   }
   const loadFrame=frame=>{
-    if(!frame||frame.src)return;
+    if(!frame||frame.getAttribute('src'))return;
     const raw=frame.dataset.embedUrl||'';
     try{const target=new URL(raw,location.href);if(!target.searchParams.has('autoplay'))target.searchParams.set('autoplay','1');if(!target.searchParams.has('auto_play'))target.searchParams.set('auto_play','1');frame.src=target.toString()}catch{frame.src=raw}
   };
