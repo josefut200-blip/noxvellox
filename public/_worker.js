@@ -494,12 +494,17 @@ async function loadOfficialStaticRecords(env,req){
  ];
  function canonicalizeAuthorizedStaticRecord(item){
   const id=String(item?.id||'');
-  if(!/^\\d{6,15}$/.test(id))return {...item};
+  if(!/^[0-9]{6,15}$/.test(id))return {...item};
   try{
    const source=new URL(String(item?.source_url||'')),embed=new URL(String(item?.embed_url||''));
    const providerPath='/player/embed/'+id;
-   const sourcePath=source.pathname.replace(/\\/+$/,'');
-   const embedPath=embed.pathname.replace(/\\/+$/,'');
+   const trimTrailingSlashes=value=>{
+    let result=String(value||'');
+    while(result.endsWith('/'))result=result.slice(0,-1);
+    return result;
+   };
+   const sourcePath=trimTrailingSlashes(source.pathname);
+   const embedPath=trimTrailingSlashes(embed.pathname);
    if(source.protocol==='https:'&&embed.protocol==='https:'&&source.hostname.toLowerCase()===embed.hostname.toLowerCase()&&
       sourcePath===providerPath&&embedPath===providerPath){
     return {...item,source_url:OFFICIAL_ORIGIN+'/view_video.php?viewkey='+encodeURIComponent(id),embed_url:OFFICIAL_ORIGIN+'/embed/'+encodeURIComponent(id)};
