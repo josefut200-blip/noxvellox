@@ -7,6 +7,31 @@
   document.querySelectorAll('.detail-row').forEach(el=>{if(el.textContent.includes('Provider:')){el.textContent=el.textContent.replace(/\s*[·•]\s*Provider:.*$/,'').trim();if(!el.textContent)el.remove()}});
   document.querySelectorAll('.detail-row').forEach(el=>{if(el.textContent.includes('Provider:')){el.textContent=el.textContent.replace(/Provider:.*$/,'').trim()}});
   document.querySelectorAll('.video-card .sub').forEach(el=>{if(el.textContent.includes('Pornhub'))el.textContent='Free official embed'});
+  const repairLegacyPlayerMarkup=()=>{
+    document.querySelectorAll('[data-player]').forEach(player=>{
+      player.querySelectorAll('[data-player-cover],.player-cover,.player-cover-play,.player-cover-image').forEach(node=>node.remove());
+      player.querySelectorAll('.mobile-player-fallback-wrap,.mobile-player-fallback').forEach(node=>node.remove());
+      const frame=player.querySelector('iframe[data-embed-url],iframe');
+      if(!frame)return;
+      frame.removeAttribute('sandbox');
+      frame.setAttribute('frameborder','0');
+      frame.setAttribute('width','100%');
+      frame.setAttribute('height','100%');
+      frame.setAttribute('scrolling','no');
+      frame.setAttribute('allowfullscreen','');
+      frame.setAttribute('playsinline','');
+      frame.setAttribute('allow','autoplay; fullscreen; encrypted-media; picture-in-picture');
+      const raw=frame.getAttribute('data-embed-url')||frame.getAttribute('src');
+      if(!raw||frame.getAttribute('src'))return;
+      try{
+        const target=new URL(raw,location.href);
+        target.searchParams.set('autoplay','1');
+        target.searchParams.set('auto_play','1');
+        frame.setAttribute('src',target.toString());
+      }catch{frame.setAttribute('src',raw)}
+    });
+  };
+  repairLegacyPlayerMarkup();
   const modal=document.querySelector('[data-age-gate]');
   document.querySelectorAll('.mobile-player-fallback-wrap,.mobile-player-fallback').forEach(node=>node.remove());
   const AGE_KEY='noxvellox_age_verified';
@@ -370,9 +395,10 @@
     event.stopPropagation();
     releaseClickPlay(button);
   },true);
+  repairLegacyPlayerMarkup();
   setupClickToPlay();
   setupVastClickOverlay();
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>{setupClickToPlay();setupVastClickOverlay()},{once:true});
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>{repairLegacyPlayerMarkup();setupClickToPlay();setupVastClickOverlay()},{once:true});
   const setupFullscreen=()=>{
     document.querySelectorAll('[data-player-fullscreen]').forEach(button=>{
       if(button.dataset.fullscreenBound==='yes')return;
