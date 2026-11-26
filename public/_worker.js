@@ -3,6 +3,7 @@
  * Original site implementation, v0.1.0. Assets served by env.ASSETS.
  * An empty site launches safely with demo cards (never fake playable videos).
  * Configure D1 binding DB and secrets before using the admin/import features.
+ * Production secret refresh deployment marker: 2026-11-26.
  */
 const SITE='Noxvellox';
 const PUBLIC_ORIGIN='https://noxvellox.site';
