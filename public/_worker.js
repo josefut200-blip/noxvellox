@@ -426,25 +426,14 @@ async function officialById(db,id,localEntries=null){
 // separately imported Little Pepper/Brazzers metadata, official embeds in the
 // provider webmaster program are allowed as automatic feed listings.
 
-function validOfficialListing(item,id,env=null){
+function validOfficialListing(item,id){
  try{
   const normalizedId=String(id||'');
   if(!/^[a-z0-9]{6,24}$/i.test(normalizedId))return false;
   const source=new URL(String(item?.source_url||'')),embed=new URL(String(item?.embed_url||''));
   const hosts=new Set(['www.pornhub.com','pornhub.com']);
-  const pornHubListing=source.protocol==='https:'&&hosts.has(source.hostname.toLowerCase())&&source.pathname==='/view_video.php'&&source.searchParams.get('viewkey')===normalizedId&&
+  return source.protocol==='https:'&&hosts.has(source.hostname.toLowerCase())&&source.pathname==='/view_video.php'&&source.searchParams.get('viewkey')===normalizedId&&
    embed.protocol==='https:'&&hosts.has(embed.hostname.toLowerCase())&&embed.pathname==='/embed/'+normalizedId;
-  if(pornHubListing)return true;
-
-  // The authorized feed can publish its own HTTPS player host. Accept it only
-  // when the host is explicitly configured and both URLs resolve to the exact
-  // provider player for this record; arbitrary mirrors remain rejected.
-  const configuredHosts=String(env?.ALLOWED_EMBED_HOSTS||'').split(',').map(value=>value.trim().toLowerCase()).filter(Boolean);
-  const embedHost=embed.hostname.toLowerCase();
-  const configured=configuredHosts.some(host=>embedHost===host||embedHost.endsWith('.'+host));
-  const providerPath='/player/embed/'+normalizedId;
-  return source.protocol==='https:'&&embed.protocol==='https:'&&source.hostname.toLowerCase()===embedHost&&configured&&
-   source.pathname.replace(/\\/+$/,'')===providerPath&&embed.pathname.replace(/\\/+$/,'')===providerPath;
  }catch{return false}
 }
 async function persistOfficialRecords(db,items,taxonomy,env=null){
@@ -503,7 +492,22 @@ async function loadOfficialStaticRecords(env,req){
   ...(Array.isArray(base)?base:(Array.isArray(base?.entries)?base.entries:[])),
   ...(Array.isArray(manual)?manual:(Array.isArray(manual?.entries)?manual.entries:[]))
  ];
- return entries.filter(item=>item&&/^[a-z0-9]{6,24}$/i.test(String(item.id||''))).map(item=>({...item}));
+ function canonicalizeAuthorizedStaticRecord(item){
+  const id=String(item?.id||'');
+  if(!/^\\d{6,15}$/.test(id))return {...item};
+  try{
+   const source=new URL(String(item?.source_url||'')),embed=new URL(String(item?.embed_url||''));
+   const providerPath='/player/embed/'+id;
+   const sourcePath=source.pathname.replace(/\\/+$/,'');
+   const embedPath=embed.pathname.replace(/\\/+$/,'');
+   if(source.protocol==='https:'&&embed.protocol==='https:'&&source.hostname.toLowerCase()===embed.hostname.toLowerCase()&&
+      sourcePath===providerPath&&embedPath===providerPath){
+    return {...item,source_url:OFFICIAL_ORIGIN+'/view_video.php?viewkey='+encodeURIComponent(id),embed_url:OFFICIAL_ORIGIN+'/embed/'+encodeURIComponent(id)};
+   }
+  }catch{/* keep the original record for normal validation */}
+  return {...item};
+ }
+ return entries.filter(item=>item&&/^[a-z0-9]{6,24}$/i.test(String(item.id||''))).map(canonicalizeAuthorizedStaticRecord);
 }
 async function taxonomyBackfillTokenHash(token){
  const bytes=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(String(token||'')));
