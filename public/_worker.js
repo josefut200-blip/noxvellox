@@ -16,7 +16,7 @@ const EXOCLICK_BANNER_SRC='https://a.magsrv.com/ad-provider.js';
 const VERSION='0.3.12';
 const MIN_VIDEO_DURATION_SECONDS=15*60;
 const MIN_OFFICIAL_DURATION_SECONDS=60;
-const EMBED_BLOCKED_OFFICIAL_IDS=new Set(['6937cf5fea785']);
+const EMBED_BLOCKED_OFFICIAL_IDS=new Set(['6937cf5fea785','7096442']);
 const REMOVED_OFFICIAL_IDS=new Set(['696c7c920140e','6937cf5fea785']);
 const prerollVastUrl=env=>{
   for(const key of ['PRE_ROLL_VAST_URL','ADSTERRA_VAST_URL','VAST_URL']){
@@ -2015,4 +2015,3 @@ if(path==='/'){const videos=await listVideos(db,{limit:8});const official=(await
 export default {
  async fetch(req,env){try{const requestUrl=new URL(req.url);if(requestUrl.hostname==='noxvellox.pages.dev')return Response.redirect(`https://noxvellox.site${requestUrl.pathname}${requestUrl.search}`,301);return await route(req,env)}catch(e){console.error('Noxvellox request error',e);if(isD1QuotaError(e)&&req.method==='GET')try{return await quotaFallback(req,env)}catch(fallbackError){console.error('Noxvellox quota fallback error',fallbackError)}return html('<!doctype html><title>Temporarily unavailable</title><h1>Service temporarily unavailable</h1><p>Please try again.</p>',503)}}
 };
-
