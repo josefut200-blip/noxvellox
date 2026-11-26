@@ -1836,7 +1836,9 @@ async function route(req,env){
  }
  const cacheable=req.method==='GET'&&(path==='/'||path==='/videos'||path==='/official-videos'||path==='/categories'||path==='/channels'||path==='/sitemap.xml'||path.startsWith('/category/')||path.startsWith('/official-watch/'));
  const cache=cacheable&&typeof caches!=='undefined'&&caches.default?caches.default:null;
- const cacheKey=cache?new Request(url.href,{method:'GET'}):null;
+ const cacheUrl=new URL(url.href);
+ cacheUrl.searchParams.set('__nv_cache','2026-11-26-mobile-player');
+ const cacheKey=cache?new Request(cacheUrl.href,{method:'GET'}):null;
  if(cache){try{const cached=await cache.match(cacheKey);if(cached)return cached}catch{}}
  const putPublic=async response=>{
   if(cache&&response.status===200){try{await cache.put(cacheKey,response.clone())}catch{}}
