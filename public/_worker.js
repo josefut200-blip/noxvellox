@@ -618,7 +618,28 @@ async function syncOfficialOnDemand(db,taxonomy=taxonomyConfig,env=null,req=null
 }
 const officialCard=v=>{const title=displayVideoTitle(v.title);return `<a class="video-card" href="/official-watch/${encodeURIComponent(v.id)}"><div class="video-art">${coverMarkup(v.poster_url,title,'Free official embed',v.embed_url)}<span class="play" aria-hidden="true">▶</span>${v.duration_seconds?`<span class="duration">${duration(v.duration_seconds)}</span>`:''}</div><div class="video-meta"><h3>${esc(title)}</h3><div class="sub"><strong>Official embed</strong>  ·  AdultEmbed</div></div></a>`};
 const officialGrid=(items,heading='Videos from official provider feed')=>`<section class="section wrap"><div class="section-head"><div><div class="section-kicker">No video files hosted here  ·  Free authorized embeds</div><h2>${esc(heading)}</h2></div><a class="section-link" href="/official-videos">View official feed ?</a></div><div class="video-grid">${items.length?items.map(officialCard).join(''):'<div class="empty"><strong>Official provider feed temporarily unavailable</strong><p>Please check the provider or try again later. No placeholder videos will be invented.</p></div>'}</div>${items[0]?.from_snapshot?'<p class="mini"><strong>Dated contingency:</strong> official RSS metadata last observed November 22, 2026; playback is not confirmed and listings can change.</p>':''}<p class="mini">Embedded directly from the original provider under its webmaster embed terms. Availability may depend on region and may change. No files are downloaded or redistributed by Noxvellox.</p></section>`;
-function officialWatch({base,url,video,related=[],env={}}){
+async function signedAdultEmbedUrl(value,base){
+  const raw=String(value||'');
+  try{
+    const parsed=new URL(raw);
+    const match=parsed.pathname.match(/^\\/player\\/embed\\/([0-9]{6,15})\\/?$/i);
+    if(parsed.protocol!=='https:'||parsed.hostname.toLowerCase()!=='adultembed.com'||!match)return raw;
+    const response=await fetch('https://adultembed.com/api/videos/'+encodeURIComponent(match[1])+'/get-embed/',{
+      method:'POST',
+      headers:{accept:'application/json','x-site-url':String(base||'https://noxvellox.site').replace(/\\/$/,'')},
+      redirect:'manual',
+      signal:AbortSignal.timeout(3500)
+    });
+    if(!response.ok||(response.status>=300&&response.status<400))return raw;
+    const payload=await response.json();
+    const candidate=String(payload?.player_url||payload?.playerUrl||payload?.embed_url||'').trim();
+    const signed=new URL(candidate);
+    const signedId=signed.pathname.match(/^\\/player\\/embed\\/([0-9]{6,15})\\/?$/i);
+    if(signed.protocol==='https:'&&signed.hostname.toLowerCase()==='adultembed.com'&&signedId&&signedId[1]===match[1])return signed.href;
+  }catch{}
+  return raw;
+}
+async function officialWatch({base,url,video,related=[],env={}}){
   const embedBlocked=EMBED_BLOCKED_OFFICIAL_IDS.has(String(video.id));
   const rawEmbed=String(video?.embed_url||'');
   const providerEmbed=(()=>{
@@ -631,7 +652,7 @@ function officialWatch({base,url,video,related=[],env={}}){
     }catch{}
     return rawEmbed;
   })();
-  const v={title:video.title,category:'Official embeds',poster_url:video.poster_url,embed_url:embedBlocked?'':providerEmbed,source_url:embedBlocked?`https://cn.pornhub.com/view_video.php?viewkey=${encodeURIComponent(video.id)}`:providerEmbed||video.source_url,provider:'',duration_seconds:video.duration_seconds,description:'Video hosted and streamed by the original platform.',official:true,embed_blocked:embedBlocked,slug:video.id,published_at:null};
+  const playbackEmbed=await signedAdultEmbedUrl(providerEmbed,base);\n  const v={title:video.title,category:'Official embeds',poster_url:video.poster_url,embed_url:embedBlocked?'':playbackEmbed,source_url:embedBlocked?`https://cn.pornhub.com/view_video.php?viewkey=${encodeURIComponent(video.id)}`:playbackEmbed||video.source_url,provider:'',duration_seconds:video.duration_seconds,description:'Video hosted and streamed by the original platform.',official:true,embed_blocked:embedBlocked,slug:video.id,published_at:null};
   const configuredHosts=String(env?.ALLOWED_EMBED_HOSTS||'').split(',').map(value=>value.trim().toLowerCase()).filter(Boolean);
   const officialHosts=[...new Set([...configuredHosts,'www.pornhub.com','pornalizer.app','adultembed.com'])].join(',');
   return watchPage({url,base,v,related:related.map(item=>({slug:item.id,title:item.title,poster_url:item.poster_url,duration_seconds:item.duration_seconds,category:'Free official embed',provider:'',official:true})),env:{...env,ALLOWED_EMBED_HOSTS:officialHosts}});
@@ -1729,7 +1750,7 @@ async function partnerWatch({video, partner, url, base, env}) {
       }
       const src = typeof code === 'string' && code.match(/<iframe\b[^>]*?\ssrc=["']([^"']+)["']/i)?.[1];
       if (src === embed) {
-        return html(officialWatch({base,url,env,video:{...video,embed_url:embed,source_url:source}}));
+        return html(await officialWatch({base,url,env,video:{...video,embed_url:embed,source_url:source}}));
       }
     } catch { /* The original viewing page stays available when the embed API is offline. */ }
   }
@@ -1818,7 +1839,7 @@ async function quotaFallback(req,env){
   const id=path.slice('/official-watch/'.length),video=feed.find(item=>String(item.id)===id);
   if(!video)return html(notFound({base,url:url.href}),404,cacheHeaders);
   const related=feed.filter(item=>String(item.id)!==id).slice(0,30);
-  return html(officialWatch({base,url:url.href,video,related,env}),200,cacheHeaders);
+  return html(await officialWatch({base,url:url.href,video,related,env}),200,cacheHeaders);
  }
  if(path==='/' )return html(homePageV3({base,url:url.href,videos:[],official:feed.slice(0,12),partners:[],categoryList:categoryItems.slice(0,8)}),200,cacheHeaders);
  if(path==='/videos'||path==='/official-videos')return html(listPage({base,url:url.href,videos:[],official:feed.slice(0,24),title:path==='/videos'?'Videos':'Free Official Embeds',subtitle:'Temporary read-only catalog from the verified official feed.'}),200,cacheHeaders);
@@ -1848,7 +1869,7 @@ async function route(req,env){
  const cacheable=req.method==='GET'&&(path==='/'||path==='/videos'||path==='/official-videos'||path==='/categories'||path==='/channels'||path==='/sitemap.xml'||path.startsWith('/category/')||path.startsWith('/official-watch/'));
  const cache=cacheable&&typeof caches!=='undefined'&&caches.default?caches.default:null;
  const cacheUrl=new URL(url.href);
- const cacheIdentity=new URL(cacheUrl.origin+'/__nv-cache/2026-11-26-player-adultembed-4'+cacheUrl.pathname);
+ const cacheIdentity=new URL(cacheUrl.origin+'/__nv-cache/2026-11-26-player-adultembed-signed-5'+cacheUrl.pathname);
  cacheIdentity.search=cacheUrl.search;
  const cacheKey=cache?new Request(cacheIdentity.href,{method:'GET'}):null;
  if(cache){try{const cached=await cache.match(cacheKey);if(cached)return cached}catch{}}
@@ -1938,7 +1959,7 @@ if(path==='/'){const videos=await listVideos(db,{limit:8});const official=(await
    }
  }
  else if(path==='/official-videos'){const page=officialPageNumber(url.searchParams.get('page')||1);const results=await officialCatalog(db,{page,localEntries:localFeed});markup=listPage({base,url:url.href,videos:[],official:results.entries,title:'Free Official Embeds',subtitle:'Automatically updated official embeds, saved over time and shown in pages.',page,officialPagination:officialPagination({page,total:results.total})});}
- else if(path.startsWith('/official-watch/')){const id=path.slice('/official-watch/'.length);const video=await officialById(db,id,localFeed);const related=video?rotateRelated((await officialCatalog(db,{page:1,limit:40,localEntries:localFeed})).entries,id,30):[];markup=video?officialWatch({base,url:url.href,video,related,env}):notFound({base,url:url.href});}
+ else if(path.startsWith('/official-watch/')){const id=path.slice('/official-watch/'.length);const video=await officialById(db,id,localFeed);const related=video?rotateRelated((await officialCatalog(db,{page:1,limit:40,localEntries:localFeed})).entries,id,30):[];markup=video?await officialWatch({base,url:url.href,video,related,env}):notFound({base,url:url.href});}
  else if(path==='/search'){const q=safeText(url.searchParams.get('q')||'',80);const videos=q?await listVideos(db,{q,limit:40}):[];const official=q?(await officialCatalog(db,{page:1,limit:40,q,localEntries:localFeed})).entries:[];const taxonomy=searchTaxonomy(q);markup=searchPage({base,url:url.href,q,videos,official,channels:taxonomy.channels,matchedCategories:taxonomy.categories})}
   else if(path==='/categories'){const directory=await categoryDirectory(taxonomyReady?db:null,taxonomy,30);markup=shell({base,url:url.href,title:'Browse Video Categories | Noxvellox',description:'Explore approved video categories by performer, body type, act, style and theme.',body:'<section class="wrap page-head"><div class="section-kicker">Discover by interest</div><h1>Categories</h1><p>Browse approved videos by topic. Channels identify the publisher; categories describe the source-provided subject.</p></section><div class="wrap">'+categoryCardsV2(directory)+adSlot()+'</div>'});}
   else if(path==='/channels'){
