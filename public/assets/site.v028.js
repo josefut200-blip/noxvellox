@@ -13,7 +13,7 @@
       player.querySelectorAll('.mobile-player-fallback-wrap,.mobile-player-fallback').forEach(node=>node.remove());
       const frame=player.querySelector('iframe[data-embed-url],iframe');
       if(!frame)return;
-      frame.setAttribute('sandbox','allow-scripts allow-same-origin allow-forms allow-presentation');
+      frame.removeAttribute('sandbox');
       frame.setAttribute('frameborder','0');
       frame.setAttribute('width','100%');
       frame.setAttribute('height','100%');
