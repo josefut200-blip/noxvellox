@@ -410,3 +410,14 @@
     pointer-events:auto!important;
   }
 }
+
+/* Legacy cached player overlays are never allowed to cover the native iframe. */
+.player-cover,
+[data-player-cover],
+[data-player-cover-play],
+.mobile-player-fallback-wrap,
+.mobile-player-fallback{
+  display:none!important;
+  visibility:hidden!important;
+  pointer-events:none!important;
+}
