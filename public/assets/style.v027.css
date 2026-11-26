@@ -364,154 +364,23 @@
   .exoclick-banner-grid{width:100%!important;}
 }
 
-/* The pre-play card owns its height; the player returns to 16:9 after release. */
-.player[data-preplay-active="yes"]{
-  aspect-ratio:auto!important;
-  height:auto!important;
-  min-height:360px!important;
-  display:flex!important;
-  flex-direction:column!important;
-  align-items:center!important;
-  justify-content:center!important;
-  padding:20px 12px!important;
-  box-sizing:border-box!important;
-}
-.player[data-preplay-active="yes"] [data-click-play-overlay]{
-  position:relative!important;
-  inset:auto!important;
-  width:100%!important;
-  min-height:360px!important;
-  flex:0 0 auto!important;
-  display:flex!important;
-  align-items:center!important;
-  justify-content:center!important;
-  overflow:hidden!important;
-}
-.player[data-preplay-active="yes"] .click-play-ad-card{
-  margin:0 auto!important;
-  max-width:100%!important;
-}
-
-/* Explicit player-shell state prevents the mobile pre-play card from being clipped. */
-.player-shell.has-ad-overlay{
-  aspect-ratio:auto!important;
-  height:auto!important;
-  min-height:380px!important;
-  max-height:none!important;
-  overflow:visible!important;
-  display:flex!important;
-  flex-direction:column!important;
-  align-items:center!important;
-  justify-content:center!important;
-  padding:20px 12px!important;
-  box-sizing:border-box!important;
-}
-.player-shell.has-ad-overlay [data-click-play-overlay]{
-  position:relative!important;
-  inset:auto!important;
-  width:100%!important;
-  height:auto!important;
-  min-height:380px!important;
-  padding:24px 12px!important;
-  display:flex!important;
-  flex-direction:column!important;
-  align-items:center!important;
-  justify-content:center!important;
-  gap:14px!important;
-  box-sizing:border-box!important;
-}
-@media(max-width:768px){
-  .player-shell.has-ad-overlay{
-    aspect-ratio:auto!important;
-    height:auto!important;
-    min-height:380px!important;
-    max-height:none!important;
-    overflow:visible!important;
-  }
-  .player-shell.has-ad-overlay [data-click-play-overlay]{
-    position:relative!important;
-    inset:auto!important;
-    width:100%!important;
-    height:auto!important;
-    min-height:380px!important;
-    padding:24px 12px!important;
-    gap:14px!important;
-  }
-}
-
-/* Final cascade guard for the mobile pre-play shell. */
-body .watch-layout .player-shell.has-ad-overlay{
-  aspect-ratio:auto!important;
-  height:auto!important;
-  min-height:380px!important;
-  max-height:none!important;
-  overflow:visible!important;
-}
-body .watch-layout .player-shell.has-ad-overlay .click-play-overlay{
-  position:relative!important;
-  inset:auto!important;
-  width:100%!important;
-  height:auto!important;
-  min-height:0!important;
-  padding:16px!important;
-  display:flex!important;
-  flex-direction:column!important;
-  align-items:center!important;
-  justify-content:center!important;
-  gap:16px!important;
-  overflow:visible!important;
-}
-
-/* Compact pre-play creative with an explicit close control. */
-.click-play-ad-card{
-  width:min(100%,300px)!important;
-  max-width:300px!important;
-  padding:16px!important;
-}
-.click-play-ad-slot[data-exoclick-banner]{
-  width:240px!important;
-  height:200px!important;
-  flex:0 0 240px!important;
-}
-.click-play-close{
-  position:absolute!important;
-  top:8px!important;
-  right:8px!important;
-  z-index:3!important;
-  width:28px!important;
-  height:28px!important;
-  min-width:28px!important;
-  padding:0!important;
-  margin:0!important;
-  border:1px solid rgba(255,255,255,.45)!important;
-  border-radius:50%!important;
-  background:rgba(0,0,0,.72)!important;
-  color:#fff!important;
-  font:700 22px/24px Arial,sans-serif!important;
-  cursor:pointer!important;
-}
-.click-play-close:hover{background:#f24a67!important;border-color:#f24a67!important;}
-
-/* Direct official player interaction: no transparent cover may intercept clicks. */
+/* Native official player stage. */
 .player-shell{
+  position:relative!important;
+  width:100%!important;
+  aspect-ratio:16/9!important;
+  overflow:hidden!important;
   pointer-events:auto!important;
 }
 .player-shell iframe{
   position:absolute!important;
   inset:0!important;
-  z-index:2!important;
-  pointer-events:auto!important;
+  z-index:5!important;
   display:block!important;
   width:100%!important;
   height:100%!important;
+  pointer-events:auto!important;
 }
-.player-shell>[data-cover-image],
-.player-shell>.cover-art-safe{
-  pointer-events:none!important;
-  z-index:0!important;
-}
-
-/* Closed UI layers must not intercept mobile player taps. */
 [hidden],
 .age-overlay[hidden],
 [data-age-gate][hidden],
@@ -521,100 +390,23 @@ body .watch-layout .player-shell.has-ad-overlay .click-play-overlay{
   display:none!important;
   pointer-events:none!important;
 }
-@media(max-width:768px){
-  .player-shell,
-  .player-shell iframe{
-    pointer-events:auto!important;
-  }
-  .age-overlay[hidden],
-  [data-age-gate][hidden],
-  [data-cookie-consent-banner][hidden],
-  .navigation[hidden],
-  [data-menu-drawer][hidden]{
-    display:none!important;
-    pointer-events:none!important;
-  }
-}
-
-@media(max-width:768px){
-  .player-shell:not(.has-ad-overlay){
-    width:100%!important;
-    height:auto!important;
-    min-height:210px!important;
-    max-height:none!important;
-    aspect-ratio:16/9!important;
-    overflow:hidden!important;
-  }
-  .player-shell:not(.has-ad-overlay) iframe{
-    width:100%!important;
-    height:100%!important;
-    min-height:0!important;
-  }
-}
-
-/* Responsive tap-to-play cover: it replaces ad preloads without changing the 16:9 stage. */
-.player-cover{
-  position:absolute!important;
-  inset:0!important;
-  z-index:3!important;
-  display:flex!important;
-  align-items:center!important;
-  justify-content:center!important;
-  overflow:hidden!important;
-  background:#09090d!important;
-}
-.player-cover-image{
-  position:absolute!important;
-  inset:0!important;
-  z-index:0!important;
-  width:100%!important;
-  height:100%!important;
-  pointer-events:none!important;
-}
-.player-cover-image img,.player-cover-image video{
-  width:100%!important;
-  height:100%!important;
-  object-fit:cover!important;
-  opacity:.72!important;
-  pointer-events:none!important;
-}
-.player-cover-play{
-  position:relative!important;
-  z-index:2!important;
-  display:inline-flex!important;
-  align-items:center!important;
-  justify-content:center!important;
-  gap:10px!important;
-  min-width:150px!important;
-  min-height:54px!important;
-  padding:14px 22px!important;
-  border:0!important;
-  border-radius:999px!important;
-  background:#f24a67!important;
-  color:#fff!important;
-  font-weight:900!important;
-  cursor:pointer!important;
-  box-shadow:0 12px 30px #0009!important;
-}
-.player-cover-play:hover{background:#ff6681!important;}
-@media(max-width:768px){
-  .player-cover-play{min-height:56px!important;min-width:160px!important;font-size:15px!important;}
-}
-
-/* Cover owns the first gesture; the iframe gets interaction only after release. */
-.player-shell:not([data-player-released="yes"]) iframe{
-  z-index:1!important;
-  pointer-events:none!important;
-}
-.player-shell[data-player-released="yes"] iframe{
-  z-index:5!important;
-  pointer-events:auto!important;
-}
-
-/* Remove any stale legacy fallback button from cached markup. */
 .mobile-player-fallback-wrap,
 .mobile-player-fallback{
   display:none!important;
   visibility:hidden!important;
   pointer-events:none!important;
+}
+@media(max-width:768px){
+  .player-shell{
+    width:100%!important;
+    height:auto!important;
+    min-height:0!important;
+    max-height:none!important;
+    aspect-ratio:16/9!important;
+  }
+  .player-shell iframe{
+    min-height:0!important;
+    z-index:5!important;
+    pointer-events:auto!important;
+  }
 }
