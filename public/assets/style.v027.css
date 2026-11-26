@@ -535,3 +535,19 @@ body .watch-layout .player-shell.has-ad-overlay .click-play-overlay{
     pointer-events:none!important;
   }
 }
+
+@media(max-width:768px){
+  .player-shell:not(.has-ad-overlay){
+    width:100%!important;
+    height:auto!important;
+    min-height:210px!important;
+    max-height:none!important;
+    aspect-ratio:16/9!important;
+    overflow:hidden!important;
+  }
+  .player-shell:not(.has-ad-overlay) iframe{
+    width:100%!important;
+    height:100%!important;
+    min-height:0!important;
+  }
+}
