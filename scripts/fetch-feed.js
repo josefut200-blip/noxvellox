@@ -222,6 +222,14 @@ function publishedAt(value) {
 }
 
 function normalizeResolution(value) {
+  if (value && typeof value === 'object') {
+    const width = Number(value.width || value.video_width || value.width_px || 0);
+    const height = Number(value.height || value.video_height || value.height_px || 0);
+    if (width >= 3840 || height >= 2160) return '4k';
+    if (width >= 1920 || height >= 1080) return '1080p';
+    if (width >= 1280 || height >= 720) return '720p';
+    value = value.value || value.name || value.label || value.quality || value.resolution || '';
+  }
   const normalized = normalizeTag(value).replace(/\s+/g, '');
   if (/^(2160p?|uhd|4k)$/.test(normalized)) return '4k';
   if (/^1080p?$/.test(normalized)) return '1080p';
@@ -460,6 +468,15 @@ async function requestFeed() {
     editorialEligible(entry)
   );
   if (!eligible.length) {
+    const diagnostics = unique.slice(0, 3).map(entry => ({
+      id: entry.id,
+      duration_seconds: entry.duration_seconds,
+      published_at: entry.published_at,
+      resolution: entry.resolution,
+      studio: entry.studio,
+      tags: entry.raw_tags.slice(0, 8)
+    }));
+    log(`Eligibility samples: ${JSON.stringify(diagnostics)}`);
     const fieldNames = new Set();
     const addShape = (value, prefix = '', depth = 0) => {
       if (!value || typeof value !== 'object' || depth > 2) return;
