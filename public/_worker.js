@@ -1880,8 +1880,8 @@ async function route(req,env){
   return response;
  };
  if(path.startsWith('/assets/')||path==='/favicon.svg'||path==='/manifest.webmanifest'||path==='/sw.js'||path==='/data/videos.json'||path==='/data/taxonomy.json')return env.ASSETS.fetch(req);
- const taxonomy=await loadTaxonomy(env,req);let taxonomyReady=false;
- if(db){try{taxonomyReady=await ensureTaxonomySchema(db,taxonomy)}catch(error){console.warn('Taxonomy schema unavailable',String(error.message||error).slice(0,100))}}
+ const taxonomy=await loadTaxonomy(env,req);let taxonomyReady=!!db;
+ // Taxonomy schema is migrated separately; never run DDL during a request.
  if(path.startsWith('/api/'))return api(req,env,url,db);
  if(path==='/robots.txt'){
    const robots=['User-agent: *','Allow: /','Disallow: /admin','Disallow: /api/','Disallow: /search','Disallow: /*?*page=','Disallow: /*?*sort=','Disallow: /*?*q=',`Sitemap: ${base}/sitemap.xml`].join('\\n')+'\\n';
