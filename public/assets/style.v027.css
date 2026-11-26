@@ -491,3 +491,22 @@ body .watch-layout .player-shell.has-ad-overlay .click-play-overlay{
   cursor:pointer!important;
 }
 .click-play-close:hover{background:#f24a67!important;border-color:#f24a67!important;}
+
+/* Direct official player interaction: no transparent cover may intercept clicks. */
+.player-shell{
+  pointer-events:auto!important;
+}
+.player-shell iframe{
+  position:absolute!important;
+  inset:0!important;
+  z-index:2!important;
+  pointer-events:auto!important;
+  display:block!important;
+  width:100%!important;
+  height:100%!important;
+}
+.player-shell>[data-cover-image],
+.player-shell>.cover-art-safe{
+  pointer-events:none!important;
+  z-index:0!important;
+}
