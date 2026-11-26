@@ -233,6 +233,7 @@
         player.dataset.clickPlayReleased='yes';
         player.dataset.prerollFinished='yes';
         player.dataset.preplayActive='no';
+        player.classList.remove('has-ad-overlay');
         button.disabled=false;
         button.textContent=label||'Skip Ad & Watch Video';
         hideOverlay(overlay);
