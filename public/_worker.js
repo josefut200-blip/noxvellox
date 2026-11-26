@@ -307,7 +307,7 @@ async function loadLocalOfficialFeed(env,req){
   const entries=[...(Array.isArray(payload)?payload:(Array.isArray(payload?.entries)?payload.entries:[])),...(Array.isArray(manualPayload?.entries)?manualPayload.entries:[])];
   const normalized=entries.filter(item=>item&&/^[a-z0-9]{8,24}$/i.test(String(item.id||''))&&String(item.title||'').trim()&&isHttpsUrl(item.source_url)&&isHttpsUrl(item.embed_url)).map(item=>({...item,source_url:String(item.source_url),embed_url:String(item.embed_url),poster_url:isHttpsUrl(item.poster_url)?String(item.poster_url):(isPreviewEmbedUrl(item.embed_url)?String(item.embed_url):'')}));
   const eligible=normalized.filter(item=>Number.isInteger(Number(item.duration_seconds))&&Number(item.duration_seconds)>=MIN_OFFICIAL_DURATION_SECONDS&&editorialEligible(item));
-  return await hydrateOfficialPosters(eligible);
+  try{return await hydrateOfficialPosters(eligible)}catch{return eligible}
  }catch{return null}
 }
 const posterExpiry=value=>{
