@@ -561,14 +561,28 @@
     const exoSlots=[...document.querySelectorAll('[data-exoclick-banner]')];
     exoSlots.forEach(slot=>{
       const group=slot.closest('[data-exoclick-grid]');
+      const ins=slot.querySelector('ins');
+      let rendered=false;
       const hideIfEmpty=()=>{
-        if(group&&![...group.querySelectorAll('[data-exoclick-banner]')].some(item=>!item.hidden&&item.querySelector('iframe'))){
+        if(rendered)return;
+        if(group&&![...group.querySelectorAll('[data-exoclick-banner]')].some(item=>item.querySelector('iframe,img'))){
           group.hidden=true;
           group.dataset.adState='empty';
         }
       };
-      if(c==='denied'){slot.hidden=true;slot.dataset.adState='disabled';if(group){group.hidden=true;group.dataset.adState='disabled';}return;}
+      const observer=ins?new MutationObserver(()=>{
+        if(slot.querySelector('iframe,img')){
+          rendered=true;
+          slot.hidden=false;
+          slot.dataset.adState='rendered';
+          if(group){group.hidden=false;group.dataset.adState='rendered';}
+          observer.disconnect();
+        }
+      }):null;
+      if(observer)observer.observe(slot,{childList:true,subtree:true});
+      if(c==='denied'){slot.hidden=true;slot.dataset.adState='disabled';if(group){group.hidden=true;group.dataset.adState='disabled';}observer?.disconnect();return;}
       if(c!=='granted'||slot.dataset.loaded==='yes')return;
+      if(!ins){slot.dataset.adState='missing-ins';slot.hidden=true;hideIfEmpty();return;}
       if(group){group.hidden=false;group.dataset.adState='loading';}
       slot.hidden=false;
       slot.dataset.loaded='yes';
@@ -576,14 +590,14 @@
       loadExoClick().then(()=>{
         window.AdProvider=window.AdProvider||[];
         window.AdProvider.push({serve:{}});
-        slot.dataset.adState='loaded';
+        slot.dataset.adState='requested';
         window.setTimeout(()=>{
-          if(!slot.querySelector('iframe')){
-            slot.dataset.adState='loaded-no-render';slot.hidden=true;hideIfEmpty();
+          if(!rendered&&!slot.querySelector('iframe,img')){
+            slot.dataset.adState='loaded-no-render';slot.hidden=true;observer?.disconnect();hideIfEmpty();
           }
-        },3000);
+        },12000);
       }).catch(()=>{
-        slot.dataset.adState='error';slot.hidden=true;hideIfEmpty();
+        slot.dataset.adState='error';slot.hidden=true;observer?.disconnect();hideIfEmpty();
       });
     });
     loadVideoSlider();
