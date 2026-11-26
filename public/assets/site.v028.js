@@ -221,15 +221,40 @@
   }
   function setupClickToPlay(){
     document.querySelectorAll('[data-click-play-overlay]').forEach(overlay=>{
-      const player=overlay.closest('[data-player]'),button=overlay.querySelector('[data-click-play]');
+      const player=overlay.closest('[data-player]'),button=overlay.querySelector('[data-countdown-play]')||overlay.querySelector('[data-click-play]');
       if(!player||!button||overlay.dataset.clickPlayBound==='yes')return;
       overlay.dataset.clickPlayBound='yes';
-      button.addEventListener('click',()=>{
+      let remaining=5,released=false;
+      const release=label=>{
+        if(released)return;
+        released=true;
+        window.clearInterval(timer);
+        window.clearTimeout(fallback);
         player.dataset.clickPlayReleased='yes';
         player.dataset.prerollFinished='yes';
+        button.disabled=false;
+        button.textContent=label||'Skip Ad & Watch Video';
         hideOverlay(overlay);
         releaseEmbeds();
-      },{once:true});
+      };
+      const update=()=>{
+        if(released)return;
+        if(remaining<=0){
+          button.disabled=false;
+          button.style.opacity='1';
+          button.textContent='Skip Ad & Watch Video';
+          return;
+        }
+        button.textContent='Skip Ad in '+remaining+'s...';
+        remaining-=1;
+      };
+      button.disabled=true;
+      button.style.opacity='.7';
+      update();
+      const timer=window.setInterval(update,1000);
+      const fallback=window.setTimeout(()=>release('Watch Video'),3000);
+      if(typeof consent==='function'&&consent()==='granted')loadExoClick().catch(()=>release('Watch Video'));
+      button.addEventListener('click',()=>release('Skip Ad & Watch Video'),{once:true});
     });
   }
   const releaseClickPlay=button=>{
