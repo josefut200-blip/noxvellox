@@ -362,15 +362,19 @@ function asArray(payload) {
 }
 
 function buildFeedUrls(baseUrl) {
-  const urls = [];
+  const urls = [new URL(baseUrl.href)];
+  const queryMode = String(process.env.OFFICIAL_FEED_QUERY_MODE || 'pagination').trim().toLowerCase();
   const configuredStudios = String(process.env.OFFICIAL_FEED_STUDIOS || FEATURED_STUDIOS.join(','))
     .split(',').map(value => value.trim()).filter(Boolean).join(',');
-  for (let page = 1; page <= 25; page++) {
+
+  for (let page = 2; page <= 25; page++) {
     const url = new URL(baseUrl.href);
-    url.searchParams.set('studios', configuredStudios);
-    url.searchParams.set('sort', FEED_SORTS[(page - 1) % FEED_SORTS.length] || 'most_viewed');
     url.searchParams.set('page', String(page));
     url.searchParams.set('per_page', '50');
+    if (queryMode === 'provider') {
+      url.searchParams.set('studios', configuredStudios);
+      url.searchParams.set('sort', FEED_SORTS[(page - 1) % FEED_SORTS.length] || 'most_viewed');
+    }
     urls.push(url);
   }
   return [...new Map(urls.map(url => [url.href, url])).values()];
@@ -409,7 +413,19 @@ async function requestFeed() {
   }
 
   const responses = [];
-  for (const url of buildFeedUrls(source)) responses.push(await fetchEntries(url));
+  const feedUrls = buildFeedUrls(source);
+  for (const [index, url] of feedUrls.entries()) {
+    try {
+      responses.push(await fetchEntries(url));
+    } catch (error) {
+      const message = String(error?.message || error);
+      if (index > 0 && /feed returned HTTP (400|404|405)/.test(message)) {
+        log(`pagination stopped at page ${index + 1}: ${message}`);
+        break;
+      }
+      throw error;
+    }
+  }
   const parsed = responses.flatMap(item => item.parsed);
   const entries = responses.flatMap(item => item.entries);
   const unique = [...new Map(entries.map(entry => [entry.id, entry])).values()];
