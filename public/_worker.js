@@ -55,7 +55,7 @@ const channels=[
 const esc=v=>String(v??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
 const safeText=(v,max=220)=>String(v??'').replace(/[\u0000-\u001f]/g,' ').trim().slice(0,max);
 const json=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff','strict-transport-security':'max-age=31536000; includeSubDomains'}});
-const html=(s,status=200,extra={})=>new Response(s,{status,headers:{'content-type':'text/html; charset=utf-8','cache-control':extra['cache-control']||'public, max-age=60, s-maxage=300, stale-while-revalidate=60','x-content-type-options':'nosniff','strict-transport-security':'max-age=31536000; includeSubDomains','referrer-policy':'strict-origin-when-cross-origin','x-frame-options':'DENY','permissions-policy':'camera=(), microphone=(), geolocation=()',...extra}});
+const html=(s,status=200,extra={})=>new Response(s,{status,headers:{'content-type':'text/html; charset=utf-8','cache-control':extra['cache-control']||'public, max-age=60, s-maxage=300, stale-while-revalidate=60','x-content-type-options':'nosniff','strict-transport-security':'max-age=31536000; includeSubDomains','referrer-policy':'origin','x-frame-options':'DENY','permissions-policy':'camera=(), microphone=(), geolocation=(), autoplay=*, fullscreen=*, picture-in-picture=*',...extra}});
 const xml=(s,extra={})=>new Response(s,{headers:{'content-type':'application/xml; charset=utf-8','cache-control':'public, max-age=60, s-maxage=60, stale-while-revalidate=60','x-content-type-options':'nosniff','strict-transport-security':'max-age=31536000, includeSubDomains',...extra}});
 const slugify=s=>safeText(s,150).toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,90)||`video-${Date.now()}`;
 const isHttpsUrl=s=>{try{const u=new URL(s);return u.protocol==='https:'&&!u.username&&!u.password;}catch{return false}};
@@ -1784,7 +1784,7 @@ async function route(req,env){
   if(cache&&response.status===200){try{await cache.put(cacheKey,response.clone())}catch{}}
   return response;
  };
- if(path.startsWith('/assets/')||path==='/favicon.svg'||path==='/data/videos.json'||path==='/data/taxonomy.json')return env.ASSETS.fetch(req);
+ if(path.startsWith('/assets/')||path==='/favicon.svg'||path==='/manifest.webmanifest'||path==='/sw.js'||path==='/data/videos.json'||path==='/data/taxonomy.json')return env.ASSETS.fetch(req);
  const taxonomy=await loadTaxonomy(env,req);let taxonomyReady=false;
  if(db){try{taxonomyReady=await ensureTaxonomySchema(db,taxonomy)}catch(error){console.warn('Taxonomy schema unavailable',String(error.message||error).slice(0,100))}}
  if(path.startsWith('/api/'))return api(req,env,url,db);
