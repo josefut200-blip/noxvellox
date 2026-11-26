@@ -446,6 +446,8 @@
   // unrelated areas makes the provider load several copies while filling
   // only one, leaving broken empty boxes on the page.
   const slots=[...document.querySelectorAll('[data-native-ad]')];
+  // Adsterra native is single-instance on a page; keep only the first declared slot and suppress duplicates.
+  slots.slice(1).forEach(slot=>{slot.hidden=true;slot.dataset.adState='suppressed';});
   const adHealth={slots:[],provider:'Adsterra',consentRequired:true,lastChecked:null};
   window.__noxvelloxAdHealth=adHealth;
   const setAdState=(slot,state)=>{
@@ -487,16 +489,15 @@
       if(!popunderLoaded){loadConsentUnit('noxvellox-popunder',APPROVED_POPUNDER_SRC);try{sessionStorage.setItem('noxvellox-popunder-loaded','yes')}catch{}}
     }
     if(!slots.length){releaseEmbeds();return;}
-    slots.forEach(slot=>{
+    slots.slice(0,1).forEach(slot=>{
       const message=slot.querySelector('[data-ad-message]');
 
       const container=slot.querySelector('[data-ad-container]');
-      if(c==='denied'){setAdState(slot,'disabled');if(message)message.textContent='Optional ads are disabled.';return;}
-      if(c==='granted'){
-}
+      if(c==='denied'){setAdState(slot,'disabled');slot.hidden=true;if(message)message.textContent='Optional ads are disabled.';return;}
       if(c!=='granted'||slot.dataset.loaded==='yes')return;
       const scriptUrl=slot.dataset.scriptSrc;
       if(scriptUrl!==APPROVED_AD_SRC){setAdState(slot,'blocked-url');return;}
+      slot.hidden=false;
       slot.dataset.loaded='yes';
       setAdState(slot,'loading');
       if(message)message.textContent='';
@@ -507,9 +508,14 @@
       s.src=scriptUrl;
       s.addEventListener('load',()=>{
         setAdState(slot,'loaded');
-        window.setTimeout(()=>{if((slot.querySelector('[data-ad-container]')?.childElementCount||0)===0&&slot.dataset.adState==='loaded')setAdState(slot,'loaded-no-render')},8000);
+        window.setTimeout(()=>{
+          if((slot.querySelector('[data-ad-container]')?.querySelector('iframe')||slot.querySelector('[data-ad-container]')?.childElementCount||0)===0&&slot.dataset.adState==='loaded'){
+            setAdState(slot,'loaded-no-render');slot.hidden=true;
+          }
+        },3500);
       });
-      s.addEventListener('error',()=>{setAdState(slot,'error');if(message)message.textContent='Advertisement is temporarily unavailable.'});
+      s.addEventListener('error',()=>{setAdState(slot,'error');slot.hidden=true;if(message)message.textContent='Advertisement is temporarily unavailable.'});
+      window.setTimeout(()=>{if(slot.dataset.adState==='loading'){setAdState(slot,'timeout');slot.hidden=true}},3500);
       slot.querySelector('[data-ad-container]')?.before(s);
     });
 
@@ -563,7 +569,14 @@
         window.AdProvider=window.AdProvider||[];
         window.AdProvider.push({serve:{}});
         slot.dataset.adState='loaded';
-      }).catch(()=>{slot.dataset.adState='error';});
+        window.setTimeout(()=>{
+          if(!slot.querySelector('iframe')){
+            slot.dataset.adState='loaded-no-render';slot.hidden=true;
+            const group=slot.closest('.sponsored-exoclick-grid');
+            if(group&&![...group.querySelectorAll('[data-exoclick-banner]')].some(item=>!item.hidden))group.closest('.sponsored-native')?.setAttribute('hidden','hidden');
+          }
+        },3500);
+      }).catch(()=>{slot.dataset.adState='error';slot.hidden=true;slot.closest('.sponsored-native')?.setAttribute('hidden','hidden');});
     });
     loadVideoSlider();
     if(c==='granted')fetch('/api/ad-health',{credentials:'same-origin',cache:'no-store'}).then(r=>r.json()).then(data=>{adHealth.server=data;adHealth.lastChecked=new Date().toISOString()}).catch(()=>{adHealth.server={ok:false,note:'Banner health endpoint unavailable'}});
