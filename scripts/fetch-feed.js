@@ -230,10 +230,11 @@ function normalizeResolution(value) {
     if (width >= 1280 || height >= 720) return '720p';
     value = value.value || value.name || value.label || value.quality || value.resolution || '';
   }
-  const normalized = normalizeTag(value).replace(/\s+/g, '');
-  if (/^(2160p?|uhd|4k)$/.test(normalized)) return '4k';
-  if (/^1080p?$/.test(normalized)) return '1080p';
-  if (/^720p?$/.test(normalized)) return '720p';
+  const normalized = normalizeTag(value);
+  const compact = normalized.replace(/\s+/g, '');
+  if (/(^|\s)(2160p?|uhd|4k)(?=\s|$)/.test(normalized) || /^(2160p?|uhd|4k)$/.test(compact)) return '4k';
+  if (/(^|\s)1080p?(?=\s|$)/.test(normalized) || /^1080p?$/.test(compact)) return '1080p';
+  if (/(^|\s)720p?(?=\s|$)/.test(normalized) || /^720p?$/.test(compact)) return '720p';
   return '';
 }
 
@@ -320,11 +321,14 @@ function normalizeEntry(item) {
   const formats = safeTags(valueFrom(item, ['formats', 'format']));
   const language = normalizeSourceLanguage(valueFrom(item, ['language', 'lang', 'audio_language', 'locale']));
   const resolutionValue = valueFrom(item, ['resolution', 'max_resolution', 'quality', 'video_quality']);
-  const resolution = normalizeResolution(
+  const explicitResolution = normalizeResolution(
     resolutionValue && typeof resolutionValue === 'object'
       ? valueFrom(resolutionValue, ['value', 'name', 'label', 'quality', 'resolution'])
       : resolutionValue
   );
+  // Some verified feeds publish the quality only as a tag, e.g. "4k Available".
+  // Treat that explicit quality tag as HD metadata without accepting generic/unknown tags.
+  const resolution = explicitResolution || rawTags.map(tag => normalizeResolution(tag)).find(Boolean) || '';
   const publishedValue = valueFrom(item, ['pubDate', 'pub_date', 'publish_date', 'published_at', 'publishedAt', 'published', 'date']);
   const published_at = publishedAt(
     publishedValue && typeof publishedValue === 'object'
