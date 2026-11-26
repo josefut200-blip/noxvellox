@@ -363,3 +363,31 @@
 @media(max-width:700px){
   .exoclick-banner-grid{width:100%!important;}
 }
+
+/* The pre-play card owns its height; the player returns to 16:9 after release. */
+.player[data-preplay-active="yes"]{
+  aspect-ratio:auto!important;
+  height:auto!important;
+  min-height:360px!important;
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:center!important;
+  justify-content:center!important;
+  padding:20px 12px!important;
+  box-sizing:border-box!important;
+}
+.player[data-preplay-active="yes"] [data-click-play-overlay]{
+  position:relative!important;
+  inset:auto!important;
+  width:100%!important;
+  min-height:360px!important;
+  flex:0 0 auto!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  overflow:hidden!important;
+}
+.player[data-preplay-active="yes"] .click-play-ad-card{
+  margin:0 auto!important;
+  max-width:100%!important;
+}
