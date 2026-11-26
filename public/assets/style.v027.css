@@ -510,3 +510,28 @@ body .watch-layout .player-shell.has-ad-overlay .click-play-overlay{
   pointer-events:none!important;
   z-index:0!important;
 }
+
+/* Closed UI layers must not intercept mobile player taps. */
+[hidden],
+.age-overlay[hidden],
+[data-age-gate][hidden],
+[data-cookie-consent-banner][hidden],
+.navigation[hidden],
+[data-menu-drawer][hidden]{
+  display:none!important;
+  pointer-events:none!important;
+}
+@media(max-width:768px){
+  .player-shell,
+  .player-shell iframe{
+    pointer-events:auto!important;
+  }
+  .age-overlay[hidden],
+  [data-age-gate][hidden],
+  [data-cookie-consent-banner][hidden],
+  .navigation[hidden],
+  [data-menu-drawer][hidden]{
+    display:none!important;
+    pointer-events:none!important;
+  }
+}
