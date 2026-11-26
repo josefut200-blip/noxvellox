@@ -552,34 +552,6 @@ body .watch-layout .player-shell.has-ad-overlay .click-play-overlay{
   }
 }
 
-.mobile-player-fallback-wrap{
-  display:flex;
-  justify-content:center;
-  margin:14px 0 0;
-}
-.mobile-player-fallback{
-  text-align:center;
-  min-height:44px;
-  align-items:center;
-  justify-content:center;
-}
-@media(max-width:768px){
-  .player-shell iframe{
-    z-index:2!important;
-    pointer-events:auto!important;
-    min-height:220px!important;
-  }
-  .mobile-player-fallback-wrap{
-    width:100%;
-    margin:14px 0 4px;
-  }
-  .mobile-player-fallback{
-    width:100%;
-    font-size:13px;
-    padding:12px 16px;
-  }
-}
-
 /* Responsive tap-to-play cover: it replaces ad preloads without changing the 16:9 stage. */
 .player-cover{
   position:absolute!important;
