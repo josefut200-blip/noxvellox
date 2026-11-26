@@ -205,6 +205,7 @@
     document.querySelectorAll('[data-embed-url]').forEach(frame=>{
       const player=frame.closest('[data-player]');
       if(player?.querySelector('[data-click-play-overlay]')&&player.dataset.clickPlayReleased!=='yes')return;
+      if(player?.querySelector('[data-player-cover]')&&player.dataset.playerReleased!=='yes')return;
       if(player?.querySelector('[data-pre-roll]')&&consent()==='granted'&&player.dataset.prerollFinished!=='yes'){startPreRoll(player);return;}
       loadFrame(frame);
       if(player?.querySelector('[data-pre-roll]')){player.dataset.prerollFinished='yes';player.dataset.prerollState='consent-not-granted';}
@@ -217,6 +218,21 @@
         },{once:true});
       }
       startMidRoll(player);
+    });
+  }
+  function setupPlayerCovers(){
+    document.querySelectorAll('[data-player-cover]').forEach(cover=>{
+      const player=cover.closest('[data-player]'),button=cover.querySelector('[data-player-cover-play]'),frame=player?.querySelector('[data-embed-url]');
+      if(!player||!button||!frame||cover.dataset.bound==='yes')return;
+      cover.dataset.bound='yes';
+      button.addEventListener('click',()=>{
+        const directLink=cover.dataset.directLink||'';
+        if(directLink&&consent()==='granted')window.open(directLink,'_blank','noopener,noreferrer');
+        player.dataset.playerReleased='yes';
+        cover.hidden=true;
+        cover.style.display='none';
+        loadFrame(frame);
+      },{once:true});
     });
   }
   function setupClickToPlay(){
@@ -363,9 +379,10 @@
     event.stopPropagation();
     releaseClickPlay(button);
   },true);
+  setupPlayerCovers();
   setupClickToPlay();
   setupVastClickOverlay();
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>{setupClickToPlay();setupVastClickOverlay()},{once:true});
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>{setupPlayerCovers();setupClickToPlay();setupVastClickOverlay()},{once:true});
   const setupFullscreen=()=>{
     document.querySelectorAll('[data-player-fullscreen]').forEach(button=>{
       if(button.dataset.fullscreenBound==='yes')return;
