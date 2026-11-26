@@ -446,8 +446,9 @@
   // unrelated areas makes the provider load several copies while filling
   // only one, leaving broken empty boxes on the page.
   const slots=[...document.querySelectorAll('[data-native-ad]')];
-  // Adsterra native is single-instance on a page; keep only the first declared slot and suppress duplicates.
-  slots.slice(1).forEach(slot=>{slot.hidden=true;slot.dataset.adState='suppressed';});
+  // Adsterra native is single-instance on a page; prefer the footer placement and suppress duplicates.
+  const primaryNative=slots.find(slot=>slot.dataset.adPlacement==='footer-banner')||slots[0];
+  slots.filter(slot=>slot!==primaryNative).forEach(slot=>{slot.hidden=true;slot.dataset.adState='suppressed';});
   const adHealth={slots:[],provider:'Adsterra',consentRequired:true,lastChecked:null};
   window.__noxvelloxAdHealth=adHealth;
   const setAdState=(slot,state)=>{
@@ -488,7 +489,7 @@
       let popunderLoaded=false;try{popunderLoaded=sessionStorage.getItem('noxvellox-popunder-loaded')==='yes'}catch{}
       if(!popunderLoaded){loadConsentUnit('noxvellox-popunder',APPROVED_POPUNDER_SRC);try{sessionStorage.setItem('noxvellox-popunder-loaded','yes')}catch{}}
     }
-    if(slots.length)slots.slice(0,1).forEach(slot=>{
+    if(primaryNative)[primaryNative].forEach(slot=>{
       const message=slot.querySelector('[data-ad-message]');
 
       const container=slot.querySelector('[data-ad-container]');
