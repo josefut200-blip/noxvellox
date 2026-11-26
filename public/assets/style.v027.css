@@ -438,3 +438,26 @@
     gap:14px!important;
   }
 }
+
+/* Final cascade guard for the mobile pre-play shell. */
+body .watch-layout .player-shell.has-ad-overlay{
+  aspect-ratio:auto!important;
+  height:auto!important;
+  min-height:380px!important;
+  max-height:none!important;
+  overflow:visible!important;
+}
+body .watch-layout .player-shell.has-ad-overlay .click-play-overlay{
+  position:relative!important;
+  inset:auto!important;
+  width:100%!important;
+  height:auto!important;
+  min-height:0!important;
+  padding:16px!important;
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:16px!important;
+  overflow:visible!important;
+}
