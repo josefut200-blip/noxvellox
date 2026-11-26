@@ -1777,6 +1777,13 @@ async function quotaFallback(req,env){
 
 async function route(req,env){
  const url=new URL(req.url),base=PUBLIC_ORIGIN,path=decodeURIComponent(url.pathname).replace(/\/$/,'')||'/',db=asD1(env.DB);
+ if(req.method==='GET'&&url.searchParams.has('page')&&(path==='/videos'||path==='/official-videos'||path.startsWith('/category/'))){
+  const requestedPage=Number(url.searchParams.get('page'));
+  if(Number.isFinite(requestedPage)&&requestedPage>20){
+   const safeUrl=new URL(url.href);safeUrl.searchParams.set('page','20');
+   return Response.redirect(safeUrl.href,302);
+  }
+ }
  const cacheable=req.method==='GET'&&(path==='/'||path==='/videos'||path==='/official-videos'||path==='/categories'||path==='/channels'||path==='/sitemap.xml'||path.startsWith('/category/')||path.startsWith('/official-watch/'));
  const cache=cacheable&&typeof caches!=='undefined'&&caches.default?caches.default:null;
  const cacheKey=cache?new Request(url.href,{method:'GET'}):null;
