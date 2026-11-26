@@ -79,7 +79,7 @@ function shell({body,title,description,base,url,canonical,structured,gate=true,r
   const footer=`<footer class="footer"><div class="wrap"><div class="footer-inner"><a href="/" class="logo">NOX<span>VELLOX</span></a><nav class="footer-links" aria-label="Footer"><a href="/about">About</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/copyright">Copyright &amp; takedown</a><a href="/contact">Contact</a><a href="/admin">Publisher</a><button class="footer-pref" type="button" data-ad-preferences>Cookie preferences</button><a href="/history">Watch history</a></nav></div>${adSlot('footer-banner')}<p class="fineprint">© ${new Date().getUTCFullYear()} Noxvellox. For adults only (18+ or higher local legal age). Independent catalog. Individual media remains the property of its respective rights holders. We accept only authorized sources. Independent providers' official embed feeds are displayed under their published embed permissions; separately imported listings require review. Optional advertising is loaded only after visitor permission.</p></div></footer>`;
   const footerWithBadge=footer;
   const headerWithCta=header.replace('<form class="search-form"','<a href="/videos" style="display:inline-flex;align-items:center;justify-content:center;background:#f24a67;color:#fff;border-radius:8px;padding:9px 13px;font-size:11px;font-weight:900;white-space:nowrap">Explore videos</a><form class="search-form"');
- return `${head({title,description,url,canonical:canonical||PUBLIC_ORIGIN+new URL(url).pathname,structured,robots,preview,ogType})}<body>${headerWithCta}<main>${body}</main>${footer}${gate?adultGate():''}<script defer src="/assets/site.v028.js?ver=0.4.35"></script><!-- legacy compatibility asset: /assets/app.v027.js --></body></html>`;
+ return `${head({title,description,url,canonical:canonical||PUBLIC_ORIGIN+new URL(url).pathname,structured,robots,preview,ogType})}<body>${headerWithCta}<main>${body}</main>${footer}${gate?adultGate():''}<script defer src="/assets/site.v028.js?ver=0.4.36"></script><!-- legacy compatibility asset: /assets/app.v027.js --></body></html>`;
 }
 const coverTitle=(title,max=66)=>safeText(title,max).replace(/\s+/g,' ').trim();
 const coverSvg=(title,kind='Official embed')=>{
@@ -1837,7 +1837,7 @@ async function route(req,env){
  const cacheable=req.method==='GET'&&(path==='/'||path==='/videos'||path==='/official-videos'||path==='/categories'||path==='/channels'||path==='/sitemap.xml'||path.startsWith('/category/')||path.startsWith('/official-watch/'));
  const cache=cacheable&&typeof caches!=='undefined'&&caches.default?caches.default:null;
  const cacheUrl=new URL(url.href);
- cacheUrl.searchParams.set('__nv_cache','2026-11-26-mobile-player');
+ cacheUrl.searchParams.set('__nv_cache','2026-11-26-player-sandbox');
  const cacheKey=cache?new Request(cacheUrl.href,{method:'GET'}):null;
  if(cache){try{const cached=await cache.match(cacheKey);if(cached)return cached}catch{}}
  const putPublic=async response=>{
