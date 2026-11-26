@@ -969,7 +969,7 @@ function watchPage({url,base,v,related,relatedCard=card,env}){
   const EXOCLICK_VIDEO_SLIDER_SRC='https://a.magsrv.com/ad-provider.js';
   const sliderMarkup=v.official?'<div data-exoclick-video-slider data-zoneid="'+EXOCLICK_VIDEO_SLIDER_ZONE_ID+'" data-src="'+EXOCLICK_VIDEO_SLIDER_SRC+'" aria-hidden="true"><ins class="eas6a97888e31" data-zoneid="'+EXOCLICK_VIDEO_SLIDER_ZONE_ID+'"></ins></div>':'';
   const overlayPoster=poster.replace(/[\\'()]/g,'');
-  const clickPlayOverlay=v.official&&embed?'<div class="click-play-overlay" data-click-play-overlay role="dialog" aria-label="Advertisement before playback" style="position:absolute;inset:0;z-index:9;display:flex;align-items:center;justify-content:center;overflow:hidden;background:#08070b url(\\''+overlayPoster+'\\') center/cover no-repeat">'+
+  const clickPlayOverlay=v.official&&embed?'<div class="click-play-overlay" data-click-play-overlay role="dialog" aria-label="Advertisement before playback" style="position:absolute;inset:0;z-index:9;display:flex;align-items:center;justify-content:center;overflow:hidden;background:#08070b url('+overlayPoster+') center/cover no-repeat">'+
     '<div style="position:absolute;inset:0;background:rgba(0,0,0,.78)"></div>'+
     '<div style="position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;justify-content:center;width:min(100%,360px);padding:18px 16px;text-align:center">'+
       '<div style="margin-bottom:8px;color:#fff;font:700 11px/1.2 Arial,sans-serif;letter-spacing:.12em;text-transform:uppercase">Advertisement</div>'+
