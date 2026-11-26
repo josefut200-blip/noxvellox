@@ -8,6 +8,7 @@
   document.querySelectorAll('.detail-row').forEach(el=>{if(el.textContent.includes('Provider:')){el.textContent=el.textContent.replace(/Provider:.*$/,'').trim()}});
   document.querySelectorAll('.video-card .sub').forEach(el=>{if(el.textContent.includes('Pornhub'))el.textContent='Free official embed'});
   const modal=document.querySelector('[data-age-gate]');
+  document.querySelectorAll('.mobile-player-fallback-wrap,.mobile-player-fallback').forEach(node=>node.remove());
   const AGE_KEY='noxvellox_age_verified';
   const COOKIE_KEY='noxvellox_cookie_preferences';
   const readCookie=name=>{const match=document.cookie.split('; ').find(item=>item.startsWith(name+'='));return match?decodeURIComponent(match.slice(name.length+1)) : '';};
@@ -204,7 +205,7 @@
   const loadFrame=frame=>{
     if(!frame||frame.src)return;
     const raw=frame.dataset.embedUrl||'';
-    try{const target=new URL(raw,location.href);if(!target.searchParams.has('autoplay'))target.searchParams.set('autoplay','1');frame.src=target.toString()}catch{frame.src=raw}
+    try{const target=new URL(raw,location.href);if(!target.searchParams.has('autoplay'))target.searchParams.set('autoplay','1');if(!target.searchParams.has('auto_play'))target.searchParams.set('auto_play','1');frame.src=target.toString()}catch{frame.src=raw}
   };
   function releaseEmbeds(){
     document.querySelectorAll('[data-embed-url]').forEach(frame=>{
