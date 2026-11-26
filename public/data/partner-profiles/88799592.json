@@ -1,8 +1,8 @@
 {
   "stats": {
     "subscribers": "40148",
-    "videos": "2032",
-    "views": "22265238"
+    "videos": "2054",
+    "views": "22273140"
   },
   "cover": "https://ei.phncdn.com/pics/users/088/799/592/cover1581607869/(m=eRSa4qFxcWaAb)(mh=6GWIOfBMst-oQdqN)1323x270.jpg",
   "avatar": "https://ei.phncdn.com/pics/users/088/799/592/avatar1581607955/(m=ewILGCjadOf)(mh=IZnssqLfqAJjvZ7p)200x200.jpg",
@@ -43,63 +43,63 @@
   ],
   "playlists": [],
   "previews": {
-    "6b061464dd7a8": {
-      "thumbnail": "https://pix-fl.phncdn.com/c6531/videos/202611/24/70422795/original_70422795.mp4/plain/ex:1:no/bg:0:0:0/rs:fit:320:180/vts:12?hdnea=st=1795621317~exp=1795707717~hdl=-1~hmac=74c105c77a73345dec72d4e84df33d0cf787dd1c",
+    "6b079cfbe2d23": {
+      "thumbnail": "https://pix-fl.phncdn.com/c6531/videos/202611/26/70557735/original_70557735.mp4/plain/ex:1:no/bg:0:0:0/rs:fit:320:180/vts:11?hdnea=st=1795706456~exp=1795792856~hdl=-1~hmac=7fd689d237befa37f16ba3167ea0051df8e62067",
       "duration": "0:30",
       "channel": "MoneyShotMe"
     },
-    "6b06146168e2a": {
-      "thumbnail": "https://pix-fl.phncdn.com/c6531/videos/202611/24/70422785/original_70422785.mp4/plain/ex:1:no/bg:0:0:0/rs:fit:320:180/vts:12?hdnea=st=1795621317~exp=1795707717~hdl=-1~hmac=6908f424b0499467ea61fd09b949089f78367b18",
+    "6b079cf55dd0a": {
+      "thumbnail": "https://pix-fl.phncdn.com/c6531/videos/202611/26/70557725/original_70557725.mp4/plain/ex:1:no/bg:0:0:0/rs:fit:320:180/vts:2?hdnea=st=1795706456~exp=1795792856~hdl=-1~hmac=ead7970b5701f77f7df184cd8e1f00f0b491f52e",
       "duration": "0:30",
       "channel": "MoneyShotMe"
     },
-    "6b061466e9c8f": {
-      "thumbnail": "https://pix-fl.phncdn.com/c6531/videos/202611/24/70422805/original_70422805.mp4/plain/ex:1:no/bg:0:0:0/rs:fit:320:180/vts:12?hdnea=st=1795621317~exp=1795707717~hdl=-1~hmac=3b1e6cf4e24af197077b3556bc89319c2b28f2a7",
+    "6b079d00578d7": {
+      "thumbnail": "https://pix-fl.phncdn.com/c6531/videos/202611/26/70557745/original_70557745.mp4/plain/ex:1:no/bg:0:0:0/rs:fit:320:180/vts:3?hdnea=st=1795707067~exp=1795793467~hdl=-1~hmac=b31fee2ec2188c0af24a71983104454cc438d5cc",
       "duration": "0:30",
       "channel": "MoneyShotMe"
     },
-    "6b060e2fcea83": {
-      "thumbnail": "https://pix-fl.phncdn.com/c6531/videos/202611/24/70420885/original_70420885.mp4/plain/ex:1:no/bg:0:0:0/rs:fit:320:180/vts:690?hdnea=st=1795621783~exp=1795708183~hdl=-1~hmac=59e8a9f33219686555e60624606544c634be0cda",
+    "6b07685c1590a": {
+      "thumbnail": "https://pix-fl.phncdn.com/c6531/videos/202611/25/70538485/original_70538485.mp4/plain/ex:1:no/bg:0:0:0/rs:fit:320:180/vts:195?hdnea=st=1795706728~exp=1795793128~hdl=-1~hmac=f78ec6bc1c2c92ffc667dacd76f50312d7fbf2e6",
+      "duration": "8:00",
+      "channel": "MoneyShotMe"
+    },
+    "6b0768599a128": {
+      "thumbnail": "https://pix-fl.phncdn.com/c6531/videos/202611/25/70538475/original_70538475.mp4/plain/ex:1:no/bg:0:0:0/rs:fit:320:180/vts:375?hdnea=st=1795706995~exp=1795793395~hdl=-1~hmac=23db6bc5ddf7a43acb6abe176847e9655106cad3",
+      "duration": "8:00",
+      "channel": "MoneyShotMe"
+    },
+    "6b076857a5480": {
+      "thumbnail": "https://pix-fl.phncdn.com/c6531/videos/202611/25/70538465/original_70538465.mp4/plain/ex:1:no/bg:0:0:0/rs:fit:320:180/vts:435?hdnea=st=1795706995~exp=1795793395~hdl=-1~hmac=39f7eafec60c50afcb70656beaf151c7c422098b",
+      "duration": "8:00",
+      "channel": "MoneyShotMe"
+    },
+    "6b0768547818c": {
+      "thumbnail": "https://pix-fl.phncdn.com/c6531/videos/202611/25/70538455/original_70538455.mp4/plain/ex:1:no/bg:0:0:0/rs:fit:320:180/vts:45?hdnea=st=1795707033~exp=1795793433~hdl=-1~hmac=32a2404396f58cfa5c35e63a12a40f6cc8fb5c7c",
+      "duration": "8:00",
+      "channel": "MoneyShotMe"
+    },
+    "6b07684fc2721": {
+      "thumbnail": "https://pix-fl.phncdn.com/c6531/videos/202611/25/70538445/original_70538445.mp4/plain/ex:1:no/bg:0:0:0/rs:fit:320:180/vts:870?hdnea=st=1795707033~exp=1795793433~hdl=-1~hmac=576ec2e7c1a69024b50705f40d3a02b2982aff1e",
       "duration": "16:00",
       "channel": "MoneyShotMe"
     },
-    "6b060e2c52b8a": {
-      "thumbnail": "https://pix-fl.phncdn.com/c6531/videos/202611/24/70420865/original_70420865.mp4/plain/ex:1:no/bg:0:0:0/rs:fit:320:180/vts:690?hdnea=st=1795620830~exp=1795707230~hdl=-1~hmac=56252e6383710d1f12a6ad186b66b75baebe9744",
+    "6b07684c29bbb": {
+      "thumbnail": "https://pix-fl.phncdn.com/c6531/videos/202611/25/70538435/original_70538435.mp4/plain/ex:1:no/bg:0:0:0/rs:fit:320:180/vts:930?hdnea=st=1795707033~exp=1795793433~hdl=-1~hmac=9ac9cd36bfb3850b6e69c6532ecc558df686754c",
       "duration": "16:00",
       "channel": "MoneyShotMe"
     },
-    "6b0602cb908cd": {
-      "thumbnail": "https://pix-fl.phncdn.com/c6531/videos/202611/24/70417605/original_70417605.mp4/plain/ex:1:no/bg:0:0:0/rs:fit:320:180/vts:345?hdnea=st=1795621373~exp=1795707773~hdl=-1~hmac=072bac25b609df377c30fa7ddf9525951a7ffc48",
-      "duration": "8:00",
-      "channel": "MoneyShotMe"
-    },
-    "6b0602c309e71": {
-      "thumbnail": "https://pix-fl.phncdn.com/c6531/videos/202611/24/70417595/original_70417595.mp4/plain/ex:1:no/bg:0:0:0/rs:fit:320:180/vts:345?hdnea=st=1795620744~exp=1795707144~hdl=-1~hmac=932d9fd0dac77d3657fecf4147827d78c9686bdd",
-      "duration": "8:00",
-      "channel": "MoneyShotMe"
-    },
-    "6b06011b18405": {
-      "thumbnail": "https://pix-fl.phncdn.com/c6531/videos/202611/24/70417245/original_70417245.mp4/plain/ex:1:no/bg:0:0:0/rs:fit:320:180/vts:345?hdnea=st=1795620744~exp=1795707144~hdl=-1~hmac=6ad289e2eaa413b4f2203f5c5ac4475ca3d2f993",
-      "duration": "8:00",
-      "channel": "MoneyShotMe"
-    },
-    "6b06011689466": {
-      "thumbnail": "https://pix-fl.phncdn.com/c6531/videos/202611/24/70417225/original_70417225.mp4/plain/ex:1:no/bg:0:0:0/rs:fit:320:180/vts:345?hdnea=st=1795621877~exp=1795708277~hdl=-1~hmac=5f7aa8d7ab6037865ff70c19c95dcacb77ecc133",
-      "duration": "8:00",
-      "channel": "MoneyShotMe"
-    },
-    "6b05db9766298": {
-      "thumbnail": "https://pix-fl.phncdn.com/c6531/videos/202611/24/70404115/original_70404115.mp4/plain/ex:1:no/bg:0:0:0/rs:fit:320:180/vts:34?hdnea=st=1795621337~exp=1795707737~hdl=-1~hmac=bc49c5f7a1076cec2848d54290066efa7247df86",
+    "6b07461c9169f": {
+      "thumbnail": "https://pix-fl.phncdn.com/c6531/videos/202611/25/70528025/original_70528025.mp4/plain/ex:1:no/bg:0:0:0/rs:fit:320:180/vts:10?hdnea=st=1795707067~exp=1795793467~hdl=-1~hmac=b0df2d903dd7a17f6c700ab7d2d4bf991e6ccf3f",
       "duration": "1:00",
       "channel": "Cum Bizz"
     },
-    "6b05da1ac84c3": {
-      "thumbnail": "https://pix-fl.phncdn.com/c6531/videos/202611/24/70403785/original_70403785.mp4/plain/ex:1:no/bg:0:0:0/rs:fit:320:180/vts:34?hdnea=st=1795621337~exp=1795707737~hdl=-1~hmac=16c75cba2548609a6744f781d1d199a99f46ffc0",
+    "6b0745c4115bc": {
+      "thumbnail": "https://pix-fl.phncdn.com/c6531/videos/202611/25/70527915/original_70527915.mp4/plain/ex:1:no/bg:0:0:0/rs:fit:320:180/vts:7?hdnea=st=1795707067~exp=1795793467~hdl=-1~hmac=dc2b62acaf8adcdc1c9857c6d53f411deecee3c8",
       "duration": "1:00",
       "channel": "Cum Bizz"
     },
-    "6b05d9c3d52e9": {
-      "thumbnail": "https://pix-fl.phncdn.com/c6531/videos/202611/24/70403675/original_70403675.mp4/plain/ex:1:no/bg:0:0:0/rs:fit:320:180/vts:34?hdnea=st=1795621337~exp=1795707737~hdl=-1~hmac=4eeabaf3e645bc6249dd6f7fd7b6109219b0cc62",
+    "6b074545eeac7": {
+      "thumbnail": "https://pix-fl.phncdn.com/c6531/videos/202611/25/70527755/original_70527755.mp4/plain/ex:1:no/bg:0:0:0/rs:fit:320:180/vts:40?hdnea=st=1795707067~exp=1795793467~hdl=-1~hmac=8fcd5e8b836057cb37625e0ce2dfe2d6af194fe6",
       "duration": "1:00",
       "channel": "Cum Bizz"
     }
