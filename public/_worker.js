@@ -1870,7 +1870,7 @@ async function route(req,env){
  const cacheable=req.method==='GET'&&path!=='/official-watch/7096442'&&(path==='/'||path==='/videos'||path==='/official-videos'||path==='/categories'||path==='/channels'||path==='/sitemap.xml'||path.startsWith('/category/')||path.startsWith('/official-watch/'));
  const cache=cacheable&&typeof caches!=='undefined'&&caches.default?caches.default:null;
  const cacheUrl=new URL(url.href);
- const cacheRevision=path==='/official-watch/7096442'?'2026-11-26-player-adultembed-signed-6':'2026-11-26-player-adultembed-signed-8';
+ const cacheRevision=path==='/official-watch/7096442'?'2026-11-26-player-adultembed-signed-6':'2026-11-26-player-adultembed-signed-9';
  const cacheIdentity=new URL(cacheUrl.origin+'/__nv-cache/'+cacheRevision+cacheUrl.pathname);
  cacheIdentity.search=cacheUrl.search;
  const cacheKey=cache?new Request(cacheIdentity.href,{method:'GET'}):null;
