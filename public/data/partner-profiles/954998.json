@@ -1,8 +1,8 @@
 {
   "stats": {
-    "subscribers": "35624",
-    "videos": "3235",
-    "views": "493303118"
+    "subscribers": "35623",
+    "videos": "3236",
+    "views": "493339148"
   },
   "cover": "https://ei.phncdn.com/pics/users/000/954/998/cover1422893403/(m=eRSa4qFxcWaAb)(mh=SsnaJ0Ddp7pkUnJ1)1323x270.jpg",
   "avatar": "https://ei.phncdn.com/pics/users/000/954/998/avatar1384378013/(m=ewILGCjadOf)(mh=2kiiYoyh_8kLm9Xw)200x200.jpg",
@@ -99,63 +99,63 @@
     }
   ],
   "previews": {
+    "6b09b1889d7af": {
+      "thumbnail": "https://pix-fl.phncdn.com/c6531/videos/202611/27/70729125/original_70729125.mp4/plain/ex:1:no/bg:0:0:0/rs:fit:320:180/vts:448?hdnea=st=1795874851~exp=1795961251~hdl=-1~hmac=78578c310bb06a1feb698b5307e062d827f22f13",
+      "duration": "10:28",
+      "channel": "Homegrown Video"
+    },
     "6b08657cb9eda": {
-      "thumbnail": "https://pix-cdn77.phncdn.com/c6531/videos/202611/26/70621885/original_70621885.mp4/plain/ex:1:no/bg:0:0:0/rs:fit:320:180/vts:448?hash=okKA9DrgLXdgF4rsEJlkcGIrRjI=&validto=1795878767",
+      "thumbnail": "https://pix-fl.phncdn.com/c6531/videos/202611/26/70621885/original_70621885.mp4/plain/ex:1:no/bg:0:0:0/rs:fit:320:180/vts:448?hdnea=st=1795875207~exp=1795961607~hdl=-1~hmac=db469e918a44e36097a9f47ef1c8e6d79a78bd42",
       "duration": "10:28",
       "channel": "Homegrown Video"
     },
     "6b086214caf35": {
-      "thumbnail": "https://pix-cdn77.phncdn.com/c6531/videos/202611/26/70620795/original_70620795.mp4/plain/ex:1:no/bg:0:0:0/rs:fit:320:180/vts:448?hash=EhHnKTZBBC4w0J332pYdUrGXyVg=&validto=1795878351",
+      "thumbnail": "https://pix-fl.phncdn.com/c6531/videos/202611/26/70620795/original_70620795.mp4/plain/ex:1:no/bg:0:0:0/rs:fit:320:180/vts:448?hdnea=st=1795875247~exp=1795961647~hdl=-1~hmac=7c7b44ef6e32db292ff925771ac2ab3c7795831e",
       "duration": "10:28",
       "channel": "Homegrown Video"
     },
     "6b07224ab9db0": {
-      "thumbnail": "https://pix-cdn77.phncdn.com/c6531/videos/202611/25/70513735/original_70513735.mp4/plain/ex:1:no/bg:0:0:0/rs:fit:320:180/vts:448?hash=XRbvdDBBzsQeIAeUwDuNUDOj8gE=&validto=1795878927",
+      "thumbnail": "https://pix-fl.phncdn.com/c6531/videos/202611/25/70513735/original_70513735.mp4/plain/ex:1:no/bg:0:0:0/rs:fit:320:180/vts:448?hdnea=st=1795875247~exp=1795961647~hdl=-1~hmac=82cfe478044a465476df3a5802682f7f6ebd7fea",
       "duration": "10:28",
       "channel": "Homegrown Video"
     },
     "6b0715f324348": {
-      "thumbnail": "https://pix-cdn77.phncdn.com/c6531/videos/202611/25/70509505/original_70509505.mp4/plain/ex:1:no/bg:0:0:0/rs:fit:320:180/vts:448?hash=fWgVBPCBktph0wKnnLctUsBQFMc=&validto=1795878927",
+      "thumbnail": "https://pix-fl.phncdn.com/c6531/videos/202611/25/70509505/original_70509505.mp4/plain/ex:1:no/bg:0:0:0/rs:fit:320:180/vts:448?hdnea=st=1795875247~exp=1795961647~hdl=-1~hmac=0bea89cacd0e2e73c22e90ec2cf3889a7b07e7b3",
       "duration": "10:28",
       "channel": "Homegrown Video"
     },
     "6b070f4fdbea9": {
-      "thumbnail": "https://pix-cdn77.phncdn.com/c6531/videos/202611/25/70507175/original_70507175.mp4/plain/ex:1:no/bg:0:0:0/rs:fit:320:180/vts:448?hash=yZEILtra-7ImpF7W_oMWSBKxsR0=&validto=1795879227",
+      "thumbnail": "https://pix-fl.phncdn.com/c6531/videos/202611/25/70507175/original_70507175.mp4/plain/ex:1:no/bg:0:0:0/rs:fit:320:180/vts:448?hdnea=st=1795875121~exp=1795961521~hdl=-1~hmac=36693bcfe51dc3a29fb02cad566169803edff3b3",
       "duration": "10:28",
       "channel": "Homegrown Video"
     },
     "6b05dc5dda876": {
-      "thumbnail": "https://pix-cdn77.phncdn.com/c6531/videos/202611/24/70404325/original_70404325.mp4/plain/ex:1:no/bg:0:0:0/rs:fit:320:180/vts:448?hash=G2o4lJTd8knnHLL7G7zvbk5EntQ=&validto=1795878927",
+      "thumbnail": "https://pix-fl.phncdn.com/c6531/videos/202611/24/70404325/original_70404325.mp4/plain/ex:1:no/bg:0:0:0/rs:fit:320:180/vts:448?hdnea=st=1795875607~exp=1795962007~hdl=-1~hmac=e9b21e9a45e776c075c3db32c82e6c1ea242f1ef",
       "duration": "10:28",
       "channel": "Homegrown Video"
     },
     "6b05b4fad8cd2": {
-      "thumbnail": "https://pix-cdn77.phncdn.com/c6531/videos/202611/24/70394155/original_70394155.mp4/plain/ex:1:no/bg:0:0:0/rs:fit:320:180/vts:448?hash=QylHHnf7F51RwCKxBodKp_pSftM=&validto=1795878927",
+      "thumbnail": "https://pix-fl.phncdn.com/c6531/videos/202611/24/70394155/original_70394155.mp4/plain/ex:1:no/bg:0:0:0/rs:fit:320:180/vts:448?hdnea=st=1795875607~exp=1795962007~hdl=-1~hmac=afca7f166291fbd8fec144ec7cdb70faa0483226",
       "duration": "10:28",
       "channel": "Homegrown Video"
     },
     "6b046a453ba28": {
-      "thumbnail": "https://pix-cdn77.phncdn.com/c6531/videos/202611/23/70272125/original_70272125.mp4/plain/ex:1:no/bg:0:0:0/rs:fit:320:180/vts:425?hash=T860ex8ybQDu-L9aXN0BdArChSc=&validto=1795878927",
+      "thumbnail": "https://pix-fl.phncdn.com/c6531/videos/202611/23/70272125/original_70272125.mp4/plain/ex:1:no/bg:0:0:0/rs:fit:320:180/vts:425?hdnea=st=1795875247~exp=1795961647~hdl=-1~hmac=4aff4b379ad59b81c23e74cf403abc76dd0fd3a9",
       "duration": "10:05",
       "channel": "Homegrown Video"
     },
     "6b0463777c8e1": {
-      "thumbnail": "https://pix-cdn77.phncdn.com/c6531/videos/202611/23/70269935/original_70269935.mp4/plain/ex:1:no/bg:0:0:0/rs:fit:320:180/vts:448?hash=UmWxZTqZihWf_CoNH0LpQBNZQLw=&validto=1795878927",
+      "thumbnail": "https://pix-fl.phncdn.com/c6531/videos/202611/23/70269935/original_70269935.mp4/plain/ex:1:no/bg:0:0:0/rs:fit:320:180/vts:448?hdnea=st=1795875122~exp=1795961522~hdl=-1~hmac=85379f26818ac90618e4d3d8c5e5ca4b091180b6",
       "duration": "10:28",
       "channel": "Homegrown Video"
     },
     "6b03f2b716c4a": {
-      "thumbnail": "https://pix-cdn77.phncdn.com/c6531/videos/202611/23/70233955/original_70233955.mp4/plain/ex:1:no/bg:0:0:0/rs:fit:320:180/vts:448?hash=edcO2qWS-W4VkB5b07IxJA1kzzQ=&validto=1795878927",
+      "thumbnail": "https://pix-fl.phncdn.com/c6531/videos/202611/23/70233955/original_70233955.mp4/plain/ex:1:no/bg:0:0:0/rs:fit:320:180/vts:448?hdnea=st=1795875122~exp=1795961522~hdl=-1~hmac=197bd264d64034f22f349f0d4198f4d38a458551",
       "duration": "10:28",
       "channel": "Homegrown Video"
     },
     "6b03e629261bc": {
-      "thumbnail": "https://pix-cdn77.phncdn.com/c6531/videos/202611/23/70230115/original_70230115.mp4/plain/ex:1:no/bg:0:0:0/rs:fit:320:180/vts:448?hash=h4O9j-E3vxIyrF3_f2b4jYILEh8=&validto=1795878927",
-      "duration": "10:28",
-      "channel": "Homegrown Video"
-    },
-    "6b006ece5f7dc": {
-      "thumbnail": "https://pix-cdn77.phncdn.com/c6531/videos/202611/20/69935285/original_69935285.mp4/plain/ex:1:no/bg:0:0:0/rs:fit:320:180/vts:448?hash=J621WDVtqyo0zBhJ6b-OiLR9lZI=&validto=1795878927",
+      "thumbnail": "https://pix-fl.phncdn.com/c6531/videos/202611/23/70230115/original_70230115.mp4/plain/ex:1:no/bg:0:0:0/rs:fit:320:180/vts:448?hdnea=st=1795875122~exp=1795961522~hdl=-1~hmac=5b0690bbfe4e0c591f8540fcddd3f91aa9fc3449",
       "duration": "10:28",
       "channel": "Homegrown Video"
     }
